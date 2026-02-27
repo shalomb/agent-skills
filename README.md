@@ -31,6 +31,7 @@ Pi agent skills extend Pi's capabilities with specialized knowledge and workflow
 ### Infrastructure & DevOps
 
 - **[tfc-api](skills/tfc-api/)** - Query Terraform Cloud workspaces, runs, plans, and logs
+- **[terraform-dev](skills/terraform-dev/)** - Automated terraform development workflow with file watching
 - **[tmux](skills/tmux/)** - Execute commands and monitor output in tmux panes
 
 ### Utilities
