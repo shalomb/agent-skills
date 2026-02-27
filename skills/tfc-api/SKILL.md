@@ -341,3 +341,39 @@ grep '"type":"change_summary"' /tmp/plan-log.jsonl \
 - [Run API](https://developer.hashicorp.com/terraform/cloud-docs/api-docs/run)
 - [Plan API](https://developer.hashicorp.com/terraform/cloud-docs/api-docs/plans)
 - [Apply API](https://developer.hashicorp.com/terraform/cloud-docs/api-docs/applies)
+
+### Open Workspace in Browser
+
+Automatically detect and open the TFC workspace in your browser:
+
+```bash
+./scripts/open-workspace.sh
+```
+
+This script:
+1. Tries `.terraform/terraform.tfstate` first (if `terraform init` has run)
+2. Falls back to parsing `terraform.tf` for backend configuration
+3. Opens `https://app.terraform.io/app/{org}/workspaces/{workspace}` in default browser
+
+### Open Module Registry
+
+When working in a Terraform module repository, open the TFC private registry page:
+
+```bash
+./scripts/open-registry.sh
+```
+
+This script:
+1. Extracts module name from git remote origin
+2. Detects organization from terraform backend or git remote
+3. Opens `https://app.terraform.io/app/{org}/registry/modules/private/{org}/{module}/aws`
+
+Useful for quickly viewing module documentation, versions, and usage in TFC.
+
+## Browser Integration
+
+Both `open-workspace.sh` and `open-registry.sh` work cross-platform:
+- Linux: Uses `x-www-browser` or `xdg-open`
+- macOS: Uses `open`
+- Respects your default browser settings
+

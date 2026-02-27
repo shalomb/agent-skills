@@ -1,0 +1,90 @@
+#!/bin/bash
+
+# Script to watch a current directory for changes and then run a user-defined
+# set of commands on every change.
+#
+# Useful to run the fmt/validate/init/plan workflow before generating a
+# git commit (which coincidentally should be a cleaner, validated commit).
+
+set -eu -o pipefail
+
+# If a .tf-watcher.rc file exists in the current directory, we only run the commands it has listed
+# instead of all the predefined commands.
+#
+# To register commands, run `tf-watcher <command>` to place an entry in this file.
+# e.g. tf-watcher plan
+rc='.tf-watcher.rc'
+
+bell() {
+  tput bel || printf $'\a'
+}
+
+run() {
+  (
+    always=0
+    if [[ $1 == '-a' ]]; then
+      always=1
+      shift
+    fi
+    local cmd="$1"
+    shift
+    local action="${1:-$cmd}" # tflint, tfsec, etc
+    ok=1
+    if [[ -e $rc ]]; then
+      ok=0
+      grep -iq "$action" "$rc" && ok=1
+    fi
+    if ((ok == 1 || always == 1)); then
+      tput bold setaf 7
+      echo -ne "\n> " >&2
+      tput setaf 4
+      echo >&2 "$cmd $*"
+      tput sgr0
+      command "$cmd" "$@"
+    fi
+  )
+}
+
+prereqs() {
+  echo >&2 "Inotify tools not detected. Installing .."
+  sudo apt install inotify-tools
+}
+
+if (($# >= 1)); then
+  action="${1%-}"
+  if [[ $1 == "$action" ]]; then
+    echo >&2 "Adding $1 to $rc"
+    {
+      cat "$rc"
+      echo "$action"
+    } | sort -u >>"$rc.tmp"
+    mv "$rc.tmp" "$rc"
+  else
+    echo >&2 "Removing $1 from $rc"
+    sed -i "/$action/d" "$rc"
+  fi
+  cat "$rc"
+  exit
+fi
+
+type -P inotifywait &>/dev/null || prereqs
+
+current=0
+
+inotifywait -mr "${1:-.}" \
+  --exclude _build \
+  -e close_write -e create -e delete -e move \
+  --format '%T' --timefmt '%s' |
+  while read -r time; do
+    if ((time > current)); then
+      (
+        run -a terraform fmt -recursive  # always run fmt
+        run -a tflint                    # always run tflint
+        run tfsec
+        run terraform init -backend=false
+        run terraform validate && run terraform plan -compact-warnings
+      ) || bell
+      echo
+    fi
+    current=$(date +%s)
+  done
