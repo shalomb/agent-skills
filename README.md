@@ -21,6 +21,10 @@ Pi agent skills extend Pi's capabilities with specialized knowledge and workflow
 - **[ralph](skills/ralph/)** - Build Agent persona (optimistic, TDD-focused, implementation)
 - **[lovejoy](skills/lovejoy/)** - Release Agent persona (ceremonial, shipping, communication)
 
+## Agent Guidance
+
+- **[AGENTS.md](AGENTS.md)** - Guidelines for AI agents on maintaining privacy and ensuring universal applicability of skills.
+
 ### Document Automation
 
 - **[docx](skills/docx/)** - Create and manipulate Word documents (.docx)
