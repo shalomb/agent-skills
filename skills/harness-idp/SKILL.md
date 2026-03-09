@@ -110,6 +110,8 @@ This skill documents the comprehensive Harness.io API ecosystem for programmatic
 | `/gateway/ng/api/user-settings` | User settings (full) | Comprehensive user configuration audit |
 | `/gateway/ng-dashboard/api/overview/resources-overview-count` | Account metrics & trends | Projects, services, pipelines, users, environments |
 | `/gateway/pipeline/api/pipelines/list-repos` | Source control repos | GitOps integration, repo discovery |
+| `/gateway/pipeline/api/pipelines/summary/{pipelineId}` | Pipeline metadata & history | Execution summary, health, source control |
+| `/gateway/pipeline/api/pipelines/{pipelineId}` | Full pipeline definition (YAML) | Complete pipeline code audit, stages & steps |
 
 ## Core Capabilities
 
@@ -732,14 +734,96 @@ for repo in repos:
     print(f"  • {repo}")
 ```
 
-**Real-world example**:
-```
-Connected repositories (2):
-  • devops-harness-onboarding
-  • tf-orchestrator-harness-pipeline
+### 15. Discover and Audit Pipelines (Metadata & Full Definition)
+
+Get pipeline metadata with execution history, or retrieve complete YAML definition.
+
+```python
+# Method 1: Quick metadata (lightweight)
+response = requests.get(
+    'https://app.harness.io/gateway/pipeline/api/pipelines/summary/{pipeline_id}',
+    headers={'x-api-key': api_key},
+    params={
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id,
+        'projectIdentifier': project_id,
+        'getMetadataOnly': 'true'
+    }
+)
+
+pipeline = response.json()['data']
+print(f"Pipeline: {pipeline['name']}")
+print(f"Version: {pipeline['version']}")
+print(f"Stages: {pipeline['numOfStages']}")
+print(f"Last Status: {pipeline['executionSummaryInfo']['lastExecutionStatus']}")
+print(f"Deployments: {sum(pipeline['executionSummaryInfo']['deployments'])}")
+print(f"Errors: {sum(pipeline['executionSummaryInfo']['numOfErrors'])}")
+
+# Source control audit
+git = pipeline['gitDetails']
+print(f"\nSource Control:")
+print(f"  Repository: {git['repoName']}")
+print(f"  File: {git['filePath']}")
+print(f"  URL: {git['repoUrl']}")
+print(f"  Connector: {pipeline['connectorRef']}")
+
+# Method 2: Full pipeline YAML definition
+response = requests.get(
+    'https://app.harness.io/gateway/pipeline/api/pipelines/{pipeline_id}',
+    headers={'x-api-key': api_key},
+    params={
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id,
+        'projectIdentifier': project_id
+    }
+)
+
+import yaml
+yaml_str = response.json()['data']['yamlPipeline']
+pipeline_yaml = yaml.safe_load(yaml_str)
+pipeline = pipeline_yaml['pipeline']
+
+print(f"\nFull Pipeline Definition:")
+print(f"  Stages: {len(pipeline.get('stages', []))}")
+
+for i, stage_item in enumerate(pipeline.get('stages', [])):
+    stage = stage_item.get('stage', {})
+    steps = stage.get('spec', {}).get('execution', {}).get('steps', [])
+    print(f"    {i+1}. {stage['name']} ({len(steps)} steps)")
+    
+    for j, step_item in enumerate(steps):
+        step = step_item.get('step', step_item)
+        print(f"       • {step.get('name', f'Step {j+1}')} ({step.get('type')})")
 ```
 
-### 13. Stream Task Events (Real-Time)
+**Real-world example (TFC Workspace Provisioner)**:
+```
+Pipeline: TFC Workspace Provisioner v2
+Version: 2608
+Stages: 9
+Last Status: Success
+Deployments: 68
+Errors: 5
+
+Source Control:
+  Repository: tf-orchestrator-harness-pipeline
+  File: harness/pipeline/tf-workspace-provisioner.pipeline.yaml
+  URL: https://github.com/organization/repository
+  Connector: my_github_connector
+
+Full Pipeline Definition:
+  Stages: 2
+    1. Create TFC Workspace (4 steps)
+       • gather environment variables (ShellScript)
+       • provision workspace (Custom)
+       • configure vcs (Custom)
+       • validate settings (Custom)
+    2. Failure Handler (2 steps)
+       • report failures (ShellScript)
+       • email admins (Email)
+```
+
+### 16. Stream Task Events (Real-Time)
 
 Monitor task execution via Server-Sent Events (streaming).
 
@@ -783,7 +867,7 @@ EOF
 - `error`: Error event
 - `completed`: Task completion
 
-### 14. Generic Workflow Example (Customizable)
+### 17. Generic Workflow Example (Customizable)
 
 Complete workflow for executing any IDP Scaffolder template.
 
