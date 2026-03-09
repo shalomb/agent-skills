@@ -118,7 +118,7 @@ import time
 
 api_key = "{HARNESS_API_KEY}"
 account_id = "{HARNESS_ACCOUNT_ID}"
-user_id = "{USER_ID}"  # e.g., RLRqgX8yTUe_ti6AtNGb0Q
+user_id = "{USER_ID}"  # e.g., user-uuid-example
 
 url = 'https://app.harness.io/gateway/ng/api/apikey/aggregate'
 
@@ -305,11 +305,11 @@ for conn_item in connectors:
 
 **Real-world example**:
 ```
-✅ okta-terraform-gmsgq-iac-reveng (TerraformCloud)
+✅ my-tfc-connector (TerraformCloud)
    Status: SUCCESS
    TFC: https://app.terraform.io/
 
-❌ tec-dce-inn-dev (Aws)
+❌ my-aws-connector (Aws)
    Status: FAILURE
    AWS Account: arn:aws:iam::123456789:role/...
 
@@ -534,16 +534,16 @@ for entity in entities:
 **Real-world output**:
 ```
 API: appstream-image-builder
-  Type: asyncapi | Owner: gmsgq_dad_fusion_team
-  Lifecycle: production | Tags: appstream2.0, gmsgq
+  Type: asyncapi | Owner: organization_team
+  Lifecycle: production | Tags: async-api, production
 
 API: devops-autowiki-api
   Type: openapi | Owner: group:account/Atlassian
   Lifecycle: dev | Tags: 
 
 COMPONENT: aws-session-credentials
-  Type: service | Owner: group:account/gmsgqdadclouddevsecopsiacreveng
-  Lifecycle: experimental | Tags: gmsgq, gmsgq-dad, iac-reverse-engineering
+  Type: service | Owner: group:account/platform_team
+  Lifecycle: experimental | Tags: iac, infrastructure-as-code
 
 COMPONENT: cloud-infra-provisioner
   Type: service | Owner: group:account/foundation_technologies_platform_cloud_services
