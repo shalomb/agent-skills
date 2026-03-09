@@ -26,12 +26,14 @@ Use this skill when:
 - User wants to execute any Harness IDP Scaffolder template
 - User needs to list or discover Harness workflows, templates, entity groups, components, or APIs
 - User wants to query the Harness service catalog (components, resources, APIs)
+- User wants to audit, monitor, or manage API keys (user/service account keys)
+- User wants to check API key expiration or token status
 - User wants to launch workflows programmatically (infrastructure, deployments, configurations, etc.)
 - User wants to monitor Harness task execution or check task status
 - User needs to integrate IDP workflows into pipelines or automation
-- User mentions "Harness template", "Scaffolder task", "IDP workflow", "Harness self-service", or "service catalog"
+- User mentions "Harness template", "Scaffolder task", "IDP workflow", "Harness self-service", "service catalog", or "API key"
 - User wants to query Harness entity groups, workspaces, blueprints, or components
-- User mentions "Harness API discovery" or "service registry"
+- User mentions "Harness API discovery", "service registry", or "credential management"
 
 ## Prerequisites
 
@@ -88,7 +90,54 @@ final_task.is_success()   # True - if status == "completed" (tested ✅)
 
 ## Core Capabilities
 
-### 1. Create Tasks
+### 1. Query and Audit API Keys
+
+Discover and audit API keys by user, service account, or type.
+
+```python
+import requests
+import time
+
+api_key = "{HARNESS_API_KEY}"
+account_id = "{HARNESS_ACCOUNT_ID}"
+user_id = "{USER_ID}"  # e.g., RLRqgX8yTUe_ti6AtNGb0Q
+
+url = 'https://app.harness.io/gateway/ng/api/apikey/aggregate'
+
+response = requests.get(
+    url,
+    headers={'x-api-key': api_key},
+    params={
+        'routingId': account_id,
+        'accountIdentifier': account_id,
+        'apiKeyType': 'USER',
+        'parentIdentifier': user_id
+    }
+)
+
+keys = response.json()['data']['content']
+
+for key_item in keys:
+    key = key_item['apiKey']
+    print(f"API Key: {key['name']}")
+    print(f"  Identifier: {key['identifier']}")
+    print(f"  Type: {key['apiKeyType']}")
+    print(f"  Active Tokens: {key_item['tokensCount']}")
+    print(f"  Default Expiry: {key['defaultTimeToExpireToken'] / (1000 * 60 * 60 * 24)} days")
+    print(f"  Created: {time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(key_item['createdAt'] / 1000))}")
+```
+
+**Example output**:
+```
+API Key: cli
+  Identifier: cli
+  Type: USER
+  Active Tokens: 1
+  Default Expiry: 30.0 days
+  Created: 2025-10-30 08:14:03
+```
+
+### 2. Create Scaffolder Tasks
 
 Launch a new Scaffolder task with custom parameters. Works with any registered IDP template.
 
@@ -142,7 +191,40 @@ EOF
 - Application onboarding (service registration, resource allocation)
 - Any custom IDP Scaffolder template your organization has registered
 
-### 2. Poll Task Status
+### 3. Audit and Monitor API Key Usage
+
+Track API key activity, expiration, and token lifecycle.
+
+```python
+import requests
+from datetime import datetime, timedelta
+
+# Get API key details
+api_key_info = {
+    'name': 'cli',
+    'type': 'USER',
+    'tokens': 1,
+    'expiry_ms': 2592000000  # 30 days
+}
+
+# Calculate expiry
+days_until_expiry = api_key_info['expiry_ms'] / (1000 * 60 * 60 * 24)
+print(f"⏰ API Key '{api_key_info['name']}' expires in {days_until_expiry} days")
+
+# Alert if expiring soon
+if days_until_expiry < 7:
+    print(f"⚠️  WARNING: API key expires in {days_until_expiry} days - rotation needed")
+
+# Monitor token count
+if api_key_info['tokens'] == 0:
+    print("❌ API key has no active tokens - check for revocation")
+elif api_key_info['tokens'] == 1:
+    print("✅ API key has 1 active token")
+else:
+    print(f"⚠️  API key has {api_key_info['tokens']} tokens")
+```
+
+### 4. Poll Task Status
 
 Monitor task execution until completion (blocking).
 
