@@ -1,0 +1,9 @@
+# OpenAPI spec cache (auto-generated, 7-day TTL)
+openapi-cache/
+*.json.cache
+manifest.json
+
+# Local development
+.env.local
+*.pyc
+__pycache__/
