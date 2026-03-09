@@ -2095,15 +2095,66 @@ These 12+ endpoints have been tested and work reliably:
 | `/gateway/pipeline/api/inputSets/merge` | ✅ Working | **MERGE INPUT SETS** - preview before execution |
 | `/gateway/pipeline/api/pipeline/execute/{pipelineId}` | ✅ Working | **🚀 TRIGGER PIPELINE** with variables & input sets |
 
+### Self-Discovery System (✨ Automatic Fallback)
+
+For **any** undocumented API, use the built-in OpenAPI discovery tools to automatically find documentation:
+
+```bash
+# Search for endpoints
+python3 openapi-discovery.py --search "webhook trigger"
+
+# Get detailed docs for an endpoint
+python3 openapi-discovery.py --endpoint "/pipeline/api/pipelines/execute" --method POST
+
+# List all available modules (20 modules, 1685 endpoints)
+python3 openapi-discovery.py --list-modules
+
+# Find related endpoints
+python3 openapi-discovery.py --find-related "execution"
+
+# Force refresh of cached spec
+python3 openapi-discovery.py --refresh
+```
+
+Or use in Python:
+
+```python
+from scripts.openapi_fallback import resolve_endpoint, OpenAPIResolver
+
+# Quick resolution
+docs = resolve_endpoint("/pipeline/api/pipelines/execute", "POST")
+if docs:
+    print(docs)
+
+# With full control
+resolver = OpenAPIResolver()
+matches = resolver.search("webhook")
+for path, method, summary in matches:
+    print(f"[{method}] {path} → {summary}")
+```
+
+**Key features**:
+- ✅ Automatically downloads official spec (14MB, 1685 endpoints)
+- ✅ Caches locally (7-day TTL, no auth required)
+- ✅ Fast search (< 1 second for keyword matching)
+- ✅ Graceful fallback to stale cache if offline
+- ✅ Zero setup — runs on first use
+
+**See** `OPENAPI-FALLBACK.md` for complete usage guide.
+
+---
+
 ### Remaining Gaps (⚠️ Could Discover via HAR File Analysis)
 
-If you need these capabilities, capture a HAR file performing the action in Harness UI:
+If you encounter APIs not in the OpenAPI spec (5 undocumented but working endpoints):
 
 | Capability | Why It Matters | Discovery Method |
 |-----------|---|---|
-| **Pipeline Triggers/Webhooks** | Webhook audit, trigger automation | Capture HAR while creating webhook trigger |
-| **Services & Environments** | Service topology, env mapping | Capture HAR while browsing Services page |
-| **Secret/Connector Management** | Credential lifecycle | Capture HAR while creating/editing connectors |
+| **Pipeline Triggers/Webhooks** | Webhook audit, trigger automation | Capture HAR while creating webhook trigger OR search spec |
+| **Services & Environments** | Service topology, env mapping | Capture HAR while browsing Services page OR search spec |
+| **Secret/Connector Management** | Credential lifecycle | Capture HAR while creating/editing connectors OR search spec |
+
+**See** `OPENAPI-XREF.md` for the 5 undocumented-but-working endpoints we discovered.
 
 ### How to Help Discover Missing Endpoints
 
