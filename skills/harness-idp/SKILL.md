@@ -833,7 +833,182 @@ Execution #1236: TFC Workspace Provisioner v2
   Compliance: ✅ PASSED
 ```
 
-### 16. Analyze Pipeline Execution Details (Complete Execution Tree)
+### 16. Get Input Set Template and Pipeline Variables
+
+Discover all pipeline variables with schema, types, and constraints.
+
+```python
+import requests
+
+# Step 1: Get input set template with variable schema
+response = requests.post(
+    'https://app.harness.io/gateway/pipeline/api/inputSets/template',
+    headers={'x-api-key': api_key},
+    params={
+        'routingId': account_id,
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id,
+        'projectIdentifier': project_id,
+        'pipelineIdentifier': pipeline_id,
+        'branch': 'main',
+        'repoIdentifier': repo_name,
+        'parentEntityConnectorRef': connector_ref,
+        'parentEntityRepoName': repo_name
+    },
+    json={'stageIdentifiers': []}
+)
+
+template = response.json()['data']['inputSetTemplateYaml']
+print("Pipeline Input Variables Schema:")
+print(template[:1500])
+
+# Step 2: Get complete pipeline variables with metadata
+response = requests.post(
+    'https://app.harness.io/gateway/pipeline/api/pipelines/v2/variables',
+    headers={'x-api-key': api_key},
+    params={
+        'routingId': account_id,
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id,
+        'projectIdentifier': project_id,
+        'branch': 'main',
+        'parentEntityConnectorRef': connector_ref,
+        'parentEntityRepoName': repo_name
+    },
+    data=f"""pipeline:
+  identifier: {pipeline_id}
+  name: My Pipeline
+  projectIdentifier: {project_id}
+  orgIdentifier: {org_id}"""
+)
+
+vars_data = response.json()['data']
+print(f"\nVariable Metadata: {list(vars_data.keys())}")
+print(f"Service Expressions: {len(vars_data.get('serviceExpressionPropertiesList', []))}")
+```
+
+### 17. Merge Input Sets (Preview Before Execution)
+
+Combine multiple input sets to preview the final configuration.
+
+```python
+# Merge input sets to see what values will be used
+response = requests.post(
+    'https://app.harness.io/gateway/pipeline/api/inputSets/merge',
+    headers={'x-api-key': api_key},
+    params={
+        'routingId': account_id,
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id,
+        'projectIdentifier': project_id,
+        'pipelineIdentifier': pipeline_id,
+        'pipelineRepoID': repo_name,
+        'pipelineBranch': 'main',
+        'repoIdentifier': repo_name,
+        'branch': 'main',
+        'getDefaultFromOtherRepo': 'true',
+        'parentEntityConnectorRef': connector_ref,
+        'parentEntityRepoName': repo_name
+    },
+    json={
+        'inputSetReferences': ['input-set-1', 'input-set-2'],
+        'stageIdentifiers': []
+    }
+)
+
+merged = response.json()['data']
+print("Merged Pipeline YAML:")
+print(merged['pipelineYaml'][:1000])
+
+if merged['errorResponse']:
+    print(f"Merge Errors: {merged['errorResponse']}")
+```
+
+### 18. 🚀 TRIGGER PIPELINE EXECUTION (Primary Execution API!)
+
+Execute a pipeline with variable values and input sets.
+
+```python
+# Build pipeline YAML with variable values
+pipeline_yaml = f"""pipeline:
+  identifier: {pipeline_id}
+  variables:
+    - name: apms_id
+      type: String
+      value: "92203"
+    - name: tec_account
+      type: String
+      value: "tec-man-foo"
+    - name: workspace_purpose
+      type: String
+      value: "testing"
+    - name: github_repository
+      type: String
+      value: "my-repo"
+    - name: use_existing_repository
+      type: String
+      value: "false"
+    - name: okta_group_owner
+      type: String
+      value: "user@example.com"
+    - name: single_workspace_only
+      type: String
+      value: "true"
+"""
+
+# Execute the pipeline
+response = requests.post(
+    f'https://app.harness.io/gateway/pipeline/api/pipeline/execute/{pipeline_id}',
+    headers={'x-api-key': api_key},
+    params={
+        'routingId': account_id,
+        'accountIdentifier': account_id,
+        'projectIdentifier': project_id,
+        'orgIdentifier': org_id,
+        'repoIdentifier': repo_name,
+        'branch': 'main',
+        'notifyOnlyUser': 'false',
+        'parentEntityConnectorRef': connector_ref,
+        'parentEntityRepoName': repo_name,
+        'inputSetIdentifiers': ['input-set-1', 'input-set-2'],
+        'asyncPlanCreation': 'false'
+    },
+    data=pipeline_yaml
+)
+
+if response.status_code == 200:
+    execution = response.json()['data']['planExecution']
+    
+    print(f"✅ Pipeline Triggered Successfully!")
+    print(f"   Execution ID: {execution['uuid']}")
+    print(f"   Run Sequence: {execution['metadata']['runSequence']}")
+    print(f"   Status: {execution['status']}")
+    print(f"   Started: {execution['startTs']}")
+    
+    # Use execution UUID to track with /execution/v2/{uuid}
+    execution_id = execution['uuid']
+    print(f"\n📊 Track execution: /execution/v2/{execution_id}")
+else:
+    error = response.json()
+    print(f"❌ Execution Failed: {error['message']}")
+    # Validation errors show which variables failed
+    if 'responseMessages' in error:
+        for msg in error['responseMessages']:
+            print(f"   - {msg['message']}")
+```
+
+**Real-world example (successful execution)**:
+```
+✅ Pipeline Triggered Successfully!
+   Execution ID: QtBn9ESORaK3I7dKK_NIHQ
+   Run Sequence: 1238
+   Status: RUNNING
+   Started: 1773084994711
+
+📊 Track execution: /execution/v2/QtBn9ESORaK3I7dKK_NIHQ
+```
+
+### 19. Analyze Pipeline Execution Details (Complete Execution Tree)
 
 Get comprehensive execution details including all steps, outputs, timing, and dependencies.
 
@@ -947,7 +1122,7 @@ Execution Flow:
   finalize → (parallel) [notify_success, notify_error]
 ```
 
-### 17. Discover and Audit Pipelines (Metadata & Full Definition)
+### 20. Discover and Audit Pipelines (Metadata & Full Definition)
 
 Get pipeline metadata with execution history, or retrieve complete YAML definition.
 
@@ -1036,7 +1211,7 @@ Full Pipeline Definition:
        • email admins (Email)
 ```
 
-### 18. Stream Task Events (Real-Time)
+### 21. Stream Task Events (Real-Time)
 
 Monitor task execution via Server-Sent Events (streaming).
 
@@ -1080,7 +1255,7 @@ EOF
 - `error`: Error event
 - `completed`: Task completion
 
-### 19. Generic Workflow Example (Customizable)
+### 22. Generic Workflow Example (Customizable)
 
 Complete workflow for executing any IDP Scaffolder template.
 
@@ -1483,6 +1658,37 @@ for user in users:
         pass  # Permission denied for other users' keys
 ```
 
+## Official API Reference
+
+The **complete Harness OpenAPI 3.0.3 spec** (1685 endpoints) is publicly available — no authentication required:
+
+| Format | URL |
+|--------|-----|
+| **JSON** | `https://apidocs.harness.io/_bundle/index.json?download` |
+| **YAML** | `https://apidocs.harness.io/_bundle/index.yaml?download` |
+| **Browser UI** | `https://apidocs.harness.io` |
+
+```bash
+# Download the full spec (10MB YAML / 14MB JSON)
+curl -sL "https://apidocs.harness.io/_bundle/index.yaml?download" -o harness-openapi.yaml
+curl -sL "https://apidocs.harness.io/_bundle/index.json?download" -o harness-openapi.json
+```
+
+Module breakdown (key modules):
+
+| Module | Endpoints | Scope |
+|--------|----------:|-------|
+| `v1` | 693 | IDP: catalog, scorecards, plugins, layouts, templates, custom properties |
+| `ng` | 343 | Platform: orgs, projects, connectors, RBAC, users, delegates |
+| `ccm` | 207 | Cloud Cost Management |
+| `iacm` | 168 | IaC Management: workspaces, executions, variables |
+| `pipeline` | 85 | Execute, input sets, triggers, executions |
+| `authz` | 28 | ACL, permissions, role assignments |
+
+> Tip: `jq '.paths | keys[]' harness-openapi.json` lists all 1685 endpoint paths.
+
+---
+
 ## Known Limitations & API Discovery Status
 
 ### Working Endpoints (✅ Verified & Documented)
@@ -1506,13 +1712,9 @@ These endpoints have been tested and work reliably:
 
 ### Partially Working Endpoints (⚠️ Limitations)
 
-These endpoints exist but have routing or permission issues:
-
 | Endpoint | Issue | Workaround | Status |
 |----------|-------|-----------|--------|
-| `/gateway/authz/api/acl` | 500 error - permission denied | Likely requires elevated account permissions | ⚠️ Investigate |
-| `/gateway/pipeline/api/pipelines/execution/summary` | 404 - treats "summary" as pipeline name | Try alternative paths (see below) | ⚠️ Research needed |
-| `/gateway/pipeline/api/pipelines/v2/variables` | 405 Method Not Allowed | Check if POST/different endpoint | ⚠️ Research needed |
+| `/gateway/authz/api/acl` | 500 error - permission denied | Requires elevated account permissions; confirmed in spec at `/authz/api/acl` | ⚠️ Permissions |
 
 ### Not Yet Discovered (❌ Alternative Paths Needed)
 
@@ -1888,16 +2090,20 @@ These 12+ endpoints have been tested and work reliably:
 |----------|--------|---------|
 | `/gateway/pipeline/api/pipelines/execution/v2/{executionId}` | ✅ Working | Full execution details with complete step tree, outputs, logs, graph |
 | `/gateway/pipeline/api/pipelines/execution/summary` | ✅ Working | **List all execution runs** with pagination, filtering, governance data |
+| `/gateway/pipeline/api/inputSets/template` | ✅ Working | **GET INPUT SCHEMA** - all variables with regex patterns |
+| `/gateway/pipeline/api/pipelines/v2/variables` | ✅ Working | **GET PIPELINE VARIABLES** - complete metadata |
+| `/gateway/pipeline/api/inputSets/merge` | ✅ Working | **MERGE INPUT SETS** - preview before execution |
+| `/gateway/pipeline/api/pipeline/execute/{pipelineId}` | ✅ Working | **🚀 TRIGGER PIPELINE** with variables & input sets |
 
-### Missing Capabilities (❌ Awaiting Discovery)
+### Remaining Gaps (⚠️ Could Discover via HAR File Analysis)
 
-These capabilities exist in Harness but endpoints haven't been located:
+If you need these capabilities, capture a HAR file performing the action in Harness UI:
 
-| Capability | Why It Matters | Try These Paths |
+| Capability | Why It Matters | Discovery Method |
 |-----------|---|---|
-| **Pipeline Variables/Inputs** | Parameter audit, input validation | `/gateway/pipeline/api/pipelines/{id}/runtime-inputs`, `/gateway/ng/api/pipelines/v2/template-variables` |
-| **Pipeline Triggers** | Webhook audit, automation discovery | `/gateway/ng/api/triggers`, `/gateway/pipeline/api/triggers` |
-| **Services & Environments** | Service topology, env mapping | `/gateway/ng/api/services`, `/gateway/ng/api/environments` |
+| **Pipeline Triggers/Webhooks** | Webhook audit, trigger automation | Capture HAR while creating webhook trigger |
+| **Services & Environments** | Service topology, env mapping | Capture HAR while browsing Services page |
+| **Secret/Connector Management** | Credential lifecycle | Capture HAR while creating/editing connectors |
 
 ### How to Help Discover Missing Endpoints
 
