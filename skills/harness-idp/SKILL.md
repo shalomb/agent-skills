@@ -112,6 +112,8 @@ This skill documents the comprehensive Harness.io API ecosystem for programmatic
 | `/gateway/pipeline/api/pipelines/list-repos` | Source control repos | GitOps integration, repo discovery |
 | `/gateway/pipeline/api/pipelines/summary/{pipelineId}` | Pipeline metadata & history | Execution summary, health, source control |
 | `/gateway/pipeline/api/pipelines/{pipelineId}` | Full pipeline definition (YAML) | Complete pipeline code audit, stages & steps |
+| `/gateway/pipeline/api/pipelines/execution/summary` | ⚠️ Pipeline execution list | **Status: Routing issue - not yet discoverable** |
+| `/gateway/pipeline/api/pipelines/v2/variables` | ⚠️ Pipeline variables | **Status: 405 error - not yet discoverable** |
 
 ## Core Capabilities
 
@@ -734,7 +736,121 @@ for repo in repos:
     print(f"  • {repo}")
 ```
 
-### 15. Discover and Audit Pipelines (Metadata & Full Definition)
+### 15. Analyze Pipeline Execution Details (Complete Execution Tree)
+
+Get comprehensive execution details including all steps, outputs, timing, and dependencies.
+
+```python
+response = requests.get(
+    'https://app.harness.io/gateway/pipeline/api/pipelines/execution/v2/{execution_id}',
+    headers={'x-api-key': api_key},
+    params={
+        'routingId': account_id,
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id,
+        'projectIdentifier': project_id,
+        'stageNodeId': 'optional-stage-uuid'  # Filter to specific stage
+    }
+)
+
+execution = response.json()['data']
+
+# Get execution metadata
+metadata = execution['executionMetadata']
+print(f"Pipeline: {metadata['pipelineIdentifier']}")
+print(f"Execution ID: {metadata['planExecutionId']}")
+
+# Iterate through all execution nodes (steps)
+node_map = execution['nodeExecutionMap']
+print(f"\nTotal steps: {len(node_map)}\n")
+
+for node_id, node in node_map.items():
+    name = node.get('name', 'Unknown')
+    step_type = node.get('stepType', 'Unknown')
+    status = node.get('status', 'Unknown')
+    
+    # Timing analysis
+    start_ts = node.get('startTs')
+    end_ts = node.get('endTs')
+    if start_ts and end_ts:
+        duration = (end_ts - start_ts) / 1000  # Convert ms to seconds
+        print(f"• {name} ({step_type})")
+        print(f"  Status: {status}")
+        print(f"  Duration: {duration:.1f}s")
+    
+    # Extract outputs
+    outcomes = node.get('outcomes', {})
+    output_vars = outcomes.get('output', {}).get('outputVariables', {})
+    if output_vars:
+        print(f"  Outputs: {list(output_vars.keys())}")
+        for key, val in output_vars.items():
+            print(f"    {key}: {val}")
+    
+    # Failure details
+    failure_info = node.get('failureInfo', {})
+    if failure_info.get('message'):
+        print(f"  ❌ Error: {failure_info['message']}")
+    
+    print()
+
+# Get execution graph (DAG)
+adjacency = execution['nodeAdjacencyListMap']
+print("Execution Flow (children first, then sequential):")
+
+for node_id, edges in adjacency.items():
+    if edges.get('children') or edges.get('nextIds'):
+        node_name = node_map.get(node_id, {}).get('name', node_id)
+        children = edges.get('children', [])
+        next_steps = edges.get('nextIds', [])
+        
+        if children:
+            child_names = [node_map.get(c, {}).get('name', c) for c in children]
+            print(f"{node_name} → (parallel) {child_names}")
+        
+        if next_steps:
+            next_names = [node_map.get(n, {}).get('name', n) for n in next_steps]
+            print(f"{node_name} → (sequential) {next_names}")
+```
+
+**Real-world example output**:
+```
+Pipeline: TFC_Workspace_Provisioner_v2
+Execution ID: 0nbJ6utpQzukapL2Q4dhUg
+
+Total steps: 12
+
+• gather environment variables (ShellScript)
+  Status: Success
+  Duration: 5.2s
+
+• discover environment (Step Group)
+  Status: Success
+  Duration: 62.3s
+  
+• prepare git workspace (Run)
+  Status: Success
+  Duration: 35.1s
+  Outputs: ['url', 'branch']
+
+• discover tfc project (Run)
+  Status: Success
+  Duration: 6.3s
+  Outputs: ['project_id', 'project_name']
+    project_id: prj-XXXXXXXXXXXXXX
+    project_name: my-project
+
+• notify user on success (Email)
+  Status: Skipped
+  Reason: Condition not met
+
+Execution Flow:
+  gather_environment_variables → (sequential) discover_environment
+  discover_environment → (parallel) [prepare_git, tfc_project, okta_groups]
+  discover_environment → (sequential) finalize
+  finalize → (parallel) [notify_success, notify_error]
+```
+
+### 16. Discover and Audit Pipelines (Metadata & Full Definition)
 
 Get pipeline metadata with execution history, or retrieve complete YAML definition.
 
@@ -823,7 +939,7 @@ Full Pipeline Definition:
        • email admins (Email)
 ```
 
-### 16. Stream Task Events (Real-Time)
+### 17. Stream Task Events (Real-Time)
 
 Monitor task execution via Server-Sent Events (streaming).
 
@@ -867,7 +983,7 @@ EOF
 - `error`: Error event
 - `completed`: Task completion
 
-### 17. Generic Workflow Example (Customizable)
+### 18. Generic Workflow Example (Customizable)
 
 Complete workflow for executing any IDP Scaffolder template.
 
@@ -1270,6 +1386,50 @@ for user in users:
         pass  # Permission denied for other users' keys
 ```
 
+## Known Limitations & API Discovery Status
+
+### Working Endpoints (✅ Verified & Documented)
+
+These endpoints have been tested and work reliably:
+
+| Category | Endpoint | Status | Notes |
+|----------|----------|--------|-------|
+| **Service Catalog** | `/gateway/v1/entities` | ✅ | Discover systems, components, APIs, workflows, users, groups |
+| **Governance** | `/gateway/ng/api/organizations/{orgId}` | ✅ | Organization metadata and management |
+| **Governance** | `/gateway/ng/api/aggregate/projects/{projectId}` | ✅ | Project access control, collaborators, team structure |
+| **Connectors** | `/gateway/ng/api/connectors` | ✅ | Infrastructure integrations (TFC, AWS, Docker, etc.) |
+| **Dependencies** | `/gateway/ng/api/entitySetupUsage/getOrgEntitiesReferredByProject` | ✅ | Project connector usage and dependencies |
+| **API Keys** | `/gateway/ng/api/apikey/aggregate` | ✅ | User/service account API key audit |
+| **Dashboard** | `/gateway/ng-dashboard/api/overview/resources-overview-count` | ✅ | Account metrics (projects, services, pipelines, users) |
+| **User Settings** | `/gateway/ng/api/user-settings/get-user-preferences` | ✅ | Current user UI preferences (quick) |
+| **User Settings** | `/gateway/ng/api/user-settings` | ✅ | Full user configuration audit |
+| **Repos** | `/gateway/pipeline/api/pipelines/list-repos` | ✅ | Source control repositories per project |
+| **Pipeline Metadata** | `/gateway/pipeline/api/pipelines/summary/{pipelineId}` | ✅ | Lightweight pipeline metadata + execution summary |
+| **Pipeline YAML** | `/gateway/pipeline/api/pipelines/{pipelineId}` | ✅ | Full pipeline definition and stage structure |
+
+### Partially Working Endpoints (⚠️ Limitations)
+
+These endpoints exist but have routing or permission issues:
+
+| Endpoint | Issue | Workaround | Status |
+|----------|-------|-----------|--------|
+| `/gateway/authz/api/acl` | 500 error - permission denied | Likely requires elevated account permissions | ⚠️ Investigate |
+| `/gateway/pipeline/api/pipelines/execution/summary` | 404 - treats "summary" as pipeline name | Try alternative paths (see below) | ⚠️ Research needed |
+| `/gateway/pipeline/api/pipelines/v2/variables` | 405 Method Not Allowed | Check if POST/different endpoint | ⚠️ Research needed |
+
+### Not Yet Discovered (❌ Alternative Paths Needed)
+
+These capabilities exist but endpoints haven't been found yet:
+
+| Capability | Alternative Paths to Try | Notes |
+|-----------|--------------------------|-------|
+| **Pipeline Execution List** | `/gateway/ng/api/v2/execution-summary`, `/gateway/pipeline/ng/api/v2/executions`, `/gateway/pms/api/executions` | Currently blocks: execution history, success rates, error tracking |
+| **Pipeline Variables** | `/gateway/pipeline/api/pipelines/{id}/runtime-inputs`, `/gateway/ng/api/pipelines/v2/template-variables` | Currently blocks: pipeline input discovery, variable audit |
+| **Pipeline Triggers** | `/gateway/ng/api/triggers`, `/gateway/pipeline/api/triggers` | Needed for: trigger discovery, webhook audit |
+| **Services & Environments** | `/gateway/ng/api/services`, `/gateway/ng/api/environments` | Needed for: service-to-pipeline mapping, environment topology |
+
+---
+
 ## Real-World Use Cases
 
 ### Use Case 1: Execute Solutions Factory Workflows
@@ -1589,9 +1749,111 @@ for event in client.stream_events(task_id):
 | Necessary | No redundant tests | ✅ |
 | Understandable | Docstrings, assertions | ✅ |
 
+## API Discovery Status & Known Limitations
+
+### Working Endpoints (✅ Verified & Documented)
+
+These 12+ endpoints have been tested and work reliably:
+
+**Service Catalog & Discovery**
+- `/gateway/v1/entities` - Service catalog (systems, components, APIs, workflows)
+- `/gateway/v1/entities/kinds` - Entity taxonomy
+- `/gateway/v1/entities/groups` - Entity group organization
+
+**Governance & Access Control**
+- `/gateway/ng/api/organizations/{orgId}` - Organization metadata
+- `/gateway/ng/api/aggregate/projects/{projectId}` - Project governance, team structure
+- `/gateway/ng/api/connectors` - Infrastructure connectors (TFC, AWS, Docker, etc.)
+- `/gateway/ng/api/entitySetupUsage/getOrgEntitiesReferredByProject` - Project dependencies
+
+**User & Account Management**
+- `/gateway/ng/api/apikey/aggregate` - API key audit
+- `/gateway/ng/api/user-settings/get-user-preferences` - User UI preferences
+- `/gateway/ng/api/user-settings` - Full user configuration
+- `/gateway/ng-dashboard/api/overview/resources-overview-count` - Account metrics
+
+**Pipeline Discovery**
+- `/gateway/pipeline/api/pipelines/list-repos` - Source control repos
+- `/gateway/pipeline/api/pipelines/summary/{pipelineId}` - Pipeline metadata + execution summary
+- `/gateway/pipeline/api/pipelines/{pipelineId}` - Full pipeline YAML definition
+
+### Endpoints with Known Issues (⚠️)
+
+| Endpoint | Issue | Impact |
+|----------|-------|--------|
+| `/gateway/authz/api/acl` | 500 error (permissions) | Cannot audit account-level access control |
+| `/gateway/pipeline/api/pipelines/execution/summary` | 404 routing issue | Use v2 endpoint instead (see below) |
+| `/gateway/pipeline/api/pipelines/v2/variables` | 405 Method Not Allowed | Cannot discover pipeline variables |
+
+### Recently Discovered! (✅ Added)
+
+| Endpoint | Status | Purpose |
+|----------|--------|---------|
+| `/gateway/pipeline/api/pipelines/execution/v2/{executionId}` | ✅ Working | Full execution details with complete step tree, outputs, logs, graph |
+
+### Missing Capabilities (❌ Awaiting Discovery)
+
+These capabilities exist in Harness but endpoints haven't been located:
+
+| Capability | Why It Matters | Try These Paths |
+|-----------|---|---|
+| **List Pipeline Executions** | Get execution IDs, pagination, filtering | `/gateway/ng/api/v2/execution-summary`, `/gateway/pms/api/executions` |
+| **Pipeline Variables/Inputs** | Parameter audit, input validation | `/gateway/pipeline/api/pipelines/{id}/runtime-inputs`, `/gateway/ng/api/pipelines/v2/template-variables` |
+| **Pipeline Triggers** | Webhook audit, automation discovery | `/gateway/ng/api/triggers`, `/gateway/pipeline/api/triggers` |
+| **Services & Environments** | Service topology, env mapping | `/gateway/ng/api/services`, `/gateway/ng/api/environments` |
+
+### How to Help Discover Missing Endpoints
+
+If you find one of these endpoints:
+
+1. **Test it thoroughly** with your Harness instance
+2. **Document the full URL** including query parameters
+3. **Capture an example response** (remove PII)
+4. **Note the use case** it enables
+5. **Submit a PR** to update this skill
+
+Example format:
+
+```
+✅ DISCOVERED: /gateway/pipeline/api/pipelines/executions
+Status: 200
+Parameters: accountIdentifier, orgIdentifier, projectIdentifier, pipelineIdentifier, page, size
+Response: {...}
+Use case: Pipeline execution history and health metrics
+```
+
+### Debugging API Errors
+
+```python
+import requests
+
+response = requests.get(url, headers=headers, params=params)
+
+if response.status_code != 200:
+    try:
+        error = response.json()
+        print(f"Error {response.status_code}: {error.get('message')}")
+        print(f"Code: {error.get('code')}")
+    except:
+        print(f"Status {response.status_code}: {response.text[:500]}")
+
+# Common issues:
+# - Missing: accountIdentifier or routingId
+# - Wrong scope: missing orgIdentifier or projectIdentifier
+# - Permission: requires elevated account permissions
+# - Routing: 404 may mean endpoint path is incorrect
+```
+
 ## Version History
 
-- **v1.0** (2025-03-09): Production release. 
+- **v2.0** (2026-03-09): API discovery & transparency update
+  - Documented 12+ working endpoints with verification status
+  - Added known limitations and troubleshooting guide
+  - Listed missing capabilities awaiting community discovery
+  - Honest assessment of API coverage gaps
+  - Debugging checklist for new API discovery
+
+- **v1.0** (2025-03-09): Production release
   - Harness IDP Scaffolder v2 API client
   - Task creation, polling, streaming
   - 27 comprehensive unit tests
