@@ -736,7 +736,104 @@ for repo in repos:
     print(f"  • {repo}")
 ```
 
-### 15. Analyze Pipeline Execution Details (Complete Execution Tree)
+### 15. List Pipeline Executions (Pagination, Filtering, History)
+
+Get paginated list of all pipeline execution runs with metadata and governance info.
+
+```python
+response = requests.post(
+    'https://app.harness.io/gateway/pipeline/api/pipelines/execution/summary',
+    headers={'x-api-key': api_key},
+    params={
+        'routingId': account_id,
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id,
+        'projectIdentifier': project_id,
+        'pipelineIdentifier': pipeline_id,
+        'page': 0,
+        'size': 20,
+        'sort': 'startTs,DESC',  # Sort by start timestamp, descending
+        'myDeployments': 'false',  # All deployments or just mine
+        'searchTerm': ''  # Filter by execution name/ID
+    },
+    json={'filterType': 'PipelineExecution'}  # Required filter body
+)
+
+executions = response.json()['data']['content']
+
+print(f"Total executions found: {len(executions)}\n")
+
+for exec_obj in executions:
+    exec_id = exec_obj['planExecutionId']
+    status = exec_obj['status']
+    name = exec_obj['name']
+    run_seq = exec_obj['runSequence']
+    
+    # Timing info
+    start_ts = exec_obj.get('startTs')
+    end_ts = exec_obj.get('endTs')
+    if start_ts and end_ts:
+        duration = (end_ts - start_ts) / 1000  # Convert ms to seconds
+        print(f"Execution #{run_seq}: {name}")
+        print(f"  ID: {exec_id}")
+        print(f"  Status: {status}")
+        print(f"  Duration: {duration:.1f}s")
+    
+    # Stage statistics
+    print(f"  Stages: {exec_obj.get('totalStagesCount')} total")
+    print(f"    ✓ Successful: {exec_obj.get('successfulStagesCount')}")
+    print(f"    ✗ Failed: {exec_obj.get('failedStagesCount')}")
+    print(f"    ⟳ Running: {exec_obj.get('runningStagesCount')}")
+    
+    # Who triggered it
+    trigger_info = exec_obj.get('executionTriggerInfo', {})
+    triggered_by = trigger_info.get('triggeredBy', {})
+    trigger_type = trigger_info.get('triggerType', 'Unknown')
+    
+    print(f"  Triggered by: {triggered_by.get('identifier')} ({trigger_type})")
+    
+    # Governance/compliance status
+    governance = exec_obj.get('governanceMetadata', {})
+    if governance:
+        deny_status = governance.get('deny')
+        print(f"  Compliance: {'❌ DENIED' if deny_status else '✅ PASSED'}")
+        
+        details = governance.get('details', [])
+        for detail in details[:2]:
+            print(f"    - {detail.get('policySetName')}: {detail.get('status')}")
+    
+    print()
+```
+
+**Real-world example output**:
+```
+Total executions found: 20
+
+Execution #1237: TFC Workspace Provisioner v2
+  ID: 0nbJ6utpQzukapL2Q4dhUg
+  Status: Success
+  Duration: 154.2s
+  Stages: 2 total
+    ✓ Successful: 2
+    ✗ Failed: 0
+    ⟳ Running: 0
+  Triggered by: onedatadev (MANUAL)
+  Compliance: ✅ PASSED
+    - IDP Policies: pass
+    - Pipeline resource limits: pass
+
+Execution #1236: TFC Workspace Provisioner v2
+  ID: a1bC2dEf3gH4iJk5lMnOpQr...
+  Status: Failed
+  Duration: 89.5s
+  Stages: 2 total
+    ✓ Successful: 1
+    ✗ Failed: 1
+  Triggered by: terraform-bot (WEBHOOK)
+  Compliance: ✅ PASSED
+```
+
+### 16. Analyze Pipeline Execution Details (Complete Execution Tree)
 
 Get comprehensive execution details including all steps, outputs, timing, and dependencies.
 
@@ -850,7 +947,7 @@ Execution Flow:
   finalize → (parallel) [notify_success, notify_error]
 ```
 
-### 16. Discover and Audit Pipelines (Metadata & Full Definition)
+### 17. Discover and Audit Pipelines (Metadata & Full Definition)
 
 Get pipeline metadata with execution history, or retrieve complete YAML definition.
 
@@ -939,7 +1036,7 @@ Full Pipeline Definition:
        • email admins (Email)
 ```
 
-### 17. Stream Task Events (Real-Time)
+### 18. Stream Task Events (Real-Time)
 
 Monitor task execution via Server-Sent Events (streaming).
 
@@ -983,7 +1080,7 @@ EOF
 - `error`: Error event
 - `completed`: Task completion
 
-### 18. Generic Workflow Example (Customizable)
+### 19. Generic Workflow Example (Customizable)
 
 Complete workflow for executing any IDP Scaffolder template.
 
@@ -1790,6 +1887,7 @@ These 12+ endpoints have been tested and work reliably:
 | Endpoint | Status | Purpose |
 |----------|--------|---------|
 | `/gateway/pipeline/api/pipelines/execution/v2/{executionId}` | ✅ Working | Full execution details with complete step tree, outputs, logs, graph |
+| `/gateway/pipeline/api/pipelines/execution/summary` | ✅ Working | **List all execution runs** with pagination, filtering, governance data |
 
 ### Missing Capabilities (❌ Awaiting Discovery)
 
@@ -1797,7 +1895,6 @@ These capabilities exist in Harness but endpoints haven't been located:
 
 | Capability | Why It Matters | Try These Paths |
 |-----------|---|---|
-| **List Pipeline Executions** | Get execution IDs, pagination, filtering | `/gateway/ng/api/v2/execution-summary`, `/gateway/pms/api/executions` |
 | **Pipeline Variables/Inputs** | Parameter audit, input validation | `/gateway/pipeline/api/pipelines/{id}/runtime-inputs`, `/gateway/ng/api/pipelines/v2/template-variables` |
 | **Pipeline Triggers** | Webhook audit, automation discovery | `/gateway/ng/api/triggers`, `/gateway/pipeline/api/triggers` |
 | **Services & Environments** | Service topology, env mapping | `/gateway/ng/api/services`, `/gateway/ng/api/environments` |
