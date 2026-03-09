@@ -88,6 +88,24 @@ final_task.is_terminal()  # True - reached end state (tested ✅)
 final_task.is_success()   # True - if status == "completed" (tested ✅)
 ```
 
+## Complete Harness API Surface
+
+This skill documents the comprehensive Harness.io API ecosystem for programmatic access to IDP, platform governance, and infrastructure integrations.
+
+### API Endpoint Reference
+
+| Endpoint | Purpose | Use Case |
+|----------|---------|----------|
+| `/gateway/v1/entities/kinds` | Entity taxonomy discovery | Understand catalog structure |
+| `/gateway/v1/entities` | Entity discovery & search | Find workflows, components, APIs |
+| `/gateway/v1/entities/groups` | Entity group organization | Discover Solutions Factory, self-service templates |
+| `/gateway/v1/entities/filters` | Available filter options | Get metadata for filtering queries |
+| `/gateway/ng/api/aggregate/projects/{projectId}` | Project governance | Access control, collaborators, team structure |
+| `/gateway/ng/api/projects` | List projects in organization | Project discovery & metadata |
+| `/gateway/ng/api/connectors` | Infrastructure connectors | Terraform Cloud, AWS, Docker, Vault, etc. |
+| `/gateway/ng/api/entitySetupUsage/getOrgEntitiesReferredByProject` | Project dependencies | Connector & integration usage per project |
+| `/gateway/ng/api/apikey/aggregate` | API key audit | User/service account key lifecycle |
+
 ## Core Capabilities
 
 ### 1. Query and Audit API Keys
@@ -191,7 +209,115 @@ EOF
 - Application onboarding (service registration, resource allocation)
 - Any custom IDP Scaffolder template your organization has registered
 
-### 3. Audit and Monitor API Key Usage
+### 3. Discover Project Governance and Collaborators
+
+Query project-level access control and team structure.
+
+```python
+import requests
+
+api_key = "{HARNESS_API_KEY}"
+account_id = "{HARNESS_ACCOUNT_ID}"
+org_id = "{ORG_ID}"
+project_id = "{PROJECT_ID}"
+
+# Get project details with access control
+response = requests.get(
+    f'https://app.harness.io/gateway/ng/api/aggregate/projects/{project_id}',
+    headers={'x-api-key': api_key},
+    params={
+        'routingId': account_id,
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id
+    }
+)
+
+project = response.json()['data']
+
+# Project metadata
+print(f"Project: {project['projectResponse']['project']['name']}")
+print(f"Modules: {len(project['projectResponse']['project']['modules'])}")
+
+# Access control audit
+print(f"Admins: {len(project['admins'])}")
+print(f"Collaborators: {len(project['collaborators'])}")
+
+for collab in project['collaborators']:
+    mfa = "✅" if collab['twoFactorAuthenticationEnabled'] else "⚠️"
+    external = "SSO" if collab['externallyManaged'] else "Local"
+    print(f"  {mfa} {collab['name']} ({external})")
+```
+
+### 4. Map Project Infrastructure Dependencies
+
+Discover all connectors and external integrations a project uses.
+
+```python
+import requests
+
+# Get dependency summary
+response = requests.get(
+    'https://app.harness.io/gateway/ng/api/entitySetupUsage/getOrgEntitiesReferredByProject',
+    headers={'x-api-key': api_key},
+    params={
+        'routingId': account_id,
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id,
+        'projectIdentifier': project_id
+    }
+)
+
+entities = response.json()['data']
+print("Dependencies:")
+for entity in entities:
+    print(f"  • {entity['referredEntityType']}: {entity['count']}")
+
+# Get connector details
+response = requests.get(
+    'https://app.harness.io/gateway/ng/api/connectors',
+    headers={'x-api-key': api_key},
+    params={
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id,
+        'projectIdentifier': project_id
+    }
+)
+
+connectors = response.json()['data']['content']
+
+for conn_item in connectors:
+    conn = conn_item['connector']
+    status = conn_item['status']['status']
+    icon = "✅" if status == "SUCCESS" else "❌"
+    
+    print(f"{icon} {conn['name']} ({conn['type']})")
+    print(f"   Status: {status}")
+    
+    # Show connector-specific details
+    spec = conn.get('spec', {})
+    if conn['type'] == 'TerraformCloud':
+        print(f"   TFC: {spec.get('terraformCloudUrl')}")
+    elif conn['type'] == 'DockerRegistry':
+        print(f"   Registry: {spec.get('dockerRegistryUrl')}")
+    elif conn['type'] == 'Aws':
+        print(f"   AWS Account: {spec.get('credential', {}).get('spec', {}).get('roleArn', 'N/A')[:50]}...")
+```
+
+**Real-world example**:
+```
+✅ okta-terraform-gmsgq-iac-reveng (TerraformCloud)
+   Status: SUCCESS
+   TFC: https://app.terraform.io/
+
+❌ tec-dce-inn-dev (Aws)
+   Status: FAILURE
+   AWS Account: arn:aws:iam::123456789:role/...
+
+✅ Harness Built-in Secret Manager (GcpKms)
+   Status: SUCCESS
+```
+
+### 5. Audit and Monitor API Key Usage
 
 Track API key activity, expiration, and token lifecycle.
 
@@ -224,7 +350,7 @@ else:
     print(f"⚠️  API key has {api_key_info['tokens']} tokens")
 ```
 
-### 4. Poll Task Status
+### 6. Poll Task Status
 
 Monitor task execution until completion (blocking).
 
@@ -312,7 +438,7 @@ EOF
 **Returns:**
 - Task object with current status and metadata
 
-### 4. Discover Harness Entity Kinds and Taxonomy
+### 7. Discover Harness Entity Kinds and Taxonomy
 
 Query the available entity kinds to understand the Harness service catalog structure.
 
@@ -366,7 +492,7 @@ User Groups (24 items)
 Users (622 items)
 ```
 
-### 5. Discover Service Catalog (Components, APIs, Resources)
+### 8. Discover Service Catalog (Components, APIs, Resources)
 
 Query the Harness service catalog to discover components, APIs, and resources.
 
@@ -424,7 +550,7 @@ COMPONENT: cloud-infra-provisioner
   Lifecycle: experimental | Tags: cloud, cse
 ```
 
-### 6. Query Entity Groups and Discover Workflows
+### 9. Query Entity Groups and Discover Workflows
 
 Discover Harness workflows organized by entity groups (Solutions Factory, DevOps Self-Service, etc.).
 
@@ -481,7 +607,7 @@ Group: DevOps Self-Service Requests (4 workflows)
     Owner: group:account/devops
 ```
 
-### 7. Stream Task Events (Real-Time)
+### 10. Stream Task Events (Real-Time)
 
 Monitor task execution via Server-Sent Events (streaming).
 
@@ -525,7 +651,7 @@ EOF
 - `error`: Error event
 - `completed`: Task completion
 
-### 8. Generic Workflow Example (Customizable)
+### 11. Generic Workflow Example (Customizable)
 
 Complete workflow for executing any IDP Scaffolder template.
 
@@ -752,6 +878,118 @@ for event in client.stream_events(task_id):
 - Harness API imposes rate limits
 - Polling interval of 2-10 seconds is safe
 - Use callbacks to avoid tight loops
+
+## Advanced Use Cases: Platform Governance & Health Monitoring
+
+### Health Check: Audit All Project Connectors
+
+Scan projects for failing integrations and health issues:
+
+```python
+# Scan all projects for connector health
+projects_url = 'https://app.harness.io/gateway/ng/api/projects'
+projects = requests.get(
+    projects_url,
+    headers={'x-api-key': api_key},
+    params={'accountIdentifier': account_id, 'orgIdentifier': org_id}
+).json()['data']['content']
+
+for proj_data in projects:
+    project_id = proj_data['project']['identifier']
+    
+    # Get connectors
+    conn_url = 'https://app.harness.io/gateway/ng/api/connectors'
+    connectors = requests.get(
+        conn_url,
+        headers={'x-api-key': api_key},
+        params={
+            'accountIdentifier': account_id,
+            'orgIdentifier': org_id,
+            'projectIdentifier': project_id
+        }
+    ).json()['data']['content']
+    
+    # Check for failures
+    failures = [c for c in connectors if c['status']['status'] != 'SUCCESS']
+    
+    if failures:
+        print(f"⚠️  {project_id}: {len(failures)} failing connector(s)")
+        for conn in failures:
+            name = conn['connector']['name']
+            status = conn['status']['status']
+            print(f"   ❌ {name} ({status})")
+```
+
+### Access Control Audit: Find Projects Without MFA
+
+Identify collaboration gaps in security posture:
+
+```python
+# Audit projects for MFA enforcement
+for proj_data in projects:
+    project_id = proj_data['project']['identifier']
+    
+    # Get project collaborators
+    proj_url = f'https://app.harness.io/gateway/ng/api/aggregate/projects/{project_id}'
+    proj = requests.get(
+        proj_url,
+        headers={'x-api-key': api_key},
+        params={'routingId': account_id, 'accountIdentifier': account_id, 'orgIdentifier': org_id}
+    ).json()['data']
+    
+    # Check for users without MFA
+    no_mfa = [c for c in proj.get('collaborators', []) 
+              if not c.get('twoFactorAuthenticationEnabled')]
+    
+    if no_mfa:
+        print(f"⚠️  {project_id}: {len(no_mfa)} users without MFA")
+        for user in no_mfa:
+            print(f"   {user['name']} ({user['email']})")
+```
+
+### Credential Lifecycle: API Key Expiration Alerts
+
+Track upcoming API key expirations:
+
+```python
+from datetime import datetime, timedelta
+
+# Get all users
+users = requests.get(
+    'https://app.harness.io/gateway/v1/entities',
+    headers={'x-api-key': api_key},
+    params={'accountIdentifier': account_id, 'kind': 'user'}
+).json()
+
+for user in users:
+    user_uuid = user.get('metadata', {}).get('uuid')
+    if not user_uuid:
+        continue
+    
+    # Get their API keys
+    keys_url = 'https://app.harness.io/gateway/ng/api/apikey/aggregate'
+    try:
+        keys = requests.get(
+            keys_url,
+            headers={'x-api-key': api_key},
+            params={
+                'routingId': account_id,
+                'accountIdentifier': account_id,
+                'apiKeyType': 'USER',
+                'parentIdentifier': user_uuid
+            }
+        ).json()['data']['content']
+        
+        for key_item in keys:
+            expiry_ms = key_item['apiKey']['defaultTimeToExpireToken']
+            days_until_expiry = expiry_ms / (1000 * 60 * 60 * 24)
+            
+            if days_until_expiry < 7:
+                print(f"⚠️  {user['name']}: API key expires in {days_until_expiry:.0f} days")
+                print(f"    Key: {key_item['apiKey']['name']}")
+    except:
+        pass  # Permission denied for other users' keys
+```
 
 ## Real-World Use Cases
 
