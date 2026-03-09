@@ -100,11 +100,16 @@ This skill documents the comprehensive Harness.io API ecosystem for programmatic
 | `/gateway/v1/entities` | Entity discovery & search | Find workflows, components, APIs |
 | `/gateway/v1/entities/groups` | Entity group organization | Discover Solutions Factory, self-service templates |
 | `/gateway/v1/entities/filters` | Available filter options | Get metadata for filtering queries |
-| `/gateway/ng/api/aggregate/projects/{projectId}` | Project governance | Access control, collaborators, team structure |
+| `/gateway/ng/api/organizations/{orgId}` | Organization metadata | Org structure, Terraform management, tags |
+| `/gateway/ng/api/aggregate/projects/{projectId}` | Project governance | Access control, collaborators, MFA status |
 | `/gateway/ng/api/projects` | List projects in organization | Project discovery & metadata |
 | `/gateway/ng/api/connectors` | Infrastructure connectors | Terraform Cloud, AWS, Docker, Vault, etc. |
 | `/gateway/ng/api/entitySetupUsage/getOrgEntitiesReferredByProject` | Project dependencies | Connector & integration usage per project |
 | `/gateway/ng/api/apikey/aggregate` | API key audit | User/service account key lifecycle |
+| `/gateway/ng/api/user-settings/get-user-preferences` | User UI preferences (quick) | Current context, last accessed project |
+| `/gateway/ng/api/user-settings` | User settings (full) | Comprehensive user configuration audit |
+| `/gateway/ng-dashboard/api/overview/resources-overview-count` | Account metrics & trends | Projects, services, pipelines, users, environments |
+| `/gateway/pipeline/api/pipelines/list-repos` | Source control repos | GitOps integration, repo discovery |
 
 ## Core Capabilities
 
@@ -118,7 +123,7 @@ import time
 
 api_key = "{HARNESS_API_KEY}"
 account_id = "{HARNESS_ACCOUNT_ID}"
-user_id = "{USER_ID}"  # e.g., user-uuid-example
+user_id = "{USER_ID}"  # e.g., user-uuid-randomized
 
 url = 'https://app.harness.io/gateway/ng/api/apikey/aggregate'
 
@@ -607,7 +612,134 @@ Group: DevOps Self-Service Requests (4 workflows)
     Owner: group:account/devops
 ```
 
-### 10. Stream Task Events (Real-Time)
+### 10. Query Account Metrics and Dashboard Data
+
+Get real-time resource counts, trends, and capacity metrics across the account.
+
+```python
+import requests
+import time
+
+# Time range (last 30 days)
+end_time = int(time.time() * 1000)
+start_time = end_time - (30 * 24 * 60 * 60 * 1000)
+
+response = requests.get(
+    'https://app.harness.io/gateway/ng-dashboard/api/overview/resources-overview-count',
+    headers={'x-api-key': api_key},
+    params={
+        'accountIdentifier': account_id,
+        'routingId': account_id,
+        'startTime': start_time,
+        'endTime': end_time
+    }
+)
+
+metrics = response.json()['data']['response']
+
+print(f"Account-wide metrics (last 30 days):")
+print(f"  Projects: {metrics['projectsCountDetail']['count']}")
+print(f"  Services: {metrics['servicesCountDetail']['count']}")
+print(f"  Environments: {metrics['envCountDetail']['count']}")
+print(f"  Pipelines: {metrics['pipelinesCountDetail']['count']}")
+print(f"  Users: {metrics['usersCountDetail']['count']}")
+
+# Growth trends
+print(f"\nTrends:")
+print(f"  New pipelines: +{metrics['pipelinesCountDetail']['countChangeAndCountChangeRateInfo']['countChange']}")
+print(f"  New users: +{metrics['usersCountDetail']['countChangeAndCountChangeRateInfo']['countChange']}")
+```
+
+**Output**:
+```
+Account-wide metrics (last 30 days):
+  Projects: 4
+  Services: 3
+  Environments: 13
+  Pipelines: 23
+  Users: 622
+
+Trends:
+  New pipelines: +5
+  New users: +136
+```
+
+### 11. Audit User Settings and Preferences
+
+Track user configuration, UI preferences, and activity history.
+
+```python
+# Get current user's quick preferences
+response = requests.get(
+    'https://app.harness.io/gateway/ng/api/user-settings/get-user-preferences',
+    headers={'x-api-key': api_key},
+    params={
+        'accountIdentifier': account_id,
+        'routingId': account_id
+    }
+)
+
+prefs = response.json()['data']
+print(f"UI Preferences:")
+print(f"  New Navigation: {prefs.get('enable_new_nav', False)}")
+print(f"  Last Project: {prefs.get('recent_selected_scopes')}")
+
+# Get full user settings
+response = requests.get(
+    'https://app.harness.io/gateway/ng/api/user-settings',
+    headers={'x-api-key': api_key},
+    params={
+        'accountIdentifier': account_id,
+        'routingId': account_id
+    }
+)
+
+settings = response.json()['data']
+print(f"\nFull user settings ({len(settings)} items):")
+
+for setting_item in settings:
+    setting = setting_item['userSetting']
+    identifier = setting['identifier']
+    value = setting['value']
+    modified = setting_item.get('lastModifiedAt')
+    
+    print(f"  • {identifier}: {value}")
+    if modified:
+        mod_date = time.strftime('%Y-%m-%d', time.localtime(modified / 1000))
+        print(f"    (Modified: {mod_date})")
+```
+
+### 12. Discover Source Control Repositories
+
+Find all source control repos connected to a project (GitOps integration).
+
+```python
+response = requests.get(
+    'https://app.harness.io/gateway/pipeline/api/pipelines/list-repos',
+    headers={'x-api-key': api_key},
+    params={
+        'accountIdentifier': account_id,
+        'orgIdentifier': org_id,
+        'projectIdentifier': project_id,
+        'routingId': account_id
+    }
+)
+
+repos = response.json()['data']['repositories']
+print(f"Connected repositories ({len(repos)}):")
+
+for repo in repos:
+    print(f"  • {repo}")
+```
+
+**Real-world example**:
+```
+Connected repositories (2):
+  • devops-harness-onboarding
+  • tf-orchestrator-harness-pipeline
+```
+
+### 13. Stream Task Events (Real-Time)
 
 Monitor task execution via Server-Sent Events (streaming).
 
@@ -651,7 +783,7 @@ EOF
 - `error`: Error event
 - `completed`: Task completion
 
-### 11. Generic Workflow Example (Customizable)
+### 14. Generic Workflow Example (Customizable)
 
 Complete workflow for executing any IDP Scaffolder template.
 
@@ -945,6 +1077,69 @@ for proj_data in projects:
         print(f"⚠️  {project_id}: {len(no_mfa)} users without MFA")
         for user in no_mfa:
             print(f"   {user['name']} ({user['email']})")
+```
+
+### Observability: Multi-Org Dashboard Generation
+
+Generate unified metrics across all organizations:
+
+```python
+# Fetch metrics for all orgs
+orgs_response = requests.get(
+    'https://app.harness.io/gateway/ng/api/orgs',
+    headers={'x-api-key': api_key},
+    params={'accountIdentifier': account_id, 'size': 100}
+)
+
+orgs = orgs_response.json()['data']['content']
+
+end_time = int(time.time() * 1000)
+start_time = end_time - (7 * 24 * 60 * 60 * 1000)  # Last 7 days
+
+print("Multi-Org Dashboard (Last 7 Days)")
+print("=" * 60)
+print()
+
+total_projects = 0
+total_users = 0
+total_pipelines = 0
+
+for org in orgs:
+    org_name = org.get('name', 'N/A')
+    
+    # Get metrics for this org
+    metrics_response = requests.get(
+        'https://app.harness.io/gateway/ng-dashboard/api/overview/resources-overview-count',
+        headers={'x-api-key': api_key},
+        params={
+            'accountIdentifier': account_id,
+            'routingId': account_id,
+            'startTime': start_time,
+            'endTime': end_time
+        }
+    )
+    
+    metrics = metrics_response.json()['data']['response']
+    
+    projects = metrics['projectsCountDetail']['count']
+    users = metrics['usersCountDetail']['count']
+    pipelines = metrics['pipelinesCountDetail']['count']
+    
+    total_projects += projects
+    total_users += users
+    total_pipelines += pipelines
+    
+    print(f"{org_name}")
+    print(f"  Projects: {projects}")
+    print(f"  Pipelines: {pipelines}")
+    print(f"  Users: {users}")
+    print()
+
+print("=" * 60)
+print("TOTAL ACCOUNT")
+print(f"  Projects: {total_projects}")
+print(f"  Pipelines: {total_pipelines}")
+print(f"  Users: {total_users}")
 ```
 
 ### Credential Lifecycle: API Key Expiration Alerts
