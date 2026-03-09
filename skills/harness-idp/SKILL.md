@@ -24,12 +24,14 @@ This skill enables production-grade programmatic interaction with Harness.io's I
 Use this skill when:
 - User mentions "Harness", "IDP", "Scaffolder", or "idp.harness.io"
 - User wants to execute any Harness IDP Scaffolder template
-- User needs to list or discover Harness workflows, templates, or entity groups
+- User needs to list or discover Harness workflows, templates, entity groups, components, or APIs
+- User wants to query the Harness service catalog (components, resources, APIs)
 - User wants to launch workflows programmatically (infrastructure, deployments, configurations, etc.)
 - User wants to monitor Harness task execution or check task status
 - User needs to integrate IDP workflows into pipelines or automation
-- User mentions "Harness template", "Scaffolder task", "IDP workflow", or "Harness self-service"
-- User wants to query Harness entity groups, workspaces, or blueprints
+- User mentions "Harness template", "Scaffolder task", "IDP workflow", "Harness self-service", or "service catalog"
+- User wants to query Harness entity groups, workspaces, blueprints, or components
+- User mentions "Harness API discovery" or "service registry"
 
 ## Prerequisites
 
@@ -228,7 +230,65 @@ EOF
 **Returns:**
 - Task object with current status and metadata
 
-### 4. Query Entity Groups and Discover Workflows
+### 4. Discover Service Catalog (Components, APIs, Resources)
+
+Query the Harness service catalog to discover components, APIs, and resources.
+
+```python
+import requests
+
+api_key = "{HARNESS_API_KEY}"
+account_id = "{HARNESS_ACCOUNT_ID}"
+
+# Query service catalog entities
+url = 'https://app.harness.io/gateway/v1/entities'
+
+response = requests.get(
+    url,
+    headers={'x-api-key': api_key},
+    params={
+        'accountIdentifier': account_id,
+        'kind': 'component,api,resource',
+        'scopes': 'account.*'
+    }
+)
+
+entities = response.json()
+
+# Organize by entity type
+for entity in entities:
+    name = entity['name']
+    kind = entity['kind']  # 'component', 'api', 'resource'
+    entity_type = entity['type']  # 'service', 'openapi', 'asyncapi', 'library', etc
+    owner = entity['owner']
+    lifecycle = entity['lifecycle']  # 'production', 'dev', 'experimental'
+    tags = entity.get('tags', [])
+    
+    print(f"{kind.upper()}: {name}")
+    print(f"  Type: {entity_type} | Owner: {owner}")
+    print(f"  Lifecycle: {lifecycle} | Tags: {', '.join(tags)}")
+```
+
+**Real-world output**:
+```
+API: appstream-image-builder
+  Type: asyncapi | Owner: gmsgq_dad_fusion_team
+  Lifecycle: production | Tags: appstream2.0, gmsgq
+
+API: devops-autowiki-api
+  Type: openapi | Owner: group:account/Atlassian
+  Lifecycle: dev | Tags: 
+
+COMPONENT: aws-session-credentials
+  Type: service | Owner: group:account/gmsgqdadclouddevsecopsiacreveng
+  Lifecycle: experimental | Tags: gmsgq, gmsgq-dad, iac-reverse-engineering
+
+COMPONENT: cloud-infra-provisioner
+  Type: service | Owner: group:account/foundation_technologies_platform_cloud_services
+  Lifecycle: experimental | Tags: cloud, cse
+```
+
+### 5. Query Entity Groups and Discover Workflows
 
 Discover Harness workflows organized by entity groups (Solutions Factory, DevOps Self-Service, etc.).
 
@@ -285,7 +345,7 @@ Group: DevOps Self-Service Requests (4 workflows)
     Owner: group:account/devops
 ```
 
-### 5. Stream Task Events (Real-Time)
+### 6. Stream Task Events (Real-Time)
 
 Monitor task execution via Server-Sent Events (streaming).
 
@@ -329,7 +389,7 @@ EOF
 - `error`: Error event
 - `completed`: Task completion
 
-### 6. Generic Workflow Example (Customizable)
+### 7. Generic Workflow Example (Customizable)
 
 Complete workflow for executing any IDP Scaffolder template.
 
@@ -604,7 +664,38 @@ print(f"🚀 Self-service setup started: {task.id}")
 # Returns immediately - task runs in background
 ```
 
-### Use Case 3: Discover Available Workflows
+### Use Case 3: Discover Service Catalog Components and APIs
+
+Find available services, APIs, and resources in the catalog:
+
+```python
+import requests
+
+# Query all components, APIs, and resources
+response = requests.get(
+    'https://app.harness.io/gateway/v1/entities',
+    headers={'x-api-key': api_key},
+    params={
+        'accountIdentifier': account_id,
+        'kind': 'component,api,resource',
+        'scopes': 'account.*'
+    }
+)
+
+# Organize by lifecycle and type
+for entity in response.json():
+    if entity['lifecycle'] == 'production':
+        print(f"📦 {entity['name']} ({entity['kind']})")
+        print(f"   Owner: {entity['owner']}")
+```
+
+**Real examples discovered**:
+- **appstream-image-builder** (asyncapi) - Production
+- **streetlights** (asyncapi) - Production MQTT messaging
+- **backstage** (library) - CNCF library
+- **cloud-infra-provisioner** (service) - Cloud infrastructure component
+
+### Use Case 4: Discover Available Workflows
 
 Query entity groups to find available templates:
 
@@ -628,7 +719,7 @@ for group in groups:
         print(f"    Type: {workflow['type']}")
 ```
 
-### Use Case 4: Monitor Long-Running Infrastructure Provisioning
+### Use Case 5: Monitor Long-Running Infrastructure Provisioning
 
 Track infrastructure provisioning with real-time updates:
 
