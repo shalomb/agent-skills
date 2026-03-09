@@ -1,14 +1,6 @@
 ---
 name: github-cli
-description: Execute GitHub CLI (gh) commands for repository management, issues, pull requests, workflows, releases, and API interactions (REST & GraphQL). Use when the user wants to interact with GitHub from the command line—creating/managing repositories, issues, PRs, triggering workflows, querying data, or performing any GitHub operation. Covers REST API calls, GraphQL queries/mutations, solo developer workflows, and team collaboration patterns.
-triggers:
-  - github
-  - gh
-  - github cli
-  - github api
-  - rest api
-  - graphql
-  - git workflow
+description: Execute GitHub CLI (gh) commands for repository management, issues, pull requests, workflows, releases, and API interactions (REST & GraphQL). Covers REST API calls, GraphQL queries/mutations, solo developer workflows, and team collaboration patterns.
 ---
 
 # GitHub CLI (gh) Skill

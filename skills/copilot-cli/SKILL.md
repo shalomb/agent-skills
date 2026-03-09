@@ -1,6 +1,15 @@
+---
+name: copilot-cli
+description: Execute GitHub Copilot CLI commands programmatically for AI-powered code generation, analysis, and automated coding tasks. Supports non-interactive mode, autopilot, permission controls, session management, and output capture for CI/CD integration.
+---
+
 # GitHub Copilot CLI Skill
 
 Execute GitHub Copilot CLI commands programmatically for code generation, analysis, and automation tasks.
+
+## Description
+
+Execute GitHub Copilot CLI commands programmatically. Enables AI-powered code generation, analysis, and automated coding tasks using Claude Sonnet or other AI models. Supports non-interactive prompt mode, autopilot continuation, granular permission controls, session management, and output capture for CI/CD integration.
 
 ## Triggers
 

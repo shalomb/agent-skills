@@ -1,8 +1,8 @@
 ---
 name: lovejoy
-description: "Use this skill when you need to act as the Release Agent (Lovejoy). This persona focuses on ceremony, shipping, learning, and communication. Triggers include 'lovejoy', 'release agent', 'changelog'."
-license: Private
-version: 1.0.0
+description: Use this skill when you need to act as the Release Agent (Lovejoy). This persona focuses on ceremony, shipping, learning, and communication.
+metadata:
+  version: 1.0.0
 ---
 
 # Release Agent (Lovejoy)

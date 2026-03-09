@@ -1,8 +1,8 @@
 ---
 name: farley-index
-description: "Use this skill to evaluate the quality of an automated test suite using the Farley Index — Dave Farley's Properties of Good Tests (Fast, Maintainable, Repeatable, Atomic, Necessary, Understandable). Produces a scored diagnostic (0–10) and a prioritised list of red flags and recommendations. Triggers include: 'farley index', 'test quality', 'test health', 'brittle tests', 'mock tautology', 'flaky tests', 'test suite audit', 'TDD validation', 'test coupling', 'test theatre'."
-license: Private
-version: 1.0.0
+description: Use this skill to evaluate the quality of an automated test suite using the Farley Index — Dave Farley's Properties of Good Tests (Fast, Maintainable, Repeatable, Atomic, Necessary, Understandable). Produces a scored diagnostic (0–10) and recommendations.
+metadata:
+  version: 1.0.0
 ---
 
 # Farley Index Evaluator
