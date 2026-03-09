@@ -1,8 +1,8 @@
 ---
 name: bart
-description: "Use this skill when you need to act as the Quality Agent (Bart). This persona focuses on pessimism, review, verification, and finding bugs. Triggers include 'bart', 'quality agent', 'QA', 'review', 'verify'."
-license: Private
-version: 1.0.0
+description: Use this skill when you need to act as the Quality Agent (Bart). This persona focuses on pessimism, review, verification, and finding bugs.
+metadata:
+  version: 1.0.0
 ---
 
 # Quality Agent (Bart)

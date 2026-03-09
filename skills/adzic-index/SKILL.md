@@ -1,8 +1,8 @@
 ---
 name: adzic-index
-description: "Use this skill to evaluate the quality of BDD feature files and Gherkin scenarios using the Adzic Index — based on Gojko Adzic's Specification by Example principles. Produces a scored diagnostic (0–10) across six dimensions: Business-Readable, Intention-Revealing, Focused, Declarative, Minimal Context, and Living. Triggers include: 'adzic index', 'BDD quality', 'gherkin quality', 'scenario quality', 'feature file audit', 'specification theatre', 'living documentation', 'acceptance criteria quality', 'UI script theatre', 'imperative gherkin'."
-license: Private
-version: 1.0.0
+description: Use this skill to evaluate the quality of BDD feature files and Gherkin scenarios using the Adzic Index — based on Gojko Adzic's Specification by Example principles. Produces a scored diagnostic (0–10) across six dimensions.
+metadata:
+  version: 1.0.0
 ---
 
 # Adzic Index Evaluator
