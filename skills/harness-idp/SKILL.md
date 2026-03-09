@@ -230,7 +230,61 @@ EOF
 **Returns:**
 - Task object with current status and metadata
 
-### 4. Discover Service Catalog (Components, APIs, Resources)
+### 4. Discover Harness Entity Kinds and Taxonomy
+
+Query the available entity kinds to understand the Harness service catalog structure.
+
+```python
+import requests
+
+api_key = "{HARNESS_API_KEY}"
+account_id = "{HARNESS_ACCOUNT_ID}"
+
+# Get all entity kinds
+response = requests.get(
+    'https://app.harness.io/gateway/v1/entities/kinds',
+    headers={'x-api-key': api_key},
+    params={'accountIdentifier': account_id}
+)
+
+kinds = response.json()
+
+print("Available Entity Kinds:")
+for kind in kinds:
+    print(f"  • {kind['display_name']} ({kind['total']} items)")
+    print(f"    Kind: {kind['kind']}")
+```
+
+**Real catalog structure**:
+```
+Systems (2 items)
+  - Appstream 2.0 Image Builder
+  - Appstream 2.0 Image Fleet Management
+
+Components (10 items)
+  - aws-session-credentials (service)
+  - backstage (library)
+  - cloud-infra-provisioner (service)
+  - ... and 7 more
+
+APIs (6 items)
+  - appstream-image-builder (asyncapi)
+  - devops-autowiki-api (openapi)
+  - simple-api-2.0.0 (openapi)
+  - streetlights (asyncapi)
+  - ... and 2 more
+
+Workflows (10+ items)
+  - Terraform Cloud Workspace Provisioner v3
+  - Cloud Infrastructure Provisioner v3
+  - Create and Push New Catalog YAML Pipeline
+  - ... and 7+ more
+
+User Groups (24 items)
+Users (622 items)
+```
+
+### 5. Discover Service Catalog (Components, APIs, Resources)
 
 Query the Harness service catalog to discover components, APIs, and resources.
 
@@ -288,7 +342,7 @@ COMPONENT: cloud-infra-provisioner
   Lifecycle: experimental | Tags: cloud, cse
 ```
 
-### 5. Query Entity Groups and Discover Workflows
+### 6. Query Entity Groups and Discover Workflows
 
 Discover Harness workflows organized by entity groups (Solutions Factory, DevOps Self-Service, etc.).
 
@@ -345,7 +399,7 @@ Group: DevOps Self-Service Requests (4 workflows)
     Owner: group:account/devops
 ```
 
-### 6. Stream Task Events (Real-Time)
+### 7. Stream Task Events (Real-Time)
 
 Monitor task execution via Server-Sent Events (streaming).
 
@@ -389,7 +443,7 @@ EOF
 - `error`: Error event
 - `completed`: Task completion
 
-### 7. Generic Workflow Example (Customizable)
+### 8. Generic Workflow Example (Customizable)
 
 Complete workflow for executing any IDP Scaffolder template.
 
@@ -664,7 +718,50 @@ print(f"🚀 Self-service setup started: {task.id}")
 # Returns immediately - task runs in background
 ```
 
-### Use Case 3: Discover Service Catalog Components and APIs
+### Use Case 3: Query Entity Taxonomy and Catalog Structure
+
+Understand the Harness service catalog organization:
+
+```python
+import requests
+
+# Get available entity kinds and counts
+response = requests.get(
+    'https://app.harness.io/gateway/v1/entities/kinds',
+    headers={'x-api-key': api_key},
+    params={'accountIdentifier': account_id}
+)
+
+for kind_info in response.json():
+    print(f"{kind_info['display_name']}: {kind_info['total']} items")
+    # Output:
+    # Systems: 2 items
+    # Components: 10 items
+    # APIs: 6 items
+    # Workflows: 10 items
+    # User Groups: 24 items
+    # Users: 622 items
+```
+
+Then query specific kinds:
+
+```python
+# Get all systems
+systems = requests.get(
+    'https://app.harness.io/gateway/v1/entities',
+    headers={'x-api-key': api_key},
+    params={
+        'accountIdentifier': account_id,
+        'kind': 'system'
+    }
+).json()
+
+for system in systems:
+    print(f"🏗️  {system['name']} ({system['type']})")
+    print(f"   Owner: {system['owner']}")
+```
+
+### Use Case 4: Discover Service Catalog Components and APIs
 
 Find available services, APIs, and resources in the catalog:
 
@@ -695,7 +792,7 @@ for entity in response.json():
 - **backstage** (library) - CNCF library
 - **cloud-infra-provisioner** (service) - Cloud infrastructure component
 
-### Use Case 4: Discover Available Workflows
+### Use Case 5: Discover Available Workflows
 
 Query entity groups to find available templates:
 
@@ -719,7 +816,7 @@ for group in groups:
         print(f"    Type: {workflow['type']}")
 ```
 
-### Use Case 5: Monitor Long-Running Infrastructure Provisioning
+### Use Case 6: Monitor Long-Running Infrastructure Provisioning
 
 Track infrastructure provisioning with real-time updates:
 
