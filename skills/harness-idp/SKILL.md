@@ -24,10 +24,12 @@ This skill enables production-grade programmatic interaction with Harness.io's I
 Use this skill when:
 - User mentions "Harness", "IDP", "Scaffolder", or "idp.harness.io"
 - User wants to execute any Harness IDP Scaffolder template
-- User needs to launch workflows programmatically (infrastructure, deployments, configurations, etc.)
+- User needs to list or discover Harness workflows, templates, or entity groups
+- User wants to launch workflows programmatically (infrastructure, deployments, configurations, etc.)
 - User wants to monitor Harness task execution or check task status
 - User needs to integrate IDP workflows into pipelines or automation
-- User mentions "Harness template", "Scaffolder task", or "IDP workflow"
+- User mentions "Harness template", "Scaffolder task", "IDP workflow", or "Harness self-service"
+- User wants to query Harness entity groups, workspaces, or blueprints
 
 ## Prerequisites
 
@@ -226,7 +228,64 @@ EOF
 **Returns:**
 - Task object with current status and metadata
 
-### 4. Stream Task Events (Real-Time)
+### 4. Query Entity Groups and Discover Workflows
+
+Discover Harness workflows organized by entity groups (Solutions Factory, DevOps Self-Service, etc.).
+
+```python
+import requests
+import json
+
+api_key = "{HARNESS_API_KEY}"
+account_id = "{HARNESS_ACCOUNT_ID}"
+
+url = 'https://app.harness.io/gateway/v1/entities/groups'
+
+headers = {
+    'x-api-key': api_key,
+    'Content-Type': 'application/json'
+}
+
+params = {
+    'scopes': 'account.*',
+    'owned_by_me': 'false',
+    'favorites': 'false',
+}
+
+response = requests.get(url, headers=headers, params=params)
+data = response.json()
+
+# List all entity groups and their workflows
+for group in data['data']['account']['with_group']:
+    print(f"Group: {group['group_name']} ({group['total']} workflows)")
+    for entity in group['entities']:
+        print(f"  • {entity['name']}")
+        print(f"    Type: {entity['type']}")
+        print(f"    Owner: {entity['owner']}")
+```
+
+**Real-world example output**:
+```
+Group: Solutions Factory (4 workflows)
+  • Create and Push New Catalog YAML Pipeline
+    Type: Pipeline
+    Owner: group:HSF_Admins
+  
+  • Deploy RBAC Manager
+    Type: harness_factory
+    Owner: group:HSF_Admins
+
+Group: DevOps Self-Service Requests (4 workflows)
+  • Devops Quickstart
+    Type: service
+    Owner: group:account/devops
+  
+  • GitHub New Issue Automation Request
+    Type: service
+    Owner: group:account/devops
+```
+
+### 5. Stream Task Events (Real-Time)
 
 Monitor task execution via Server-Sent Events (streaming).
 
@@ -270,7 +329,7 @@ EOF
 - `error`: Error event
 - `completed`: Task completion
 
-### 5. Generic Workflow Example (Customizable)
+### 6. Generic Workflow Example (Customizable)
 
 Complete workflow for executing any IDP Scaffolder template.
 
@@ -498,21 +557,121 @@ for event in client.stream_events(task_id):
 - Polling interval of 2-10 seconds is safe
 - Use callbacks to avoid tight loops
 
+## Real-World Use Cases
+
+### Use Case 1: Execute Solutions Factory Workflows
+
+Provision infrastructure and catalog management pipelines:
+
+```python
+from harness_idp_client import HarnessScaffolderClient
+
+client = HarnessScaffolderClient()
+
+# Execute "Create and Push New Catalog YAML Pipeline" workflow
+task = client.create_task(
+    template_ref="template:account/create-and-push-new-catalog-yaml",
+    values={
+        "component_name": "my-service",
+        "system_name": "platform",
+        "component_type": "backend",
+        "harness_account_url": "https://app.harness.io"
+    }
+)
+
+# Monitor until completion
+final = client.poll_task(task.id)
+if final.is_success():
+    print("✅ Catalog YAML created and pushed")
+```
+
+### Use Case 2: Trigger DevOps Self-Service Workflows
+
+Enable self-service infrastructure and tooling setup:
+
+```python
+# Execute "Devops Quickstart" - sets up GitHub, JFrog, SonarQube
+task = client.create_task(
+    template_ref="template:account/bb-starter",
+    values={
+        "github_org": "my-org",
+        "jfrog_project": "my-project",
+        "sonarqube_key": "my-key"
+    }
+)
+
+print(f"🚀 Self-service setup started: {task.id}")
+# Returns immediately - task runs in background
+```
+
+### Use Case 3: Discover Available Workflows
+
+Query entity groups to find available templates:
+
+```python
+import requests
+
+# Get all available entity groups and workflows
+response = requests.get(
+    'https://app.harness.io/gateway/v1/entities/groups',
+    headers={'x-api-key': api_key},
+    params={'scopes': 'account.*'}
+)
+
+groups = response.json()['data']['account']['with_group']
+
+for group in groups:
+    print(f"\n{group['group_name']}:")
+    for workflow in group['entities']:
+        print(f"  • {workflow['name']}")
+        print(f"    Ref: template:account/{workflow['identifier']}")
+        print(f"    Type: {workflow['type']}")
+```
+
+### Use Case 4: Monitor Long-Running Infrastructure Provisioning
+
+Track infrastructure provisioning with real-time updates:
+
+```python
+# Execute cloud infrastructure provisioner
+task = client.create_task(
+    template_ref="template:account/cloud_infrastructure_provisioner_v3",
+    values={
+        "environment": "production",
+        "region": "us-east-1",
+        "resource_count": 5
+    }
+)
+
+# Poll with progress callback
+def show_progress(t):
+    elapsed = time.time() - start
+    print(f"[{elapsed:.0f}s] {t.status.upper()}")
+
+start = time.time()
+final = client.poll_task(task.id, callback=show_progress, timeout=7200)
+
+if final.is_success():
+    output = final.spec.get('output', {})
+    print(f"✅ Resources provisioned in {time.time() - start:.0f}s")
+    print(f"   Details: {output}")
+```
+
 ## Integration Examples
 
 ### CI/CD Pipeline (GitHub Actions)
 
 ```yaml
-- name: Provision Infrastructure
+- name: Trigger Harness IDP Workflow
   env:
     HARNESS_ACCOUNT_ID: ${{ secrets.HARNESS_ACCOUNT_ID }}
     HARNESS_API_KEY: ${{ secrets.HARNESS_API_KEY }}
   run: |
-    python scripts/provision_workspace.py \
+    python scripts/execute_workflow.py \
+      --template cloud_infrastructure_provisioner_v3 \
+      --environment ${{ inputs.environment }} \
       --resource-id ${{ inputs.resource-id }} \
-      --environment dev \
-      --github-team platform-eng \
-      --okta-owner admin@example.com
+      --region us-east-1
 ```
 
 ### Python Script with Logging
