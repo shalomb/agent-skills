@@ -1,110 +1,143 @@
 # Agent Skills Documentation
 
-This directory contains comprehensive documentation for building, testing, and maintaining agent skills following the **Diataxis framework**.
+This directory contains comprehensive documentation for building, testing, and maintaining agent skills following the **Diataxis framework** and aligned with the official **Agent Skills specification** (https://agentskills.io).
 
 ## Documentation Structure
 
 The documentation is organized into four sections aligned with the Diataxis framework:
 
 ### 📚 [How-To Guides](how-to/)
-Step-by-step instructions for accomplishing specific tasks. Start here if you have a concrete goal.
+**Goal-oriented instructions for accomplishing specific tasks.** Start here if you have a concrete goal.
 
-- [Create your first skill](how-to/create-first-skill.md) — 15-30 minute walkthrough
-- [Structure a skill](how-to/structure-skill.md) — Folder layout and file organization
-- [Write effective instructions](how-to/write-instructions.md) — Best practices for SKILL.md
-- [Set up MCP integration](how-to/setup-mcp-integration.md) — Connect skills to MCP servers
-- [Test and iterate](how-to/test-and-iterate.md) — Testing patterns and quality gates
-- [Distribute your skill](how-to/distribute-skill.md) — Share with teams or communities
+- [Create Your First Skill](how-to/create-first-skill.md) — Step-by-step walkthrough (15-30 min)
+- [Structure a Skill](how-to/structure-skill.md) — Organizing SKILL.md, scripts/, references/, assets/
+- [Add Supporting Files](how-to/add-supporting-files.md) — Using scripts, references, and assets effectively
+- [Best Practices](how-to/best-practices.md) — Effective descriptions, content structure, error handling
+- [Implement Skills Support](how-to/implement-skills-support.md) — Adding skills to your agent platform
 
 ### 🎯 [Reference](reference/)
-Authoritative information for looking up details. Use when you know what you need and just need the specs.
+**Authoritative technical specifications for looking up details.** Use when you know what you need and just need the specs.
 
-- [Skill anatomy](reference/skill-anatomy.md) — Complete breakdown of SKILL.md format
-- [YAML frontmatter spec](reference/yaml-frontmatter.md) — All frontmatter fields and requirements
-- [Directory structure](reference/directory-structure.md) — File organization standards
-- [Success criteria](reference/success-criteria.md) — How to measure if your skill works
-- [Checklist](reference/checklist.md) — Pre-launch validation checklist
+- [SKILL.md Frontmatter](reference/frontmatter.md) — Complete reference of YAML frontmatter fields
+  - `name` (required) — Kebab-case identifier, 1-64 characters
+  - `description` (required) — What skill does and when to use it, max 1024 characters
+  - `license` (optional) — License name or reference
+  - `compatibility` (optional) — Environment requirements
+  - `allowed-tools` (optional, experimental) — Pre-approved tool patterns
+  - `metadata` (optional) — Custom key-value pairs
+- [YAML Frontmatter Spec](reference/yaml-frontmatter.md) — Detailed field specifications and validation rules
+- [Skill Directory Structure](reference/skill-locations.md) — Standard layout and file organization
+- [Bundled Skills Reference](reference/bundled-skills.md) — Existing skills in this repository
 
 ### 💡 [Explanations](explanation/)
-Deep-dive background and theory. Read when you want to understand the *why* behind decisions.
+**Deep-dive background and theory.** Read when you want to understand the *why* behind decisions.
 
-- [Core design principles](explanation/core-principles.md) — Progressive disclosure, composability, portability
-- [Architecture patterns](explanation/architecture-patterns.md) — Three categories of skills (Document, Workflow, MCP Enhancement)
-- [Use case design](explanation/use-case-design.md) — How to identify and define good use cases
-- [MCP + Skills](explanation/mcp-plus-skills.md) — Kitchen analogy and integration patterns
-- [Quality fundamentals](explanation/quality-fundamentals.md) — Why metrics matter
+- [Core Principles](explanation/core-principles.md)
+  - Progressive Disclosure — Load only what's needed, when needed
+  - Composability — Skills work alongside each other without conflicts
+  - Portability — Same skill works on Claude.ai, Claude Code, and API
+- [Architecture Patterns](explanation/architecture-patterns.md) — Three skill categories:
+  - Document & Asset Creation
+  - Workflow Automation
+  - MCP Enhancement (expertise layer on existing MCP servers)
 
 ### ⚡ [Troubleshooting](troubleshooting/)
-Solutions for common problems and error patterns.
+**Solutions for common problems and error patterns.**
 
-- [Common issues](troubleshooting/common-issues.md) — Typical problems and fixes
-- [Pattern antipatterns](troubleshooting/antipatterns.md) — What NOT to do
-- [Debug guide](troubleshooting/debug-guide.md) — Troubleshooting workflows
-- [Error messages](troubleshooting/error-reference.md) — Understanding error codes
+- [Common Issues](troubleshooting/common-issues.md) — Typical problems and fixes
+- [Antipatterns](troubleshooting/antipatterns.md) — What NOT to do
 
-## Quick Start
+## Quick Start by Learning Style
 
-**First time?** Go to [Create your first skill](how-to/create-first-skill.md) (15-30 minutes)
+| I want to... | Start here |
+|---|---|
+| **BUILD something** | [How-To Guides](how-to/create-first-skill.md) — Step-by-step tasks |
+| **UNDERSTAND the design** | [Explanations](explanation/core-principles.md) — Why skills work this way |
+| **LOOK UP something** | [Reference](reference/frontmatter.md) — Specifications and fields |
+| **FIX a problem** | [Troubleshooting](troubleshooting/common-issues.md) — Problems and solutions |
 
-**Want reference info?** Check [Skill anatomy](reference/skill-anatomy.md) for specifications
+## Agent Skills Standard
 
-**Building MCP integration?** See [MCP + Skills](explanation/mcp-plus-skills.md) first
-
-**Need to troubleshoot?** Check [Common issues](troubleshooting/common-issues.md)
-
-## Key Concepts
+This repository follows the **official Agent Skills specification** maintained by Anthropic. Key concepts:
 
 ### What is a skill?
-A skill is a folder containing:
-- **SKILL.md** (required): Instructions in Markdown with YAML frontmatter
-- **scripts/** (optional): Executable code (Python, Bash, etc.)
-- **references/** (optional): Documentation loaded as needed
-- **assets/** (optional): Templates, fonts, icons used in output
+A skill is a folder containing, at minimum, a `SKILL.md` file:
 
-### Three design principles
-1. **Progressive Disclosure** — Load only what's needed, when it's needed
-2. **Composability** — Works alongside other skills without conflicts
-3. **Portability** — Same skill works on Claude.ai, Code, and API
+```
+skill-name/
+├── SKILL.md          # Required: metadata + instructions
+├── scripts/          # Optional: executable code (Python, Bash, etc.)
+├── references/       # Optional: documentation loaded on-demand
+└── assets/           # Optional: templates, resources, data files
+```
 
-### Two paths
-- **Standalone skills**: Focus on Fundamentals and Planning/Design
-- **MCP-enhanced skills**: Add knowledge layer on top of existing MCP server
+### Three Core Principles
+
+1. **Progressive Disclosure** — Agents load only name/description at startup, full instructions when activated, referenced files on-demand
+2. **Composability** — Multiple skills can work together without conflicts or interference
+3. **Portability** — Same skill works unchanged on Claude.ai, Claude Code, and Claude API
+
+### Validation Tooling
+
+The official `skills-ref` library provides command-line and Python API tools:
+
+```bash
+# Validate a skill
+skills-ref validate path/to/skill
+
+# Read skill properties (JSON output)
+skills-ref read-properties path/to/skill
+
+# Generate <available_skills> XML for agent prompts
+skills-ref to-prompt path/to/skill-a path/to/skill-b
+```
+
+See [Reference: Skill Locations](reference/skill-locations.md) for installation and usage details.
 
 ## Real-World Examples
 
 ### Category 1: Document & Asset Creation
-**Frontend Design Skill** — Create distinctive, production-grade interfaces
-- Uses: embedded style guides, templates, quality checklists
-- Tech: Claude's built-in artifact capabilities
+Create polished documents, designs, and code with consistent quality.
+- Example: `frontend-design` skill generates production-grade UI code
+- Uses: embedded style guides, templates, quality validation
 
 ### Category 2: Workflow Automation
-**Skill Creator Skill** — Interactive guide for skill creation
-- Uses: step-by-step workflows, validation gates, iterative refinement
-- Tech: Multi-step prompts with feedback loops
+Orchestrate multi-step processes across services.
+- Example: `customer-onboarding` skill handles account → payment → welcome sequence
+- Uses: step-by-step workflows, validation gates, service integration
 
 ### Category 3: MCP Enhancement
-**Sentry Code Review Skill** — Analyzes GitHub PRs using Sentry's error monitoring
-- Uses: coordinates multiple MCP calls, embeds domain expertise
-- Tech: MCP server + skill knowledge layer
-
-## Getting Help
-
-- **Questions about specific features?** Check [Reference](reference/)
-- **Want to understand design decisions?** Read [Explanations](explanation/)
-- **Stuck on implementation?** See [How-To Guides](how-to/)
-- **Something's broken?** Check [Troubleshooting](troubleshooting/)
+Add expertise on top of existing MCP server access.
+- Example: `sentry-code-review` skill analyzes PR errors with domain knowledge
+- Uses: MCP calls + skill-embedded best practices
 
 ## Contributing
 
-Skills improve through community feedback. If you:
-- Build an effective skill pattern
-- Discover a new use case
-- Find a solution to a common problem
+To contribute to this repository:
 
-Please consider sharing it. See individual sections for contribution guidelines.
+1. **Build effective skills** — Create skills that solve real problems
+2. **Improve documentation** — Fix typos, clarify concepts, add examples
+3. **Share patterns** — If you discover a useful skill pattern, document it
+4. **Validate submissions** — Use `skills-ref validate` to check your work
+
+See [AGENTS.md](../AGENTS.md) for guidelines on stripping sensitive information before public contribution.
+
+## Getting Help
+
+- **Need a specific field?** → [Reference: YAML Frontmatter](reference/frontmatter.md)
+- **Want to understand design decisions?** → [Explanations](explanation/)
+- **Stuck on a task?** → [How-To Guides](how-to/)
+- **Something's broken?** → [Troubleshooting](troubleshooting/)
+
+## Related Resources
+
+- **Official Specification**: https://agentskills.io/specification
+- **Reference Library (skills-ref)**: https://github.com/agentskills/agentskills/tree/main/skills-ref
+- **Example Skills**: https://github.com/anthropics/skills
+- **Agent Skills Homepage**: https://agentskills.io
 
 ---
 
-**Last Updated**: 2026-03-09  
-**Based on**: The Complete Guide to Building Skills for Claude  
-**Framework**: Diataxis (How-To, Reference, Explanation, Troubleshooting)
+**Last Updated**: 2026-03-14  
+**Framework**: Diataxis + Agent Skills Specification  
+**Aligned with**: https://agentskills.io (Agent Skills v1.0)

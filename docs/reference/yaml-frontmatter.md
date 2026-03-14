@@ -1,175 +1,248 @@
-# YAML Frontmatter Specification
+# Reference: YAML Frontmatter Specification
 
-**Quick ref**: Minimal template and complete field reference
+This document provides the complete specification for `SKILL.md` frontmatter fields, aligned with the official [Agent Skills specification](https://agentskills.io/specification).
 
 ## Minimal Required Frontmatter
+
+Every skill requires only two fields:
 
 ```yaml
 ---
 name: skill-name
-description: What it does. Use when user [trigger phrases].
+description: What it does. Use when [trigger conditions].
 ---
 ```
 
-That's all you absolutely need. Everything else is optional.
+Everything else is optional.
 
-## Complete Reference
+## Complete Frontmatter Reference
 
-### `name` (required)
-The unique identifier for your skill.
+### Required Fields
 
-**Rules**:
-- kebab-case ONLY: `my-skill-name`
-- No spaces, capitals, or underscores
-- Must match folder name exactly
-- 3-50 characters recommended
+#### `name`
+**Type:** String  
+**Min:** 1 character  
+**Max:** 64 characters  
+**Pattern:** Lowercase alphanumeric + hyphens only
 
+**Rules:**
+- Must contain only `a-z`, `0-9`, and hyphens (`-`)
+- Cannot start or end with a hyphen
+- Cannot contain consecutive hyphens (`--`)
+- Must match parent directory name exactly
+- Must not conflict with reserved names
+
+**Examples:**
 ```yaml
----
-name: sprint-planner
----
+name: pdf-processing        ✓ Valid
+name: data-analysis         ✓ Valid
+name: github-cli-wrapper    ✓ Valid
+name: PDF-Processing        ✗ Uppercase forbidden
+name: -pdf                  ✗ Cannot start with hyphen
+name: pdf--processing       ✗ No consecutive hyphens
+name: pdf_processing        ✗ Underscores not allowed
+name: claude                ✗ Reserved name
 ```
 
-### `description` (required)
-Tells Claude when to load your skill. This appears in system prompt.
+#### `description`
+**Type:** String  
+**Min:** 1 character  
+**Max:** 1024 characters  
+**Required content:** Both capability and trigger conditions
 
-**Rules**:
-- Under 1024 characters
-- MUST include BOTH:
-  1. What the skill does (benefit statement)
-  2. When to use it (trigger phrases)
-- No XML tags (< or >)
+The description is critical — agents use it to decide whether a skill is relevant to the current task.
 
-**Good examples**:
+**Must include:**
+1. **What the skill does** — The capability or outcome
+2. **When to use it** — Trigger phrases or conditions
+
+**Effective descriptions:**
 ```yaml
-# Clear triggers, specific use case
-description: Plans project sprints with task creation and prioritization. Use when user mentions "sprint planning", "plan this sprint", or asks to "create sprint tasks".
+description: Extracts text and tables from PDF files, fills PDF forms, and merges multiple PDFs. Use when working with PDF documents or when the user mentions PDFs, forms, or document extraction.
 
-# File-type specific
-description: Analyzes Figma design files and generates developer handoff documentation. Use when user uploads .fig files, asks for "design specs", "component documentation", or "design-to-code handoff".
+description: Generates comprehensive unit tests for Python functions using pytest. Use when implementing new functions, improving test coverage, or when the user asks to "write tests" or "add test cases".
 
-# Multi-service workflow
-description: Manages Linear project workflows including sprint planning, task creation, and status tracking. Use when user mentions "sprint", "Linear tasks", "project planning", or asks to "create tickets".
+description: Analyzes GitHub pull requests for code quality issues, performance problems, and style violations. Use when reviewing PRs, checking for bugs, or when the user mentions "code review" or "review this PR".
 ```
 
-**Bad examples**:
+**Poor descriptions:**
 ```yaml
-# Too vague
-description: Helps with projects.
-
-# Missing triggers
-description: Creates sophisticated multi-page documentation systems.
-
-# Missing benefit statement
-description: Implements the Project entity model with hierarchical relationships.
-
-# No user language
-description: Calls the ProjectHub MCP server with proper parameters.
+description: Helps with PDFs.                           # Too vague
+description: Extracts PDF text.                          # No trigger conditions
+description: For testing Python.                         # Vague triggers
+description: Uses pdfplumber library.                    # Technical detail, not benefit
 ```
 
-### `license` (optional)
-Software license for open-source skills.
+**Best practices:**
+- Be specific about what the skill does
+- Include user language and phrases they would actually say
+- Clarify the trigger with "Use when..."
+- Avoid implementation details (library names, API details)
 
-**Common values**:
-- `MIT` — Most permissive, widely used
-- `Apache-2.0` — Business-friendly with patent protection
-- `GPL-3.0` — Requires derivative works to be open-source
-- `CC0` — Public domain
+### Optional Fields
 
+#### `license`
+**Type:** String  
+**Recommended length:** 1–50 characters  
+**Format:** License name or reference to license file
+
+Specifies the open-source or proprietary license under which the skill is distributed.
+
+**Common values:**
 ```yaml
 license: MIT
+license: Apache-2.0
+license: CC-BY-4.0
+license: Proprietary. See LICENSE.txt for terms.
 ```
 
-### `compatibility` (optional)
-Environment or dependency requirements.
+**When to include:**
+- Public or open-source skills
+- Skills shared with your organization
+- Skills distributed through skill repositories
 
-**Use for**:
-- Required MCP servers
-- System packages needed
-- Version requirements
-- Platform limitations
+#### `compatibility`
+**Type:** String  
+**Max:** 500 characters  
+**Format:** Plain text describing requirements
 
-**Format**: 1-500 characters, plain text
+Indicates environment requirements or constraints. Include this only if your skill has specific dependencies.
 
+**Use for:**
+- Required system packages (git, docker, jq)
+- Python/Node/Go/Rust version requirements
+- Network access needs
+- API or library dependencies
+- Product-specific requirements
+
+**Examples:**
 ```yaml
-# Simple requirement
-compatibility: Requires ProjectHub MCP server
+compatibility: Designed for Claude Code (or similar products)
 
-# Multiple requirements  
-compatibility: Requires Python 3.10+. MCP servers needed: Linear, Figma, GitHub.
+compatibility: Requires git, docker, and jq. Needs access to the internet.
 
-# Platform limitation
-compatibility: Works with Claude.ai and Claude Code. Requires Code Execution Tool beta for API usage.
+compatibility: Requires Python 3.11+ and the pdfplumber library.
+
+compatibility: Works with Terraform Cloud API (requires TFC_TOKEN environment variable).
+
+compatibility: Requires access to GitHub API. GitHub CLI recommended for local use.
 ```
 
-### `metadata` (optional)
-Custom key-value pairs for your skill.
+**When to omit:** If your skill has no special requirements, omit this field.
 
-**Common keys**:
-- `author` — Creator name
-- `version` — Semantic version (1.0.0)
-- `mcp-server` — Primary MCP dependency
-- `category` — Type (e.g., "workflow", "document", "analysis")
-- `last-updated` — ISO date
+#### `metadata`
+**Type:** Map (string keys → string values)  
+**No required keys** — Define your own conventions
 
+Custom key-value pairs for client-specific, organizational, or application-specific metadata. The specification does not mandate any particular keys.
+
+**Common conventions:**
+- `author` — Creator or team name
+- `version` — Semantic version (e.g., "1.0.0")
+- `category` — Skill type (e.g., "workflow", "document", "analysis")
+- `mcp-server` — Primary MCP server dependency
+- `last-updated` — ISO 8601 date
+- `team` — Responsible team or group
+
+**Example:**
 ```yaml
 metadata:
-  author: Your Name
-  version: 1.0.0
-  mcp-server: projecthub
-  category: workflow
-  last-updated: 2026-03-09
+  author: Your Organization
+  version: "1.0.0"
+  category: data-processing
+  mcp-server: github
+  last-updated: 2026-03-14
+  team: platform-engineering
 ```
+
+#### `allowed-tools`
+**Type:** String (space-delimited list)  
+**Status:** Experimental  
+**Format:** `ToolName(pattern:pattern)` separated by spaces
+
+Pre-approves tools the skill is allowed to execute. This is a forward-looking field for implementing capability-based access control.
+
+**Example:**
+```yaml
+allowed-tools: Bash(git:*) Bash(jq:*) Read
+```
+
+**Note:** Support varies between agent implementations. Do not rely on this for security in production systems.
 
 ## Complete Example
 
 ```yaml
 ---
 name: customer-onboarding
-description: Manages complete customer onboarding including account creation, payment setup, and welcome emails. Use when user says "onboard new customer", "set up subscription", or "create PayFlow account".
-license: MIT
-compatibility: Requires PayFlow MCP server. Works with Stripe for payment processing.
+description: Manages complete customer onboarding including account creation, payment setup, and welcome emails. Use when user says "onboard new customer", "set up subscription", or "create account".
+license: Apache-2.0
+compatibility: Requires PayFlow MCP server for payment processing.
 metadata:
   author: Your Company
-  version: 2.1.0
-  mcp-server: payflow
+  version: "2.1.0"
   category: workflow
-  last-updated: 2026-03-09
+  mcp-server: payflow
+  last-updated: 2026-03-14
+  team: platform-engineering
+allowed-tools: Bash(curl:*) Read Write
 ---
 
-# Rest of your SKILL.md content goes here...
+# Skill content goes here...
 ```
 
 ## Validation Rules
 
-### Forbidden Content
-- ❌ XML angle brackets: `< >` (security)
-- ❌ Skills named "claude" or "anthropic" (reserved)
-- ❌ Special characters outside kebab-case
+**Format Requirements:**
+- ✓ Must start with `---` (three dashes on a line by itself)
+- ✓ Must end with `---` (three dashes on a line by itself)
+- ✓ Valid YAML syntax
+- ✓ UTF-8 encoding
 
-### Format Requirements
-- ❌ Must start with `---` (three dashes)
-- ❌ Must end with `---` (three dashes)
-- ❌ Valid YAML syntax
-- ❌ UTF-8 encoding
+**Naming Requirements:**
+- ✓ `name` follows kebab-case rules (no spaces, capitals, underscores)
+- ✓ `name` matches parent directory name
+- ✓ Filename is exactly `SKILL.md` (case-sensitive)
 
-### Case Sensitivity
-- ❌ `SKILL.md` ❌ → must be exactly `SKILL.md`
-- ❌ `skill.md` ❌
-- ✅ `SKILL.md` ✅
+**Content Requirements:**
+- ✓ Both required fields present (`name` and `description`)
+- ✓ No forbidden characters (e.g., `<` or `>` in XML context)
+- ✓ Description is non-empty and under 1024 characters
 
-## Quick Troubleshooting
+## Validation Tools
 
-| Problem | Solution |
-|---------|----------|
-| "Invalid frontmatter" | Check YAML syntax: proper `---` delimiters, colons after field names |
-| "Invalid skill name" | Use kebab-case only (my-skill, not MySkill or my_skill) |
-| "Skill won't upload" | Verify filename is exactly `SKILL.md` (case-sensitive) |
-| "Skill doesn't trigger" | Rewrite description with clearer trigger phrases users would actually say |
-| "Triggers too often" | Add negative example ("Do NOT use for...") or be more specific |
+Use the `skills-ref` tool to validate frontmatter:
 
-## See Also
+```bash
+# Validate a skill
+skills-ref validate path/to/skill
 
-- [Create your first skill](../how-to/create-first-skill.md) — Tutorial with examples
-- [Skill anatomy](./skill-anatomy.md) — Full SKILL.md structure reference
-- [Core principles](../explanation/core-principles.md) — Why progressive disclosure matters
+# View parsed properties
+skills-ref read-properties path/to/skill
+
+# Generate XML for agent prompt
+skills-ref to-prompt path/to/skill
+```
+
+Installation (from [agentskills/skills-ref](https://github.com/agentskills/agentskills/tree/main/skills-ref)):
+
+```bash
+pip install -e skills-ref/
+```
+
+## Troubleshooting
+
+| Problem | Cause | Solution |
+|---------|-------|----------|
+| "Invalid frontmatter" | YAML syntax error | Check `---` delimiters, colons after field names |
+| "Invalid name: contains uppercase" | Name formatting | Use kebab-case: `my-skill` not `MySkill` |
+| "Name does not match directory" | Directory mismatch | Rename directory to match `name` field |
+| "Skill won't upload" | Filename wrong | File must be exactly `SKILL.md` (case-sensitive) |
+| "Skill doesn't activate" | Poor description | Add clearer trigger phrases; test with `skills-ref read-properties` |
+| "Triggers too often" | Vague description | Be more specific; mention when NOT to use |
+
+## Related Resources
+
+- **[Official Specification](https://agentskills.io/specification)** — Complete reference
+- **[Frontmatter Reference](./frontmatter.md)** — Detailed field explanations
+- **[Best Practices](../how-to/best-practices.md)** — How-to guide for effective skills
+- **[Optimizing Descriptions](https://agentskills.io/skill-creation/optimizing-descriptions)** — Official guidance on description writing
