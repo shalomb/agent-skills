@@ -1,9 +1,9 @@
 ---
-name: teams-transcript-processor
-description: Process Microsoft Teams meeting transcripts (VTT format) to extract meeting minutes, action items, and decisions. Use when given Teams transcript files or asked to create meeting documentation, extract action items, or record decisions.
+name: meeting-notes
+description: Process meeting transcripts (VTT format) to extract meeting minutes, action items, and decisions. Use when given transcript files or asked to create meeting documentation, extract action items, or record decisions.
 ---
 
-# Teams Transcript Processor Skill
+# Meeting Notes Skill
 
 Process Microsoft Teams meeting transcripts (VTT format) to extract meeting minutes, action items, and decisions. Optionally update GitHub issues, Jira tickets, and other systems with findings.
 
