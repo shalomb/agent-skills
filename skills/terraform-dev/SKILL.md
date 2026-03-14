@@ -1,6 +1,6 @@
 ---
 name: terraform-dev
-description: Watch terraform files for changes and automatically run validation, formatting, linting, security scanning, and plan commands. Enables continuous validation during terraform development with configurable workflows via .tf-watcher.rc configuration file.
+description: Watch terraform files for changes and automatically run validation, formatting, linting, security scanning, and plan commands. Enables continuous validation during terraform development with configurable workflows via .tf-watcher.rc configuration file. Use when developing Terraform configurations and need continuous validation.
 ---
 
 # Terraform Development Workflow Skill
