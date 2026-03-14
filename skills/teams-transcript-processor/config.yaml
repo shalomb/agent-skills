@@ -1,0 +1,84 @@
+# Teams Transcript Processor Configuration
+
+# Output format preference
+output_format: markdown  # markdown, json, both
+
+# Auto-detect systems to update (prompt for each, vs. ask once for all)
+auto_detect_systems: false
+
+# Confidence thresholds (0.0 to 1.0)
+# Decisions below this threshold will be marked as LOW confidence
+decision_confidence_threshold: 0.6
+
+# Action clarity threshold
+# Actions below this threshold will be marked as unclear and flagged
+action_clarity_threshold: 0.5
+
+# Time zone for relative dates (e.g., "Friday" -> actual date)
+timezone: UTC
+
+# Discussion topic grouping (auto-detect topic boundaries?)
+auto_group_topics: true
+
+# Integrations (enable/disable)
+integrations:
+  github:
+    enabled: true
+    org: oneTakeda
+    auto_link_issues: true  # Suggest linking to existing issues
+  
+  jira:
+    enabled: true
+    instance: takeda.atlassian.net
+    project: DAD
+    auto_create_subtasks: true  # Create subtasks for each action item
+  
+  slack:
+    enabled: true
+    workspace: takeda
+    workspace_id: T12345
+    default_channel: architecture
+    thread_replies: true  # Post actions/decisions as thread replies
+  
+  email:
+    enabled: false
+    recipients: []
+    template: html  # html, markdown
+
+# Output directory for saved minutes
+output_directory: ~/shalomb/meeting-minutes/
+
+# File naming pattern (supports {date}, {title}, {attendees})
+output_filename_pattern: "minutes-{date}-{title}.md"
+
+# Keep processed transcripts for reference
+keep_transcripts: true
+transcript_archive: ~/shalomb/meeting-transcripts/
+
+# NLP Model for analysis
+analysis_model: claude-3-5-sonnet  # claude-3-5-sonnet, gpt-4, claude-opus
+
+# Verbose logging
+verbose: false
+debug: false
+
+# Default action item priority if not specified
+default_action_priority: MEDIUM
+
+# Default action item status
+default_action_status: "Not Started"
+
+# Meeting template (optional pre-filled sections)
+meeting_template:
+  include_attendees_list: true
+  include_participant_stats: true
+  include_discussion_summary: true
+  include_decision_log: true
+  include_action_items_table: true
+  include_blockers_section: true
+
+# Notification preferences
+notifications:
+  on_completion: true  # Notify user when processing complete
+  on_actions_created: true  # Notify action item owners
+  on_blockers_detected: true  # Alert on critical blockers
