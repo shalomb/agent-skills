@@ -1,324 +1,251 @@
-# Agent Skills: Build, Share, and Deploy AI Skills at Scale
+# Agent Skills Collection
 
-A comprehensive framework for creating reusable AI skills that work across Claude.ai, Claude Code, and the API. Skills embed expertise, workflows, and best practices so Claude can accomplish complex tasks consistently.
+A personal collection of 27 reusable AI agent skills for various task domains. These skills follow the [Agent Skills specification](https://agentskills.io/specification) and work across multiple agent platforms.
 
-**📚 New to skills?** Start with the [documentation system](docs/README.md) (Diataxis-framework organized).
-
-**⚡ Already building?** Jump to [Create Your First Skill](docs/how-to/create-first-skill.md) (15-30 min).
-
-## What Are Skills?
-
-A skill is a folder containing:
-- **SKILL.md** (required): Instructions in Markdown with YAML frontmatter
-- **scripts/** (optional): Executable code (Python, Bash, etc.)
-- **references/** (optional): Documentation and templates
-- **assets/** (optional): Branding, icons, templates
-
-### Three Core Principles
-
-1. **Progressive Disclosure** — Load only what's needed, when it's needed
-2. **Composability** — Skills work alongside each other without conflicts
-3. **Portability** — Same skill works on Claude.ai, Code, and API
-
-### Real-World Examples
-
-**Pattern 1: Document & Asset Creation**
-- Create polished documents, designs, code with consistent quality
-- Example: `frontend-design` skill generates production-grade UI code
-
-**Pattern 2: Workflow Automation**
-- Orchestrate multi-step processes across services
-- Example: `customer-onboarding` skill handles account → payment → welcome
-
-**Pattern 3: MCP Enhancement**
-- Add expertise on top of existing MCP server access
-- Example: `sentry-code-review` skill analyzes errors with best practices
+**What are skills?** Extensions that teach AI agents specialized knowledge, workflows, and best practices. A skill is a folder containing a `SKILL.md` file (instructions + metadata) and optional supporting files (scripts, references, assets).
 
 ## Quick Start
 
-### Build Your First Skill (15-30 minutes)
+### Install Skills to Your Agent
 
-1. **Create the folder**
-   ```bash
-   mkdir my-skill && cd my-skill
-   touch SKILL.md
-   mkdir scripts references assets
-   ```
+Choose your agent platform and copy skills to the appropriate directory:
 
-2. **Write SKILL.md**
-   ```yaml
-   ---
-   name: my-skill-name
-   description: What it does. Use when user [trigger phrases].
-   ---
-   
-   # My Skill
-   
-   ## Instructions
-   
-   ### Step 1: First Major Step
-   [Clear explanation]
-   
-   ### Step 2: Second Major Step
-   [Clear explanation]
-   ```
+**Claude Code**
+```bash
+# Copy individual skills to Claude Code directory
+cp -r skills/pdf ~/.claude/skills/
+cp -r skills/github-cli ~/.claude/skills/
+cp -r skills/jira ~/.claude/skills/
 
-3. **Test in Claude.ai**
-   - Settings → Skills → Upload → Select SKILL.md
-   - Ask Claude something that triggers your skill
-   - Iterate based on feedback
-
-4. **Deploy**
-   - Push to GitHub
-   - Share the folder
-   - Use in Claude.ai, Code, or API
-
-### Complete Tutorial
-See **[How to Create Your First Skill](docs/how-to/create-first-skill.md)** for step-by-step guide with examples.
-
-## Documentation Structure
-
-All docs follow the **Diataxis framework** for clarity:
-
-```
-docs/
-├── README.md                    ← Start here
-├── how-to/                      (Task-focused, step-by-step)
-│   ├── create-first-skill.md   ✅ Complete
-│   ├── structure-skill.md       (In progress)
-│   └── ...                      (5 more guides)
-├── reference/                   (Technical specs, lookup)
-│   ├── yaml-frontmatter.md     ✅ Complete
-│   ├── skill-anatomy.md         (In progress)
-│   └── ...                      (4 more specs)
-├── explanation/                 (Conceptual, why)
-│   ├── core-principles.md       ✅ Complete
-│   ├── architecture-patterns.md ✅ Complete
-│   └── ...                      (3 more explanations)
-└── troubleshooting/             (Problems, solutions)
-    └── ...                      (4 guides)
+# Or copy all skills at once
+cp -r skills/* ~/.claude/skills/
 ```
 
-### Documentation by Learning Style
-
-**I want to BUILD something**
-→ [How-To Guides](docs/how-to/) — Step-by-step tasks
-
-**I want to UNDERSTAND the design**
-→ [Explanations](docs/explanation/) — Why skills work this way
-
-**I need to LOOK UP something**
-→ [Reference](docs/reference/) — Specifications and fields
-
-**Something's BROKEN**
-→ [Troubleshooting](docs/troubleshooting/) — Problems and solutions
-
-## Features
-
-### ✅ Works Everywhere
-- Claude.ai (web interface)
-- Claude Code (IDE integration)
-- Claude API (programmatic)
-- Same skill, no modifications needed
-
-### ✅ Progressive Disclosure
-- Frontmatter tells Claude when to load
-- Full instructions load when relevant
-- References load on-demand
-- Minimal token usage
-
-### ✅ Composability
-- Multiple skills active simultaneously
-- Skills inform each other
-- No conflicts or interference
-- Clear handoff patterns
-
-### ✅ Production-Ready
-- Error handling and recovery
-- Validation at each step
-- Real-world examples
-- Measurement framework
-
-## Real Skill Examples
-
-### 1. Frontend Design Skill
-Creates production-grade web components following brand guidelines.
-
-```yaml
----
-name: frontend-design
-description: Creates responsive web components and designs. Use for building UI, pages, components, or design systems.
----
+**Copilot CLI**
+```bash
+cp -r skills/* ~/.copilot/skills/
 ```
 
-**Capabilities**:
-- Generate HTML/CSS from requirements
-- Follow brand style guides
-- Validate accessibility (WCAG AA)
-- Test responsive design
+**Pi (Anthropic's coding agent)**
+```bash
+cp -r skills/* ~/.pi/agent/skills/
+```
 
-### 2. Customer Onboarding Skill
-Automates multi-step account setup across services.
+**Kiro**
+```bash
+cp -r skills/* ~/.kiro/skills/
+```
 
-**Workflow**:
-1. Create account
-2. Setup payment method
-3. Create subscription
-4. Send welcome email
+**Gemini Code Assist**
+```bash
+cp -r skills/* ~/.gemini/skills/
+```
 
-**Integrations**: Works with PayFlow, Stripe, Sendgrid via MCP
+### Verify Installation
 
-### 3. Code Review Skill
-Analyzes GitHub PRs with Sentry error context.
+After copying skills, restart your agent and try triggering one:
 
-**Capabilities**:
-- Fetch PR details and affected code
-- Cross-reference with Sentry errors
-- Identify risky changes
-- Provide targeted fixes
+```
+# In Claude Code or other agent interface:
+/pdf
+# Then ask: "Extract text from this PDF"
 
-## Architecture Patterns
+/github-cli
+# Then ask: "List all open PRs in this repo"
+```
 
-### Choose Your Pattern
+## Available Skills (27 total)
 
-| Pattern | Use Case | Example |
-|---------|----------|---------|
-| **Document Creation** | Polished output (docs, designs, code) | Frontend design, docx writer |
-| **Workflow Automation** | Multi-step processes | Customer onboarding, project setup |
-| **MCP Enhancement** | Expertise layer | Code review, compliance checker |
+### Quality & Analysis
+- **adzic-index** - Evaluate BDD/Gherkin feature file quality (Specification by Example)
+- **farley-index** - Evaluate test suite quality (Dave Farley's properties)
+- **lessons-learned** - Extract engineering lessons from recent code changes
+- **pr-review** - Automated GitHub PR review and analysis
 
-See **[Architecture Patterns](docs/explanation/architecture-patterns.md)** for detailed guide on each pattern.
+### Document Processing
+- **pdf** - Extract text, merge, split, fill forms, OCR on PDFs
+- **docx** - Create, read, edit Word documents
+- **pptx** - Process PowerPoint presentations
+- **xlsx** - Process spreadsheets (Excel, CSV, TSV)
 
-## Key Files
+### Development Tools
+- **github-cli** - Query/manage GitHub repos, issues, PRs, workflows via `gh` CLI
+- **copilot-cli** - Execute GitHub Copilot CLI for AI-powered code generation
+- **terraform-dev** - Watch & validate Terraform files continuously
+- **justfile-assistant** - Create well-formed justfiles with test patterns
 
-### SKILL.md Format
+### Infrastructure & Cloud
+- **tfc-api** - Query Terraform Cloud workspaces, runs, plans, logs
+- **harness-idp** - Execute Harness IDP templates and discover 1685+ APIs
+- **c4-architecture** - Generate C4 model architecture diagrams
 
-```yaml
+### Project Management
+- **jira** - Query and manage Jira issues, projects, entities
+- **targetprocess** - Query TargetProcess/Apptio work items
+
+### Agent Personas
+- **bart** (Quality Agent) - Pessimism, review, verification, bug-finding
+- **lisa** (Planning Agent) - Logic, structure, architecture, task breakdown
+- **lovejoy** (Release Agent) - Ceremony, shipping, learning, communication
+- **marge** (Product Agent) - Empathy, user needs, product definition
+- **ralph** (Build Agent) - TDD, optimism, implementation, code
+
+### Utilities & Helpers
+- **humanizer** - Remove AI writing patterns, make text sound natural
+- **impersonate** - Discover and assume agent roles from `.github/agents/*.md`
+- **tmux** - Execute commands in tmux panes
+- **agent-md-refactor** - Refactor bloated agent instruction files
+- **teams-transcript-processor** - Extract meeting minutes from Teams transcripts
+
+## Testing Skills
+
+### 1. Unit Test (SKILL.md Format)
+
+Every skill's `SKILL.md` should validate:
+```bash
+# Using the official validator (requires skills-ref)
+pip install git+https://github.com/agentskills/agentskills.git#subdirectory=skills-ref
+
+skills-ref validate skills/pdf/
+skills-ref validate skills/github-cli/
+```
+
+All skills in this repo pass validation ✓
+
+### 2. Integration Test (Try the Skill)
+
+Copy a skill to your agent directory and test it:
+
+```bash
+# For PDF skill
+cp -r skills/pdf ~/.claude/skills/
+# Then in Claude Code:
+# /pdf
+# "Extract text from document.pdf"
+
+# For GitHub CLI skill
+cp -r skills/github-cli ~/.claude/skills/
+# Then in Claude Code:
+# /github-cli
+# "List all PRs in this repo with status"
+```
+
+### 3. Validation Checklist
+
+Before using a skill, verify:
+- [ ] Skill has proper `SKILL.md` with frontmatter (`name`, `description`)
+- [ ] `description` includes "Use when..." trigger conditions
+- [ ] Directory structure follows standard (SKILL.md + optional scripts/, references/, assets/)
+- [ ] Scripts (if any) are executable and documented
+- [ ] No hardcoded credentials or sensitive data
+
+## Skill Structure
+
+Each skill follows this standard structure:
+
+```
+skill-name/
+├── SKILL.md              # Required: instructions + YAML frontmatter
+├── scripts/              # Optional: executable code (Python, Bash, etc.)
+│   ├── script1.py
+│   └── README.md (if complex)
+├── references/           # Optional: detailed docs (loaded on-demand)
+│   ├── api-reference.md
+│   ├── examples.md
+│   └── troubleshooting.md
+└── assets/               # Optional: templates, configs, images
+    ├── template.html
+    ├── config.json
+    └── images/
+```
+
+**Progressive Disclosure Pattern**:
+- `SKILL.md` frontmatter: ~100 tokens (discovery)
+- `SKILL.md` body: < 5000 tokens (activation)
+- `references/`: loaded only when needed
+
+## Developing New Skills
+
+For guidance on creating your own skills, see [AGENTS.md](AGENTS.md) and the documentation:
+
+- **[How to Create Your First Skill](docs/how-to/create-first-skill.md)** - Step-by-step tutorial
+- **[Best Practices](docs/how-to/best-practices.md)** - Writing effective skills
+- **[Reference: SKILL.md Frontmatter](docs/reference/frontmatter.md)** - Field specifications
+- **[Architecture Patterns](docs/explanation/architecture-patterns.md)** - Three skill design patterns
+
+### Quick Example
+
+Create a new skill:
+```bash
+mkdir skills/my-skill
+cat > skills/my-skill/SKILL.md << 'EOF'
 ---
-name: skill-name                    # kebab-case, matches folder
-description: What it does. Use when [trigger phrases].
-license: MIT                        # Optional
-compatibility: Requires Python 3.10 # Optional
-metadata:                           # Optional
-  author: Your Name
-  version: 1.0.0
+name: my-skill
+description: Does something useful. Use when you need to [specific task].
 ---
 
-# Skill Name
+# My Skill
 
-## Instructions
-### Step 1: [Major Step]
-...
+## What This Skill Does
+[Explanation]
+
+## How to Use It
+1. [Step 1]
+2. [Step 2]
 
 ## Examples
-### [Real-world scenario]
-...
+[Real examples]
 
 ## Error Handling
-### [Common Error]
-...
+[Common issues and fixes]
+EOF
 ```
 
-**Key Rules**:
-- `name` must be kebab-case
-- `description` must include trigger phrases
-- Start with `---` and end with `---`
-- Use standard Markdown below frontmatter
+Test it:
+```bash
+cp -r skills/my-skill ~/.claude/skills/
+# Try it in Claude Code
+```
 
-See **[YAML Frontmatter Spec](docs/reference/yaml-frontmatter.md)** for complete reference.
+## Documentation
 
-## Getting Help
+- **[docs/README.md](docs/README.md)** - Documentation overview
+- **[docs/how-to/](docs/how-to/)** - Task-oriented guides
+- **[docs/reference/](docs/reference/)** - Technical specifications
+- **[docs/explanation/](docs/explanation/)** - Design principles
+- **[AGENTS.md](AGENTS.md)** - Guidelines for agents working with this repo
 
-### Common Questions
+## Standards
 
-**Q: What's the difference between skills and MCP?**
-A: MCP provides tool access (what Claude *can* do). Skills provide methodology (how Claude *should* do it). Together they're powerful.
-
-**Q: Can I use Python in my skill?**
-A: Yes! Put scripts in `scripts/` folder. They'll run in Claude Code and API (Code Execution Tool required).
-
-**Q: How do I know my skill is working?**
-A: Use the success criteria framework: Does it trigger when it should? Complete workflows without user correction? Produce consistent results?
-
-**Q: Can skills call other skills?**
-A: Not directly, but they can recommend each other or assume the other skill is available.
-
-### Get More Help
-
-- **[Common Issues](docs/troubleshooting/common-issues.md)** — Typical problems + fixes (coming soon)
-- **[Antipatterns](docs/troubleshooting/antipatterns.md)** — What NOT to do (coming soon)
-- **[Core Principles](docs/explanation/core-principles.md)** — Why skills work this way
-
-## Distribution
-
-### Share Your Skill
-
-1. **Host on GitHub**
-   - Public repo with skill folder
-   - Clear README (separate from SKILL.md)
-   - Example usage and screenshots
-
-2. **Document in MCP Repo** (if MCP)
-   - Link to skill GitHub repo
-   - Explain why both together are valuable
-   - Provide quick-start guide
-
-3. **Use in Claude**
-   - Upload to Claude.ai
-   - Share folder with team
-   - Deploy via API
-
-## Integration with Harness IDP
-
-This repository includes the **harness-idp skill** for Infrastructure as Code workflows:
-
-- Provision Harness workspaces
-- Execute pipelines
-- Self-discover 1685 Harness APIs via OpenAPI spec
-- Terraform Cloud integration
-
-See **[harness-idp skill docs](skills/harness-idp/README.md)** for details.
-
-## Contributing
-
-### Share Your Skills
-Build something useful? Share it:
-- Create a GitHub repo for your skill
-- Add the `agent-skills` topic
-- Link in discussions/issues
-
-### Improve Documentation
-See issues tagged `documentation` — help us complete scaffolded guides.
-
-### Report Issues
-Found a bug or unclear docs? Open an issue with:
-- What you were trying to do
-- What happened
-- What you expected
-
-## Statistics
-
-- **Total skills framework**: ✅ Production-ready
-- **Documentation**: 4/20 sections complete (21%)
-- **Example skills**: 3+ documented patterns
-- **API coverage**: 1685 Harness endpoints discoverable
-- **Time to first skill**: 15-30 minutes
+This collection follows:
+- [Agent Skills Specification](https://agentskills.io/specification)
+- [Diataxis Documentation Framework](https://diataxis.fr/) (How-To, Reference, Explanation, Troubleshooting)
+- Progressive Disclosure Pattern (load only what's needed, when needed)
+- Clear trigger conditions in all skill descriptions
 
 ## License
 
-MIT — Use skills however you want. Share, modify, build on them.
+MIT - Use, modify, share freely. See [LICENSE](LICENSE) for details.
 
-## Learn More
+## Contributing
 
-- **[Agent Skills Documentation](docs/README.md)** — Full learning system
-- **[Create Your First Skill](docs/how-to/create-first-skill.md)** — Tutorial (15-30 min)
-- **[Architecture Patterns](docs/explanation/architecture-patterns.md)** — Choose your pattern
-- **[API Reference](docs/reference/yaml-frontmatter.md)** — Field specifications
+Found a bug? Want to improve a skill? Have a new skill to add?
+
+1. Check [AGENTS.md](AGENTS.md) for guidelines
+2. Make changes and validate (see Testing section above)
+3. Commit with clear messages
+4. Push and create a PR
+
+## References
+
+- **[Official Agent Skills Specification](https://agentskills.io/specification)** - Format and standards
+- **[Anthropic's Skill Creator](https://github.com/anthropics/skills/tree/main/skills/skill-creator)** - Tool for building skills
+- **[skills-ref Validator](https://github.com/agentskills/agentskills/tree/main/skills-ref)** - Validation tool and CLI
 
 ---
 
-**Ready?** Start with **[Create Your First Skill](docs/how-to/create-first-skill.md)** or browse **[Documentation](docs/README.md)**.
+**Want to use these skills?** Copy them to your agent's skills directory (see Quick Start above).
 
-**Questions?** Check **[Common Issues](docs/troubleshooting/common-issues.md)** or open an issue.
+**Want to build your own?** Start with the [How to Create Your First Skill](docs/how-to/create-first-skill.md) guide.
 
-**Building something cool?** Share it! Tag with `agent-skills` on GitHub.
+**Questions?** Check the [documentation](docs/README.md) or [AGENTS.md](AGENTS.md).
