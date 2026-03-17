@@ -27,6 +27,13 @@ This skill has a broad command surface and supports powerful API interactions. *
    - Advanced REST API calls via `gh api`
    - Complex GraphQL queries and mutations via `gh api graphql`
    - **Issue Hierarchy (Parent/Child)**: See `references/issue-hierarchy.guide.md`
+   - **Team Management Operations**: See `references/github-team-management.md` for adding teams to repositories, managing permissions, and handling repository redirects
    - Common developer workflow examples
 
-3. Whenever possible, use built-in `gh` commands rather than writing raw `curl` commands or custom Python scripts for GitHub integration.
+3. **Team Management Best Practices**:
+   - Always verify user has admin/maintain permissions before adding teams to repositories
+   - Handle repository redirects (renamed repos) gracefully
+   - Test operations on a single repository before bulk operations
+   - Use appropriate permission levels (prefer `push` for most teams)
+
+4. Whenever possible, use built-in `gh` commands rather than writing raw `curl` commands or custom Python scripts for GitHub integration.

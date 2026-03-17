@@ -1,6 +1,6 @@
 ---
 name: targetprocess
-description: Query and manage TargetProcess/Apptio entities (user stories, bugs, tasks, features) via tpcli. Supports discovery, filtering, pagination, and entity operations. Use when working with TargetProcess work items, managing project entities, or querying issue trackers.
+description: Query and manage TargetProcess/Apptio entities (user stories, bugs, tasks, features) via tpcli. Supports discovery, filtering, pagination, entity operations, and complex team-based PI planning scenarios. Use when working with TargetProcess work items, managing project entities, or querying issue trackers for team health and status.
 ---
 
 # TargetProcess (tpcli) Skill
@@ -12,6 +12,26 @@ Query and manage TargetProcess/Apptio work items and planning data via `tpcli`.
 - `tpcli` installed and on `$PATH`
 - API authentication configured (token + URL via env, config, or flags)
 - Read: `references/targetprocess-quick-ref.md` for command patterns
+
+## Team Scenarios (PI Planning & Health)
+
+Advanced workflows for Lead/Principal Engineers and Agile teams:
+- **ART Dashboards**: See ART-wide PI health.
+- **Team Deep Dives**: Drill into team capacity and risks.
+- **Objective Analysis**: Map dependencies and Jira correlation.
+- **Release Reports**: Track PI status and inter-team blockers.
+
+→ Read `references/team-scenarios.md` for detailed command patterns.
+
+## Bundled Resources
+
+### Scripts
+- `scripts/describe-team.sh`: Generates a comprehensive team profile (Information, Features, Stories, Bugs, Tasks, and Workload Summary).
+
+Usage:
+```bash
+TP_TOKEN=xxx TP_URL=yyy ./scripts/describe-team.sh [TEAM_ID]
+```
 
 ## Quick Commands
 
