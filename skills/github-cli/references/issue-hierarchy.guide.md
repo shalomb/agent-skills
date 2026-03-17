@@ -62,9 +62,29 @@ gh api graphql -f query='
 
 ---
 
-## 3. Usage Nuances
-- **Cross-Repository**: Sub-issues can live in different repositories than the parent. The `repository.nameWithOwner` field helps identify their location.
-- **Limits**: The queries above return the first 50 sub-issues. Use pagination (cursors) if an issue has more children.
-- **Terminology**:
-  - `subIssues`: The list of issues "nested" under the target issue.
-  - `trackedIssues`: The list of parent issues that "contain" the target issue.
+## 3. Reverse Parent Search (Robust Fallback)
+If `trackedIssues` is empty but you suspect a parent exists, use this scan to find which issue contains the target in its `subIssues` list:
+
+```bash
+gh api graphql -f query='
+  query($owner:String!, $repo:String!) {
+    repository(owner: $owner, name: $repo) {
+      issues(first: 100, states: [OPEN, CLOSED]) {
+        nodes {
+          number
+          title
+          subIssues(first: 50) {
+            nodes { id }
+          }
+        }
+      }
+    }
+  }
+' -f owner="<org>" -f repo="<repo>" | jq '.data.repository.issues.nodes[] | select(.subIssues.nodes != null and any(.subIssues.nodes[]; .id == "<target_node_id>")) | {number, title}'
+```
+
+---
+
+## 4. Usage Nuances
+- **Unidirectional Relationships**: GitHub GraphQL sometimes reports a child in `subIssues` but fails to report the parent in `trackedIssues`. Always use the **Reverse Parent Search** if you need high-confidence parent identification.
+- **Node IDs**: You must first fetch the `id` (Global Node ID) of your target issue before performing the jq scan.
