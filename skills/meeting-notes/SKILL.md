@@ -331,7 +331,7 @@ Enter selections (1,2,3,4,5) or press Enter to skip:
 ## Configuration
 
 ```yaml
-# ~/.shalomb/agent-skills/teams-transcript-processor/config.yaml
+# ~/.shalomb/agent-skills/meeting-notes/config.yaml
 
 # Default output format
 output_format: markdown

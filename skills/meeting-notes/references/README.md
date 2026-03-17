@@ -1,4 +1,4 @@
-# Teams Transcript Processor Skill
+# Meeting Notes Skill
 
 Convert MS Teams meeting transcripts into actionable meeting minutes with decisions, actions, and follow-ups. Optionally integrate with GitHub, Jira, and Slack.
 
@@ -7,7 +7,7 @@ Convert MS Teams meeting transcripts into actionable meeting minutes with decisi
 ### Install
 
 ```bash
-# Already in ~/shalomb/agent-skills/teams-transcript-processor/
+# Already in ~/shalomb/agent-skills/meeting-notes/
 # No installation needed — ready to use
 ```
 
@@ -306,7 +306,7 @@ Agent will display minutes and ask for confirmation before posting.
 
 - Transcripts are not sent to external APIs (processed locally)
 - GitHub/Jira/Slack require valid API keys in ~/.config/
-- Config file loads from `~/.shalomb/agent-skills/teams-transcript-processor/config.yaml`
+- Config file loads from `~/.shalomb/agent-skills/meeting-notes/config.yaml`
 - Minutes are saved to `~/shalomb/meeting-minutes/` by default
 
 ---
