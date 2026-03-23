@@ -1,6 +1,6 @@
 ---
 name: justfile-assistant
-description: Create well-formed justfiles with test ladder patterns, standard recipes (install, build, test, clean, lint, dev, docs), and Makefile compatibility wrappers. Detects project type and generates appropriate recipes for Node.js, Python, Rust, Go, Terraform, and generic projects. Use when creating or updating justfiles for any project type.
+description: Create well-formed justfiles with test ladder patterns, standard recipes (install, build, test, clean, lint, dev, docs), and Makefile compatibility wrappers. Detects project type and generates appropriate recipes for Node.js, Python, Rust, Go, Terraform, and generic projects.
 ---
 
 # Justfile Assistant
@@ -9,7 +9,23 @@ This skill helps you create well-formed, maintainable justfiles for any project.
 
 ## Quick Start
 
-Invoke this skill in your project directory:
+### Discovering Existing Recipes
+
+If a justfile already exists, discover available recipes first:
+
+```bash
+# List all available recipes/targets
+just -l
+
+# Or with descriptions
+just --list
+```
+
+This shows all recipes with their documentation. Use this for early discovery when working with existing justfiles.
+
+### Generating a New Justfile
+
+To create a justfile from scratch:
 
 ```bash
 # From your project root, invoke the skill:
@@ -130,7 +146,28 @@ deploy:
     DB_URL={{db_url}} ./deploy.sh
 ```
 
-## Workflow: Generating a Justfile
+## Workflow: Working with Justfiles
+
+### Discovery: List Existing Recipes
+
+When working with an existing justfile, start with discovery:
+
+```bash
+# Quick list of all recipes
+just -l
+
+# Detailed list with descriptions
+just --list
+
+# Parse recipe names programmatically (for scripting)
+just --list --quiet
+```
+
+Use `just -l` to understand what recipes are available before customizing or extending a justfile.
+
+### Generation: Creating a New Justfile
+
+To create a new justfile from scratch:
 
 ### Step 1: Invoke the skill
 ```bash
@@ -185,14 +222,17 @@ For detailed patterns, examples, and advanced justfile techniques, see:
 
 ## Troubleshooting
 
+**Q: How do I see what recipes are available?**
+A: Use `just -l` or `just --list` to discover all recipes in the justfile.
+
 **Q: My custom recipe isn't working**
-A: Check your shell syntax. Justfile uses `bash -c` by default. Use `@just --list` to see if the recipe appears.
+A: Check your shell syntax. Justfile uses `bash -c` by default. Use `just --list` to confirm the recipe appears and is properly formatted.
 
 **Q: `just test` runs too slowly**
 A: Review `test-e2e` recipe and move slow tests to a separate `just test-full` recipe. The default test ladder should complete in ~1 minute.
 
 **Q: Makefile redirects don't work**
-A: Ensure `just` is installed. The Makefile assumes `just` is available in PATH.
+A: Ensure `just` is installed. The Makefile assumes `just` is available in PATH. Use `just --version` to verify.
 
 **Q: I have language-specific test setup**
 A: Customize `test-unit`, `test-integration`, and `test-e2e` recipes with your specific test commands. See [`test-ladder-patterns.md`](test-ladder-patterns.md) for examples.
