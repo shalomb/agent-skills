@@ -32,3 +32,17 @@ node_modules/
 # Temporary files
 *.tmp
 .temp/
+
+# Skill Data
+**/user_data/
+**/downloads/
+**/__pycache__/
+**/.venv/
+**/.pytest_cache/
+
+# Skill Data
+**/user_data/
+**/downloads/
+**/__pycache__/
+**/.venv/
+**/.pytest_cache/
