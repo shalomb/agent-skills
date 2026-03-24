@@ -133,6 +133,166 @@ team-members=$(gh api orgs/$ORG/teams/$TEAM/members --paginate --jq '[.[].login]
 gh api search/issues -f q="repo:$ORG/$REPO is:open $team_members"
 ```
 
+## Advanced Pull Request Operations
+
+### Marking a PR as Draft
+
+To convert a pull request to draft status (or from draft to ready), use the REST API via `gh api`:
+
+```bash
+# Mark an existing PR as draft
+gh api repos/{owner}/{repo}/pulls/{pr_number} \
+  --input /dev/stdin \
+  --method PATCH << 'EOF'
+{
+  "draft": true
+}
+EOF
+
+# Example in practice:
+gh api repos/oneTakeda/gmsgq-dad-10345-fusion-platform-control-tower/pulls/80 \
+  --input /dev/stdin \
+  --method PATCH << 'EOF'
+{
+  "draft": true
+}
+EOF
+
+# Mark a PR as ready for review (draft=false)
+gh api repos/{owner}/{repo}/pulls/{pr_number} \
+  --input /dev/stdin \
+  --method PATCH << 'EOF'
+{
+  "draft": false
+}
+EOF
+```
+
+### Adding Comments to Pull Requests
+
+Comment on a PR using the built-in `gh pr comment` command:
+
+```bash
+# Add a simple comment
+gh pr comment {pr_number} -b "Your comment text here"
+
+# Add a multi-line comment
+gh pr comment {pr_number} -b "First line
+Second line
+Third line"
+
+# Use a file for comment body (useful for long comments)
+gh pr comment {pr_number} --body-file path/to/file.md
+
+# Example: Add status comment to PR #80
+gh pr comment 80 -b "Converting to draft — this PR requires PR #101 to be merged first.
+
+**Rationale:**
+- PR #101 contains foundational refactoring
+- This PR is based on older code with broken paths
+- After #101 merges, we'll rebase this branch and it should be ready"
+```
+
+### Querying PR Status
+
+```bash
+# View a PR in JSON format with specific fields
+gh pr view {pr_number} --json isDraft,state,title,number
+
+# Check if a PR is in draft status
+is_draft=$(gh pr view {pr_number} --json isDraft -q '.isDraft')
+if [ "$is_draft" = "true" ]; then
+  echo "PR is in draft status"
+else
+  echo "PR is ready for review"
+fi
+
+# List only draft PRs
+gh pr list --state open --json number,title,isDraft \
+  --jq '.[] | select(.isDraft == true) | {number, title}'
+
+### Converting a PR to/from Draft using GraphQL
+
+The REST API approach (`--method PATCH` with `draft: true`) does not work reliably. **Use GraphQL mutations instead:**
+
+```bash
+# Get the PR Node ID (required for GraphQL mutation)
+PR_ID=$(gh pr view {pr_number} --json id -q '.id')
+
+# Mark PR as draft
+gh api graphql -f query='mutation {
+  convertPullRequestToDraft(input: {pullRequestId: "'$PR_ID'"}) {
+    pullRequest {
+      isDraft
+      title
+    }
+  }
+}'
+
+# Mark PR as ready for review (from draft)
+gh api graphql -f query='mutation {
+  markPullRequestAsReady(input: {pullRequestId: "'$PR_ID'"}) {
+    pullRequest {
+      isDraft
+      title
+    }
+  }
+}'
+
+# Practical example: Mark PR #80 as draft
+PR_ID=$(gh pr view 80 --json id -q '.id')
+gh api graphql -f query='mutation {
+  convertPullRequestToDraft(input: {pullRequestId: "'$PR_ID'"}) {
+    pullRequest {
+      isDraft
+      title
+    }
+  }
+}'
+```
+
+### Real-World Workflow: Draft and Comment
+
+```bash
+#!/bin/bash
+# Mark a PR as draft and add an explanatory comment
+
+PR_NUMBER=80
+REPO="oneTakeda/gmsgq-dad-10345-fusion-platform-control-tower"
+COMMENT_FILE="pr_comment.md"
+
+# Create comment file
+cat > "$COMMENT_FILE" << 'COMMENT_EOF'
+Converting to draft — this PR requires PR #101 (adr-improvements) to be merged first.
+
+**Rationale:**
+- PR #101 contains foundational refactoring that moves ADR paths from the deleted `docs/` directory
+- This PR is based on older code and references now-nonexistent paths
+- After PR #101 merges to main, we'll rebase this branch
+
+**Plan:**
+1. Merge PR #101
+2. Rebase this PR onto updated main
+3. Move back to ready for review
+COMMENT_EOF
+
+# Mark PR as draft
+gh api repos/$REPO/pulls/$PR_NUMBER \
+  --input /dev/stdin \
+  --method PATCH << 'EOF'
+{
+  "draft": true
+}
+EOF
+
+# Add comment
+gh pr comment $PR_NUMBER --body-file "$COMMENT_FILE"
+
+# Verify status
+echo "PR #$PR_NUMBER is now in draft status with explanatory comment"
+rm "$COMMENT_FILE"
+```
+
 ## GraphQL API Operations (`gh api graphql`)
 
 GraphQL provides powerful query and mutation capabilities for complex data retrieval and modifications in a single request.
