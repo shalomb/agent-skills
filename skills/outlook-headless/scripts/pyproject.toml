@@ -1,0 +1,17 @@
+[project]
+name = "outlook-headless"
+version = "0.3.0"
+description = "Headless Outlook Web automation using Playwright"
+requires-python = ">=3.11"
+dependencies = [
+    "playwright>=1.40.0",
+    "pydantic>=2.0.0",
+    "beautifulsoup4>=4.12.0",
+    "html2text>=2020.1.16",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
