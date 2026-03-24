@@ -23,6 +23,7 @@ This skill has a broad command surface and supports powerful API interactions. *
    
 2. The reference files contain instructions for:
    - Repository, Issue, and Pull Request operations
+   - Advanced PR operations: marking as draft, adding comments with context
    - GitHub Actions workflow triggering and monitoring
    - Advanced REST API calls via `gh api`
    - Complex GraphQL queries and mutations via `gh api graphql`
