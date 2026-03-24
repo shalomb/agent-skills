@@ -21,18 +21,18 @@ if [ "${1:-.}" = "." ]; then
   # Auto-detect from terraform config
   CONFIG_DIR="${1:-.}"
   BRANCH="${2:-}"
-  
+
   if [ -z "$BRANCH" ]; then
     echo "Error: Branch name required (Usage: $0 . <branch>)"
     exit 1
   fi
-  
+
   # Use get-workspace-info script to extract org/workspace
   if [ ! -f "$SCRIPT_DIR/get-workspace-info.sh" ]; then
     echo "Error: get-workspace-info.sh not found"
     exit 1
   fi
-  
+
   WORKSPACE_INFO=$("$SCRIPT_DIR/get-workspace-info.sh" "$CONFIG_DIR")
   ORG=$(echo "$WORKSPACE_INFO" | jq -r '.organization')
   WORKSPACE=$(echo "$WORKSPACE_INFO" | jq -r '.workspace')
@@ -41,7 +41,7 @@ else
   ORG="$1"
   WORKSPACE="$2"
   BRANCH="$3"
-  
+
   if [ -z "$BRANCH" ]; then
     echo "Error: Usage: $0 <org> <workspace> <branch>"
     echo "Or:     $0 . <branch>"
