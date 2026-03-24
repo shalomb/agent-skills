@@ -18,7 +18,7 @@ This skill has a collection of scripts to automate interactions with Terraform C
 1. When you need to interact with Terraform Cloud (e.g. trigger runs, check registry modules, apply runs, extract logs), you must first read the detailed reference documentation:
    - Use the `read` tool on `references/tfc-api-reference.md` for workspace, run, and module operations.
    - Use the `read` tool on `references/tfc-vcs-validation.md` for validating workspace VCS configurations and handling repository redirects.
-   
+
 2. Use the provided shell scripts in the `scripts/` directory as described in the reference documents.
 
 3. **VCS Configuration Best Practices**:
