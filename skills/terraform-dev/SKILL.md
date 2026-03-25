@@ -1,319 +1,112 @@
 ---
 name: terraform-dev
-description: Watch terraform files for changes and automatically run validation, formatting, linting, security scanning, and plan commands. Enables continuous validation during terraform development with configurable workflows via .tf-watcher.rc configuration file. Use when developing Terraform configurations and need continuous validation.
+description: Continuous validation during Terraform module development. Use when actively developing Terraform code and needing fast feedback loops — runs format, validate, lint, and plan automatically. Covers inner loop (fast, local) and outer loop (TFC deployment) development patterns.
 ---
 
-# Terraform Development Workflow Skill
+# Terraform Development Loop
 
-Automated terraform development workflow with file watching and continuous validation.
-
-## Description
-
-Watch terraform files for changes and automatically run validation, formatting, linting, security scanning, and plan commands. Enables continuous validation during terraform development with configurable workflows via `.tf-watcher.rc` configuration file.
-
-## Triggers
-
-Use this skill when:
-- User mentions "terraform watch", "tf watch", or "terraform dev workflow"
-- User wants to auto-run terraform commands on file changes
-- User wants continuous validation during terraform development
-- User mentions "terraform fmt on save" or "terraform validate automatically"
-
-## Overview
-
-This skill provides `tf-watcher`, a tool that watches terraform files for changes and automatically runs validation commands. Useful for maintaining clean, validated code during development.
+Fast feedback during active Terraform development using Makefile targets.
 
 ## Prerequisites
 
-- `inotify-tools` (Linux) or `fswatch` (macOS)
-- Terraform installed
-- Optional: `tflint`, `tfsec`, `terraform-docs` for additional checks
+- `make` — drives all targets below
+- `terraform` — for format, validate, and plan
+- `tflint` — for lint targets
+- `entr` or `watchexec` — optional, for file-watch mode (see [Watching for Changes](#watching-for-changes))
 
-## Installation
+## Inner Loop (Fast — < 30s)
 
-Linux:
-```bash
-sudo apt install inotify-tools
-```
-
-macOS:
-```bash
-brew install fswatch
-```
-
-## Usage
-
-### Basic Watch Mode
-
-Run from your terraform workspace directory:
+Run after every meaningful code change:
 
 ```bash
-./scripts/tf-watcher
+make format          # terraform fmt -recursive (~1s)
+make validate        # terraform validate (~2s)
+make lint            # tflint (~5s)
 ```
 
-This will watch for `.tf` file changes and automatically run:
-- `terraform fmt`
-- `terraform validate`
-- `terraform init` (if needed)
-- `terraform plan` (if configured)
-
-### Configuring Watched Commands
-
-Create a `.tf-watcher.rc` file in your workspace to control which commands run:
+Compose for a single fast-fail check:
 
 ```bash
-# Add specific commands to watch
-tf-watcher plan      # Enable plan on every change
-tf-watcher tflint    # Enable tflint on every change
-tf-watcher tfsec     # Enable tfsec on every change
+make format && make validate && make lint
 ```
 
-View current configuration:
-```bash
-cat .tf-watcher.rc
-```
+**What each catches**:
+- `make format` — inconsistent indentation, alignment
+- `make validate` — type errors, undefined references, malformed HCL
+- `make lint` — security defaults too open, missing types, `lookup()` usage, line length
 
-### Custom Commands
+## Outer Loop (Full — 2–5 min)
 
-You can configure tf-watcher to run custom validation:
+Run before pushing or opening a PR:
 
 ```bash
-# .tf-watcher.rc example
-plan
-tflint
-tfsec
-terraform-docs
+make pre-pr          # format + validate-full + lint + docs + examples
 ```
 
-When `.tf-watcher.rc` exists, only listed commands will run automatically.
+## Example Testing Loop
 
-## Workflow Examples
-
-### Example 1: Minimal Validation
+When changing module interface (variables, outputs, resources):
 
 ```bash
-cd /path/to/terraform/workspace
+# Convert to local source for testing
+make relative-source
 
-# Start watcher (fmt + validate only)
-tf-watcher
+# Test all examples against local code
+make test-examples
+
+# Revert to registry source before committing
+make registry-source
 ```
 
-Edit your `.tf` files - they'll be formatted and validated automatically.
+## TFC Deployment Loop
 
-### Example 2: Full Validation Pipeline
+For real-world validation against a live AWS account:
 
 ```bash
-# Enable comprehensive checks
-echo "plan" > .tf-watcher.rc
-echo "tflint" >> .tf-watcher.rc
-echo "tfsec" >> .tf-watcher.rc
+# Deploy example to test workspace
+make deploy EXAMPLE=basic WORKSPACE=<tec-dce-inn-dev-XXXXX-username>
 
-# Start watcher
-tf-watcher
+# Monitor run
+make tfc-run-status EXAMPLE=basic
+
+# Inspect deployed resources (tags, names, outputs)
+make tfc-workspace-state EXAMPLE=basic
+
+# Tear down
+make deploy-clean EXAMPLE=basic
 ```
 
-Now every save triggers:
-1. `terraform fmt`
-2. `terraform validate`
-3. `terraform plan`
-4. `tflint`
-5. `tfsec`
+## Safe Experimentation
 
-### Example 3: Integration with TFC
+Before risky refactors:
 
 ```bash
-# Watch and validate, then trigger TFC speculative plan
-cat > .tf-watcher.rc <<EOF
-validate
-tflint
-EOF
-
-# Start watcher
-tf-watcher &
-
-# Work on your changes...
-# When ready, push to trigger TFC plan
-git add .
-git commit -m "feature: add new resource"
-git push
+make checkpoint MSG="before restructuring locals"
+# ... make changes ...
+# If it goes wrong: git reset --soft HEAD~1
 ```
 
-## Configuration
+## Watching for Changes
 
-### .tf-watcher.rc Format
-
-Simple list of commands to run, one per line:
-
-```
-init
-validate
-plan
-tflint
-tfsec
-terraform-docs
-```
-
-Commands run in the order listed.
-
-### Environment Variables
+For continuous validation while editing multiple files:
 
 ```bash
-DEBUG=1 tf-watcher    # Enable debug output
+# Run inner loop on every save (requires entr or watchexec)
+find . -name "*.tf" | entr -c make format validate lint
+
+# Or use terraform-docs watcher if available
 ```
 
-## Integration Patterns
+## Common Failures and Fixes
 
-### Pattern 1: Pre-commit Validation
+| Failure | Likely cause | Fix |
+|---------|-------------|-----|
+| `validate` fails on type | Variable uses `any` type | Specify explicit type |
+| `lint` complains about `lookup()` | Using `lookup()` | Replace with `local.map[var.key]` |
+| `test-examples` fails init | Registry source, no TFC auth | `make relative-source` first |
+| `docs` fails | Missing variable description | Add description to all variables |
+| `format` changes files | Ran code before `make format` | Run `make format` before all commits |
 
-Use tf-watcher during development, ensures commits are pre-validated:
+## References
 
-```bash
-# Terminal 1: Watch mode
-tf-watcher
-
-# Terminal 2: Development
-vim main.tf
-git add main.tf
-git commit -m "clean, validated change"
-```
-
-### Pattern 2: TDD for Infrastructure
-
-```bash
-# 1. Write test (expected state)
-echo "plan" > .tf-watcher.rc
-tf-watcher &
-
-# 2. Edit infrastructure
-vim resources.tf
-
-# 3. Watch plan output update automatically
-# 4. Iterate until plan matches expectations
-```
-
-### Pattern 3: Continuous Security Scanning
-
-```bash
-echo "tfsec" > .tf-watcher.rc
-tf-watcher
-```
-
-Every change is immediately scanned for security issues.
-
-## Common Commands
-
-| Command | Purpose |
-|---------|---------|
-| `fmt` | Format files |
-| `validate` | Validate syntax |
-| `plan` | Generate execution plan |
-| `init` | Initialize workspace |
-| `tflint` | Lint terraform code |
-| `tfsec` | Security scanning |
-| `terraform-docs` | Generate documentation |
-
-## Best Practices
-
-1. **Start minimal** - Begin with just `fmt` and `validate`
-2. **Add plan selectively** - Plan can be slow on large workspaces
-3. **Use .tf-watcher.rc** - Document which checks your team requires
-4. **Commit .tf-watcher.rc** - Share workflow configuration with team
-5. **Combine with pre-commit** - tf-watcher for development, pre-commit hooks for enforcement
-
-## Troubleshooting
-
-### Watcher Not Starting
-
-```bash
-# Check if inotify-tools is installed (Linux)
-which inotifywait
-
-# Install if missing
-sudo apt install inotify-tools
-```
-
-### Commands Running Too Frequently
-
-```bash
-# Reduce checked commands
-cat > .tf-watcher.rc <<EOF
-validate
-EOF
-```
-
-### False Positive Triggers
-
-Add exclusions to watcher script or use `.gitignore` patterns.
-
-### Plan Taking Too Long
-
-```bash
-# Disable plan, run manually
-echo "validate" > .tf-watcher.rc
-echo "tflint" >> .tf-watcher.rc
-
-# Run plan manually when ready
-terraform plan
-```
-
-## Advanced Usage
-
-### Multi-Workspace Development
-
-```bash
-# Terminal for each workspace
-cd workspace-dev && tf-watcher &
-cd workspace-staging && tf-watcher &
-cd workspace-prod && tf-watcher &
-```
-
-### Integration with IDE
-
-Many IDEs support external tools:
-
-**VSCode:**
-```json
-{
-  "tasks": [
-    {
-      "label": "tf-watcher",
-      "type": "shell",
-      "command": "./scripts/tf-watcher",
-      "problemMatcher": [],
-      "isBackground": true
-    }
-  ]
-}
-```
-
-### Custom Validation Scripts
-
-Create wrapper scripts for team-specific checks:
-
-```bash
-#!/bin/bash
-# .tf-watcher.rc
-custom-validation
-```
-
-```bash
-#!/bin/bash
-# custom-validation script
-terraform fmt -check
-terraform validate
-./team-specific-checks.sh
-```
-
-## Files
-
-- `scripts/tf-watcher` - Main watcher script
-- `.tf-watcher.rc` - Workspace-specific configuration (optional)
-
-## Related Skills
-
-- **tfc-api** - Query TFC workspace and run status
-- **github-cli** - Create PRs with validated terraform
-
-## Credits
-
-Original script from the CSE team tools collection.
+- `tfc-api` skill — direct TFC API queries for deeper workspace inspection
