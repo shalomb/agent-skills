@@ -1,0 +1,5 @@
+M
+AccessPortal (Do Not Reply)
+Notification from AccessPortal: Request Submitted
+Fri 11:27 AM
+Primary User, We have received the following request: Add Members: Member Name Group Name Application Name Group Description Primary User OKTA-AWS-TEC-GLOBAL-ViewOnly Okta Owner : Bob.Durfee@example.com The completion
