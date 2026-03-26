@@ -1,3 +1,8 @@
+---
+name: outlook-headless
+description: Background Outlook email search and extraction using Playwright and Google Chrome. Use this skill when you need to search for emails, extract email bodies or conversation threads, filter by sender, subject, or date, and handle Outlook tasks headlessly.
+---
+
 # /outlook-headless -- Deterministic Outlook Web Automation
 
 Background Outlook email search and extraction using Playwright and Google Chrome. Runs entirely in the background without UI interference.
