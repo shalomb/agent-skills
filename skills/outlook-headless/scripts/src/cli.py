@@ -21,6 +21,7 @@ async def main():
     parser.add_argument("--importance", help="Search by importance (e.g. 'high')")
     parser.add_argument("--limit", type=int, default=5, help="Limit number of messages")
     parser.add_argument("--list-only", action="store_true", help="Only list headers (fast)")
+    parser.add_argument("--raw", action="store_true", help="Dump raw text of the entire reading pane (fastest for threads)")
     parser.add_argument("--download-images", action="store_true", help="Download images from emails")
     parser.add_argument("--show-ui", action="store_true", help="Show browser UI")
 
@@ -43,12 +44,13 @@ async def main():
             criteria, 
             limit=args.limit, 
             list_only=args.list_only, 
+            raw=args.raw,
             download_images=args.download_images
         )
         
         # Output as JSON
         output = [r.model_dump() for r in results]
-        print(json.dumps(output, indent=2))
+        print(json.dumps(output, indent=2, ensure_ascii=False))
 
 if __name__ == "__main__":
     asyncio.run(main())
