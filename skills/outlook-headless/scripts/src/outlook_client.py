@@ -58,7 +58,7 @@ class OutlookClient:
         except:
             return False
 
-    async def search(self, criteria: SearchCriteria, limit: int = 5, list_only: bool = False, download_images: bool = False) -> List[EmailMessage]:
+    async def search(self, criteria: SearchCriteria, limit: int = 5, list_only: bool = False, raw: bool = False, download_images: bool = False) -> List[EmailMessage]:
         if not self.context:
             raise RuntimeError("Client not initialized. Use 'async with OutlookClient() as client:'")
 
@@ -311,9 +311,63 @@ class OutlookClient:
                     print(f"Non-critical deep header extraction failure for item {i}: {e}")
 
                 # 2. Extract Document Body
+                # First, attempt to expand all collapsed messages in the thread
+                try:
+                    # Look for anything that might be a collapsed message or "show all" INSIDE the reading pane
+                    reading_pane = page.locator('div[role="main"]')
+                    expand_selectors = [
+                        'div[aria-expanded="false"]',
+                        'div[aria-label*="messages"]', # e.g. "9 messages"
+                        'button:has-text("Show more")',
+                        'button:has-text("Show all")'
+                    ]
+                    for selector in expand_selectors:
+                        buttons = reading_pane.locator(selector)
+                        count = await buttons.count()
+                        print(f"DEBUG: Found {count} expansion candidates for selector {selector} in reading pane")
+                        for j in range(count):
+                            try:
+                                btn = buttons.nth(j)
+                                label = (await btn.get_attribute("aria-label") or "").lower()
+                                text = (await btn.inner_text() or "").lower()
+                                
+                                if "reaction" in label or "like" in label:
+                                    continue
+                                    
+                                if await btn.is_visible():
+                                    print(f"DEBUG: Clicking expansion candidate: label={label[:20]}, text={text[:20]}")
+                                    await btn.click()
+                                    await asyncio.sleep(0.5)
+                            except: continue
+                    
+                    # Wait for expansion
+                    await asyncio.sleep(2.0)
+                except Exception as e:
+                    print(f"Non-critical expansion failure: {e}")
+
+                if raw:
+                    # Quick Raw Dump mode: extract all text from the reading pane in one go
+                    pane = page.locator('div[role="main"]')
+                    raw_text = await pane.inner_text()
+                    final_results.append(EmailMessage(
+                        id=f"raw-{i}",
+                        subject=extracted_subject,
+                        sender="Conversation Thread",
+                        body=raw_text
+                    ))
+                    continue
+
+                # Now extract all messages
                 documents = page.locator('div[role="document"]')
                 doc_count = await documents.count()
+                print(f"DEBUG: Found {doc_count} documents in reading pane")
                 
+                if doc_count == 0:
+                    # Try a broader selector if doc_count is 0
+                    documents = page.locator('div[aria-label="Message body"]')
+                    doc_count = await documents.count()
+                    print(f"DEBUG: Found {doc_count} documents with fallback selector")
+
                 if doc_count == 0:
                     final_results.append(list_msg)
                     continue
@@ -323,13 +377,56 @@ class OutlookClient:
                     await doc.scroll_into_view_if_needed()
                     doc_html = await doc.inner_html()
                     
+                    # Try to find headers specifically for THIS document
+                    # Headers are usually in a sibling or parent div
+                    # We look for "From: ", "To: ", "Mon 3/23..." etc in the vicinity
+                    
+                    current_sender = extracted_sender
+                    current_ts = extracted_ts
+                    current_to = []
+                    
+                    try:
+                        # Search "up" from the document to find its header container
+                        # In Outlook, headers and bodies are often siblings inside a common parent
+                        header_info = await doc.evaluate("""doc => {
+                            let parent = doc.parentElement;
+                            while (parent && parent.getAttribute('role') !== 'main') {
+                                // Look for buttons or spans with "From:" or sender names
+                                let fromBtn = parent.querySelector('button[aria-label^="From:"], span[aria-label^="From:"]');
+                                
+                                // Find any div/span that looks like a date/timestamp
+                                let tsEl = null;
+                                let headings = parent.querySelectorAll('div[role="heading"], span');
+                                for (let h of headings) {
+                                    if (h.innerText.includes('/') && (h.innerText.includes('AM') || h.innerText.includes('PM'))) {
+                                        tsEl = h;
+                                        break;
+                                    }
+                                }
+                                
+                                if (fromBtn || tsEl) {
+                                    return {
+                                        sender: fromBtn ? fromBtn.getAttribute('aria-label').replace('From: ', '') : null,
+                                        timestamp: tsEl ? tsEl.innerText : null
+                                    };
+                                }
+                                parent = parent.parentElement;
+                            }
+                            return null;
+                        }""")
+                        
+                        if header_info:
+                            if header_info['sender']: current_sender = header_info['sender']
+                            if header_info['timestamp']: current_ts = header_info['timestamp']
+                    except: pass
+
                     # Use parser for document with HTML
                     full_msg = OutlookParser.parse_document(
                         doc_html=doc_html, 
                         message_id=f"{i}-{j}",
-                        sender=extracted_sender,
+                        sender=current_sender,
                         subject=extracted_subject,
-                        timestamp=extracted_ts,
+                        timestamp=current_ts,
                         to=extracted_to,
                         cc=extracted_cc
                     )
