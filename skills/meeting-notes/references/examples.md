@@ -503,7 +503,7 @@ Agent executes:
 ✅ Posted summary message with thread replies
 
 ⏳ Saving to file...
-✅ Saved to ~/shalomb/meeting-minutes/minutes-2025-03-11-chemdraw-architecture.md
+✅ Saved to ~/meeting-minutes/minutes-2025-03-11-chemdraw-architecture.md
 
 ───────────────────────
 
@@ -514,9 +514,9 @@ Agent executes:
 • Minutes saved locally
 
 🔗 Quick Links:
-• GitHub: https://github.com/oneTakeda/...#comment-12345
-• Jira: https://takeda.atlassian.net/browse/DAD-123
-• Slack: https://takeda.slack.com/archives/C.../p123456
+• GitHub: https://github.com/ORG/...#comment-12345
+• Jira: https://{YOUR_ORG}.atlassian.net/browse/DAD-123
+• Slack: https://{YOUR_ORG}.slack.com/archives/C.../p123456
 ```
 
 ---

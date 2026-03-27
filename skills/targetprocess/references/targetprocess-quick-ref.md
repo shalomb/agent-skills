@@ -499,7 +499,7 @@ tpcli discover --verbose
 
 ## Related Documentation
 
-- Full docs: `~/shalomb/tpcli/docs/`
-- API v1 reference: `~/shalomb/tpcli/docs/reference/api-v1-reference.md`
-- Entity structure: `~/shalomb/tpcli/docs/reference/entity-types.md`
-- How-to guides: `~/shalomb/tpcli/docs/how-to/`
+- Full docs: `tpcli docs` or installed package documentation
+- API v1 reference: `tpcli docs reference/api-v1-reference`
+- Entity structure: `tpcli docs reference/entity-types`
+- How-to guides: `tpcli docs how-to/`

@@ -12,7 +12,7 @@ Simple, reliable tmux orchestration. Use this skill to interact with a specific 
 **Target Format**: `{session}:{window}.{pane}` or `{window}.{pane}` (current session implied)
 
 **Components**:
-- `{session}`: Session name (e.g., "code", "gmsgq-dad-clouddevsecops-iac-reveng-solution")
+- `{session}`: Session name (e.g., "code", "myproject")
   - **Omit for current session shorthand** (e.g., just use `1.0` instead of `session:1.0`)
 - `{window}`: Window index (0-based numbering, e.g., 0, 1, 2)
 - `{pane}`: Pane index within that window (0-based, e.g., 0, 1, 2)
@@ -20,7 +20,7 @@ Simple, reliable tmux orchestration. Use this skill to interact with a specific 
 **Examples**:
 - `1.0` = Window 1, Pane 0 in **current session** (shorthand)
 - `code:0.0` = Window 0, Pane 0 in session "code" (explicit)
-- `gmsgq-dad-clouddevsecops-iac-reveng-solution:4.0` = Window 4, Pane 0 in that session
+- `myproject:4.0` = Window 4, Pane 0 in that session
 
 **Shorthand Clarification**: When a user says "Use tmux pane 1.0", this means:
 - Window index: 1

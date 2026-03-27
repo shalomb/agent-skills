@@ -7,7 +7,7 @@ Convert MS Teams meeting transcripts into actionable meeting minutes with decisi
 ### Install
 
 ```bash
-# Already in ~/shalomb/agent-skills/meeting-notes/
+# Already in ~/.config/meeting-notes/
 # No installation needed — ready to use
 ```
 
@@ -235,12 +235,12 @@ User selects options, agent executes and reports:
 ✅ Updated GitHub issue #456 with minutes comment
 ✅ Created 3 Jira subtasks assigned to owners
 ✅ Posted to Slack #architecture (3 messages in thread)
-✅ Saved minutes to ~/shalomb/meeting-minutes/minutes-2025-03-11-architecture-review.md
+✅ Saved minutes to ~/meeting-minutes/minutes-2025-03-11-architecture-review.md
 
 Links:
-- GitHub: https://github.com/oneTakeda/.../issues/456#comment-12345
-- Jira: https://takeda.atlassian.net/browse/DAD-123
-- Slack: https://takeda.slack.com/archives/C12345/p1234567890
+- GitHub: https://github.com/ORG/.../issues/456#comment-12345
+- Jira: https://{YOUR_ORG}.atlassian.net/browse/DAD-123
+- Slack: https://{YOUR_ORG}.slack.com/archives/C12345/p1234567890
 ```
 
 ## Advanced: Custom Integrations
@@ -306,12 +306,12 @@ Agent will display minutes and ask for confirmation before posting.
 
 - Transcripts are not sent to external APIs (processed locally)
 - GitHub/Jira/Slack require valid API keys in ~/.config/
-- Config file loads from `~/.shalomb/agent-skills/meeting-notes/config.yaml`
-- Minutes are saved to `~/shalomb/meeting-minutes/` by default
+- Config file loads from `~/.config/meeting-notes/config.yaml`
+- Minutes are saved to `~/meeting-minutes/` by default
 
 ---
 
 **Created**: 2025-03-11  
-**Author**: @shalomb  
+**Author**: contributors  
 **Version**: 1.0  
 **License**: MIT
