@@ -9,7 +9,7 @@ Usage:
     python3 pi-poll.py <tmux-target> [--interval 30] [--timeout 600]
 
 Example:
-    python3 pi-poll.py "gmsgq-dad-cloud-engineering-context:0.0" --interval 30
+    python3 pi-poll.py "myproject:0.0" --interval 30
 
 Output: one status line per interval, final summary on completion.
 """

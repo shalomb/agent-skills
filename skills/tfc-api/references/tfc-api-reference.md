@@ -230,7 +230,7 @@ curl -s -H "Authorization: Bearer $TFC_TOKEN" \
 
 ```bash
 # Get resources being destroyed from plan log
-/home/unop/.pi/agent/skills/tfc-api/scripts/get-plan.sh {RUN_ID} | grep "DESTROY:"
+/path/to/tfc-api/scripts/get-plan.sh {RUN_ID} | grep "DESTROY:"
 
 # Get resource change summary
 grep '"type":"change_summary"' /tmp/plan-log.jsonl | jq -r '.changes | "Add: \(.add) | Change: \(.change) | Destroy: \(.remove)"'

@@ -88,7 +88,7 @@ git -C "$VAULT" commit -m "docs: add note - Note Title"
 ```
 
 **Naming:** Use descriptive kebab-case filenames or natural names matching the `id` field.  
-**Location:** Match the topic to existing vault folders (Tech/, company/, notes/, ideas/, etc).
+**Location:** Match the topic to existing vault folders (Tech/, Work/, notes/, ideas/, etc).
 
 ## Editing Notes
 
@@ -101,7 +101,7 @@ git -C "$VAULT" commit -m "docs: add note - Note Title"
 
 The vault has two main TODO files:
 - `$VAULT/_todo.md` — personal todos
-- `$VAULT/company/_todo.md` — work todos
+- `$VAULT/Work/_todo.md` — work todos
 
 ### Checking off a task
 
@@ -167,10 +167,10 @@ obsidian/
 │   ├── dailies/      Daily notes
 │   ├── meetings/     Meeting notes
 │   └── weeks/        Weekly reviews
-├── Personal/         Personal notes (non-company)
+├── Personal/         Personal notes
 ├── Projects/         Project notes
 ├── Scratch/          Scratch / drafts
-├── company/           Work notes
+├── Work/             Work notes
 │   └── _todo.md      Work TODO list
 └── Tech/             Technology notes
     └── AI/           AI-specific notes
