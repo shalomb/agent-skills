@@ -37,7 +37,7 @@ gh pr-review <owner/repo>#<pr_number> \
 
 Example:
 ```bash
-gh pr-review oneTakeda/terraform-aws-MSKServerless#33 \
+gh pr-review ORG/my-terraform-repo#33 \
   --comment "This hardcoded secret should be moved to a variable." \
   --file main.tf \
   --line 42
@@ -90,7 +90,7 @@ Only post comments for issues identified in the review that are critical or requ
 
 ```bash
 # Example: Security issue
-gh pr-review oneTakeda/terraform-aws-MSKServerless#33 \
+gh pr-review ORG/my-terraform-repo#33 \
   --comment "🚨 **Critical: Hardcoded secret detected.**\n\nMove to environment variable or AWS Secrets Manager.\n\nReference: CWE-798 (Hardcoded Credentials)" \
   --file variables.tf \
   --line 15
@@ -103,7 +103,7 @@ If posting many comments, loop and batch:
 ```bash
 #!/bin/bash
 PR="$1"
-REPO="oneTakeda/terraform-aws-MSKServerless"
+REPO="ORG/my-terraform-repo"
 
 # Array of line numbers and comments
 declare -a ISSUES=(

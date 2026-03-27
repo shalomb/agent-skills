@@ -5,7 +5,7 @@
 Run the prerequisite checker to verify your environment:
 
 ```bash
-cd ~/shalomb/agent-skills/skills/pr-review
+cd ./skills/pr-review
 python3 scripts/check_prerequisites.py
 ```
 
@@ -216,7 +216,7 @@ gh repo view owner/repo
 ### Test 1: Prerequisite Checker
 
 ```bash
-cd ~/shalomb/agent-skills/skills/pr-review
+cd ./skills/pr-review
 python3 scripts/check_prerequisites.py --verbose
 ```
 
@@ -225,24 +225,24 @@ python3 scripts/check_prerequisites.py --verbose
 ### Test 2: Parse a PR URL
 
 ```bash
-cd ~/shalomb/agent-skills/skills/pr-review
+cd ./skills/pr-review
 
 # Using run_script.sh (automatically uses uv if available)
 ./scripts/run_script.sh parse_pr_url.py \
-  "https://github.com/oneTakeda/terraform-aws-MSKServerless/pull/33"
+  "https://github.com/ORG/my-terraform-repo/pull/33"
 
 # Or directly with python3
 python3 scripts/parse_pr_url.py \
-  "https://github.com/oneTakeda/terraform-aws-MSKServerless/pull/33"
+  "https://github.com/ORG/my-terraform-repo/pull/33"
 ```
 
 **Expected output**:
 ```json
 {
-  "owner": "oneTakeda",
+  "owner": "ORG",
   "repo": "terraform-aws-MSKServerless",
   "pr_number": 33,
-  "url": "https://github.com/oneTakeda/terraform-aws-MSKServerless/pull/33"
+  "url": "https://github.com/ORG/my-terraform-repo/pull/33"
 }
 ```
 
@@ -263,7 +263,7 @@ gh extension list
 ### Test 5: Test PR Review on Real PR
 
 ```bash
-cd ~/shalomb/agent-skills/skills/pr-review
+cd ./skills/pr-review
 
 # Clone and checkout a real PR
 ./scripts/run_script.sh clone_and_checkout.py owner repo 123
@@ -350,7 +350,7 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 If you want to manage dependencies with uv:
 
 ```bash
-cd ~/shalomb/agent-skills/skills/pr-review
+cd ./skills/pr-review
 
 # Create virtual environment
 uv venv
@@ -408,7 +408,7 @@ For CI/CD pipelines, ensure prerequisites are installed in your CI environment:
 
 - name: Run pr-review
   run: |
-    cd ~/shalomb/agent-skills/skills/pr-review
+    cd ./skills/pr-review
     ./scripts/run_script.sh parse_pr_url.py "${{ github.event.pull_request.html_url }}"
 ```
 

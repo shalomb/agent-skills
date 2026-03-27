@@ -331,7 +331,7 @@ Enter selections (1,2,3,4,5) or press Enter to skip:
 ## Configuration
 
 ```yaml
-# ~/.shalomb/agent-skills/meeting-notes/config.yaml
+# ~/.config/meeting-notes/config.yaml
 
 # Default output format
 output_format: markdown
@@ -346,13 +346,13 @@ action_clarity_threshold: 0.5
 # Integrations (optional)
 github:
   enabled: true
-  org: oneTakeda
+  org: {YOUR_GITHUB_ORG}
 jira:
   enabled: true
-  instance: takeda.atlassian.net
+  instance: {YOUR_ORG}.atlassian.net
 slack:
   enabled: true
-  workspace: takeda
+  workspace: {YOUR_SLACK_WORKSPACE}
 ```
 
 ## Troubleshooting
@@ -371,6 +371,6 @@ A: Agent will ask: "Post to issue #1, #2, and #3?"
 
 ---
 
-**Maintained by**: @shalomb  
+**Maintained by**: contributors  
 **Version**: 1.0  
 **Last Updated**: 2025-03-11

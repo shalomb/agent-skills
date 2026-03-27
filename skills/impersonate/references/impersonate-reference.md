@@ -13,7 +13,7 @@ Discover agent definitions in `.github/agents/*.md`, read and parse them, then a
 
 ## OVERVIEW
 
-This skill enables seamless integration with Takeda's **agent-driven development model**. Each project uses specialized agents (e.g., `@developer-agent`, `@review-agent`, `@release-agent`, `@triage-agent`) that provide context-aware workflows, quality standards, and specialized expertise.
+This skill enables seamless integration with your project's **agent-driven development model**. Each project uses specialized agents (e.g., `@developer-agent`, `@review-agent`, `@release-agent`, `@triage-agent`) that provide context-aware workflows, quality standards, and specialized expertise.
 
 The impersonate skill:
 - ✅ **Discovers** all available agents in `.github/agents/`
@@ -481,14 +481,14 @@ grep "^##" .github/agents/<agent-name>.md
 
 ## RELATED SKILLS
 
-- **kedb**: Search Takeda's Known Error Database for solutions
-- **takeda-building-blocks**: Discover and implement Terraform Building Blocks
+- **kedb**: Search your org's Known Error Database for solutions
+- **building-blocks**: Discover and implement reusable Terraform modules
 - **tfc-api**: Query Terraform Cloud workspace and run data
 
 ## REFERENCES
 
 - [Agent-Driven Development Model](#)
-- [Takeda Repository Standards](#)
+- [Repository Standards](#)
 - [GitHub Actions Integration](#)
 - [Custom Agent Development](#)
 

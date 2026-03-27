@@ -25,7 +25,7 @@ Perform a search entirely in the background. Results are returned as JSON.
 
 #### Basic Search
 ```bash
-cd ~/.gemini/skills/outlook-headless/scripts && uv run src/scanner.py "GMSGQ EHS"
+cd ~/.gemini/skills/outlook-headless/scripts && uv run src/scanner.py "your search term"
 ```
 
 #### Advanced Search (Recommended)

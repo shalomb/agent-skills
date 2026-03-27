@@ -166,7 +166,7 @@ When executing a PR review, follow this structure:
 
 ### Step 1: Setup
 ```bash
-cd ~/shalomb/agent-skills/skills/pr-review
+cd ./skills/pr-review
 
 # Parse URL (using uv if available, else python3)
 metadata=$(./scripts/run_script.sh parse_pr_url.py "$PR_URL")
@@ -218,49 +218,49 @@ Then post a summary comment with overall findings.
 ## Practical Example
 
 ```bash
-cd ~/shalomb/agent-skills/skills/pr-review
-PR_URL="https://github.com/oneTakeda/terraform-aws-MSKServerless/pull/33"
+cd ./skills/pr-review
+PR_URL="https://github.com/ORG/my-terraform-repo/pull/33"
 
 # 0. Check prerequisites (first time only)
 ./scripts/run_script.sh check_prerequisites.py
 
 # 1. Parse
 ./scripts/run_script.sh parse_pr_url.py "$PR_URL"
-# → owner: oneTakeda, repo: terraform-aws-MSKServerless, pr_number: 33
+# → owner: ORG, repo: terraform-aws-MSKServerless, pr_number: 33
 
 # 2. Clone & checkout
-./scripts/run_script.sh clone_and_checkout.py oneTakeda terraform-aws-MSKServerless 33
-# → repo at ~/oneTakeda/terraform-aws-MSKServerless/, branch: 8-vpc-authorization-patterns
+./scripts/run_script.sh clone_and_checkout.py ORG my-terraform-repo 33
+# → repo at ~/ORG/my-terraform-repo/, branch: 8-vpc-authorization-patterns
 
 # 3. Check for linked issue
-./scripts/run_script.sh check_linked_issue.py oneTakeda terraform-aws-MSKServerless 33 \
-  --repo-dir ~/oneTakeda/terraform-aws-MSKServerless
+./scripts/run_script.sh check_linked_issue.py ORG my-terraform-repo 33 \
+  --repo-dir ~/ORG/my-terraform-repo
 # → If no linked issue: 🚨 FLAG
 
 # 4. Find review agents (if any)
-./scripts/run_script.sh find_review_agents.py ~/oneTakeda/terraform-aws-MSKServerless
+./scripts/run_script.sh find_review_agents.py ~/ORG/my-terraform-repo
 # → Check .github/agents/, .claude/agents/, etc.
 
 # 5. Analyze code diff manually
-cd ~/oneTakeda/terraform-aws-MSKServerless
+cd ~/ORG/my-terraform-repo
 git diff origin/main..HEAD --stat
 git diff origin/main..HEAD | head -200  # first 200 lines of diff
 
 # 6. Run tests (with automatic framework detection)
-cd ~/shalomb/agent-skills/skills/pr-review
-./scripts/run_script.sh run_tests.py ~/oneTakeda/terraform-aws-MSKServerless
+cd ./skills/pr-review
+./scripts/run_script.sh run_tests.py ~/ORG/my-terraform-repo
 
 # 7. Check GitHub Actions
-./scripts/run_script.sh analyze_github_actions.py oneTakeda terraform-aws-MSKServerless 33
+./scripts/run_script.sh analyze_github_actions.py ORG my-terraform-repo 33
 
 # 8. Post inline comments for critical issues
-gh pr-review oneTakeda/terraform-aws-MSKServerless#33 \
+gh pr-review ORG/my-terraform-repo#33 \
   --comment "Hardcoded secret detected. Move to environment variable." \
   --file variables.tf \
   --line 15
 
 # 9. Post summary
-gh pr-review oneTakeda/terraform-aws-MSKServerless#33 \
+gh pr-review ORG/my-terraform-repo#33 \
   --comment "## Summary
 ...findings..."
 ```

@@ -54,7 +54,7 @@ gh api -X PUT \
 
 # Example:
 gh api -X PUT \
-  /orgs/oneTakeda/teams/gmsgq-dad-clouddevsecops-iac-reveng/repos/oneTakeda/my-repo \
+  /orgs/{ORG}/teams/{TEAM}/repos/{ORG}/my-repo \
   -f permission=push
 ```
 
@@ -186,8 +186,8 @@ fi
 ### Add Team to Multiple Repositories
 ```bash
 #!/bin/bash
-ORG="oneTakeda"
-TEAM="gmsgq-dad-clouddevsecops-iac-reveng"
+ORG="{YOUR_ORG}"
+TEAM="{YOUR_TEAM}"
 PERMISSION="push"
 
 # Array of repository names
