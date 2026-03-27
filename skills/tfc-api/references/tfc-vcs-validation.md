@@ -12,7 +12,7 @@ This guide covers validating that Terraform Cloud workspace VCS configurations c
 ## Key Concepts
 
 ### VCS Identifier
-The repository identifier in TFC format: `{owner}/{repo-name}` (e.g., `oneTakeda/my-terraform-repo`)
+The repository identifier in TFC format: `{owner}/{repo-name}` (e.g., `{ORG}/my-terraform-repo`)
 
 ### Canonical vs. Renamed Repositories
 - **Canonical name**: Current official repository name in GitHub
@@ -21,8 +21,8 @@ The repository identifier in TFC format: `{owner}/{repo-name}` (e.g., `oneTakeda
 
 ### Repository Redirect
 When a GitHub repository is renamed, the old URL still works but returns HTTP 301 redirect to canonical URL.
-- Old URL: `https://api.github.com/repos/oneTakeda/old-repo-name`
-- New URL: `https://api.github.com/repos/oneTakeda/new-repo-name` (returned in redirect)
+- Old URL: `https://api.github.com/repos/{ORG}/old-repo-name`
+- New URL: `https://api.github.com/repos/{ORG}/new-repo-name` (returned in redirect)
 
 ## Validation Checklist
 
@@ -80,11 +80,11 @@ CANONICAL=$(gh api repos/{org}/{old-repo-name} --jq '.name')
 
 # 2. Check if TFC uses old name
 OLD_VCS=$(curl -s -H "Authorization: Bearer $TFC_TOKEN" \
-  https://app.terraform.io/api/v2/organizations/Takeda/workspaces/{ws-name} | \
+  https://app.terraform.io/api/v2/organizations/{TFC_ORG}/workspaces/{ws-name} | \
   jq -r '.data.attributes."vcs-repo".identifier')
 
 # 3. If different, update TFC workspace
-if [ "$OLD_VCS" != "oneTakeda/$CANONICAL" ]; then
+if [ "$OLD_VCS" != "{ORG}/$CANONICAL" ]; then
   curl -X PATCH -H "Authorization: Bearer $TFC_TOKEN" \
     -H "Content-Type: application/vnd.api+json" \
     -d '{
@@ -92,14 +92,14 @@ if [ "$OLD_VCS" != "oneTakeda/$CANONICAL" ]; then
         "type": "workspaces",
         "attributes": {
           "vcs-repo": {
-            "identifier": "oneTakeda/'$CANONICAL'",
+            "identifier": "{ORG}/'$CANONICAL'",
             "branch": "{branch}",
             "oauth-token-id": "{oauth-token-id}"
           }
         }
       }
     }' \
-    https://app.terraform.io/api/v2/organizations/Takeda/workspaces/{ws-name}
+    https://app.terraform.io/api/v2/organizations/{TFC_ORG}/workspaces/{ws-name}
 fi
 ```
 
@@ -138,7 +138,7 @@ gh api repos/{org}/{repo-name} --jq '.permissions | to_entries[] | select(.value
 #!/bin/bash
 # Validate all workspace VCS configs in organization
 
-ORG="Takeda"
+ORG="{YOUR_TFC_ORG}"
 TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json)
 
 # List all workspaces
@@ -164,8 +164,8 @@ for ws in $WORKSPACES; do
   REPO=$(echo $VCS | cut -d'/' -f2)
   
   # Check if repo exists
-  if gh api repos/oneTakeda/$REPO --jq '.name' >/dev/null 2>&1; then
-    CANONICAL=$(gh api repos/oneTakeda/$REPO --jq '.name')
+  if gh api repos/{ORG}/$REPO --jq '.name' >/dev/null 2>&1; then
+    CANONICAL=$(gh api repos/{ORG}/$REPO --jq '.name')
     if [ "$CANONICAL" != "$REPO" ]; then
       echo "⚠️  $ws: Points to renamed repo ($REPO → $CANONICAL)"
     else

@@ -15,7 +15,7 @@ async def run():
             viewport={"width": 1280, "height": 800}
         )
         page = context.pages[0]
-        url = "https://outlook.office.com/mail/?login_hint=shalom.bhooshi%40takeda.com"
+        url = "https://outlook.office.com/mail/"
         await page.goto(url)
         
         print(f"Opening: {url}")

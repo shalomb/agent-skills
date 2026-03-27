@@ -41,4 +41,4 @@ Automate the bridge between synchronized engineering discussions and asynchronou
     - Display Plan and Briefing; execute confirmed updates via `gh`.
 
 ---
-**Maintained by**: @shalomb | **Version**: 1.2 | **Last Updated**: 2026-03-14
+**Maintained by**: contributors | **Version**: 1.2 | **Last Updated**: 2026-03-14

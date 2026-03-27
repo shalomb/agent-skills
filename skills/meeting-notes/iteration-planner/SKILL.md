@@ -1,6 +1,6 @@
 ---
 name: iteration-planner
-description: Orchestrate the transition between GitHub Project iterations (e.g., oneTakeda/293). Perform a "Sprint Stocktake" of open work and coordinate with the user to schedule the next 2-week iteration.
+description: Orchestrate the transition between GitHub Project iterations (e.g., ORG/PROJECT_NUMBER). Perform a "Sprint Stocktake" of open work and coordinate with the user to schedule the next 2-week iteration.
 ---
 
 # Iteration Planner Skill
@@ -47,4 +47,4 @@ For command references, GraphQL mutations, and delivery metrics, refer to:
     - Parse edited sheet and execute `gh project item-edit` calls.
 
 ---
-**Maintained by**: @shalomb | **Version**: 1.1 | **Last Updated**: 2026-03-14
+**Maintained by**: contributors | **Version**: 1.1 | **Last Updated**: 2026-03-14

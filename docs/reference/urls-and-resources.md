@@ -24,7 +24,7 @@ Complete list of external URLs, APIs, and references used throughout this docume
 | **OpenAPI Browser UI** | https://apidocs.harness.io | Interactive API explorer (read-only, no auth) |
 
 ### Harness API Modules (in official spec)
-Documented in: `/home/unop/shalomb/agent-skills/skills/harness-idp/OPENAPI-XREF.md`
+Documented in: `skills/harness-idp/OPENAPI-XREF.md`
 
 | Module | Endpoints | Key APIs |
 |--------|-----------|----------|
@@ -89,18 +89,17 @@ Documented in: `/home/unop/shalomb/agent-skills/skills/harness-idp/OPENAPI-XREF.
 ### Local Filesystem
 | Path | Purpose | Details |
 |------|---------|---------|
-| `~/shalomb/agent-skills/` | Main skills repository | All documentation and skills |
-| `~/shalomb/agent-skills/docs/` | Documentation system | Diataxis-organized guides |
-| `~/shalomb/agent-skills/skills/harness-idp/` | Harness IDP skill | Production-ready skill with OpenAPI discovery |
+| `./skills/` | Main skills repository | All documentation and skills |
+| `./docs/` | Documentation system | Diataxis-organized guides |
+| `./skills/harness-idp/` | Harness IDP skill | Production-ready skill with OpenAPI discovery |
 | `~/.agents/skills/` | User-level skills (convention) | Cross-client interoperability |
 | `<project>/.agents/skills/` | Project-level skills (convention) | Repository-specific skills |
 
 ### Downloaded Resources
 | File | Location | Size | Purpose |
 |------|----------|------|---------|
-| **PDF: The Complete Guide to Building Skills for Claude** | ~/Downloads/The-Complete-Guide-to-Building-Skill-for-Claude.pdf | 549KB | Source for docs conversion |
-| **Extracted text** | ~/tmp-skills-guide.txt | 36KB | Plain text extraction |
-| **agentskills.io page (text)** | /tmp/adding-skills-support.txt | ~20KB | Client implementation guide |
+| **PDF: The Complete Guide to Building Skills for Claude** | Available at https://agentskills.io | Reference guide for skill creation |
+| **agentskills.io documentation** | https://agentskills.io | Client implementation guide |
 
 ## Configuration Files Referenced
 
@@ -108,7 +107,7 @@ Documented in: `/home/unop/shalomb/agent-skills/skills/harness-idp/OPENAPI-XREF.
 |--------|----------|---------|
 | **.agents/skills/** | `<project>/.agents/skills/` | Skill discovery path (convention) |
 | **.env** | `~/.env` | Environment credentials (Harness account) |
-| **justfile** | Project root | Build/test automation (GMSGQ project) |
+| **justfile** | Project root | Build/test automation |
 | **.gitignore** | Skill directories | Exclude generated cache files |
 
 ## Documentation Cross-References
@@ -164,11 +163,10 @@ Documented in: `/home/unop/shalomb/agent-skills/skills/harness-idp/OPENAPI-XREF.
 - `DOCUMENTATION-SUMMARY.md` - Project overview
 - `DISCOVERY-SYSTEM.md` - OpenAPI discovery system overview
 
-#### GMSGQ IaC Reverse Engineering Solution
-- Location: `/home/unop/oneTakeda/gmsgq-dad-clouddevsecops-iac-reveng-solution/`
+#### Example Project
+- Location: `<project-root>/`
 - AGENTS.md - Agent operations guide
 - docs/README.md - Documentation index
-- docs/explanation/architecture.md - Architecture decisions
 
 ## API Endpoints Documented
 
@@ -207,9 +205,9 @@ See: `skills/harness-idp/OPENAPI-XREF.md` for complete reference with parameters
 ### Project-Level Tools
 | Command | Purpose | Location |
 |---------|---------|----------|
-| `just preflight <apms-id>` | Validate prerequisites | GMSGQ project |
-| `just generate <apms-id> <env>` | Generate Terraform | GMSGQ project |
-| `just test` | Full test pipeline | GMSGQ project |
+| `just preflight <id>` | Validate prerequisites | Your project |
+| `just generate <id> <env>` | Generate Terraform | Your project |
+| `just test` | Full test pipeline | Your project |
 | `pi @adzic-index <file>` | BDD quality check | Pi skills |
 | `pi @farley-index <file>` | Unit test quality check | Pi skills |
 

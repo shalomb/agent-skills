@@ -121,4 +121,4 @@ For detailed syntax, patterns, and advanced filtering:
 → Read `references/targetprocess-quick-ref.md`
 
 For API details and entity structure:
-→ Read tpcli documentation: `~/shalomb/tpcli/docs/`
+→ Read tpcli documentation: `tpcli docs` or the installed package documentation
