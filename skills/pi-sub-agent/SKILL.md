@@ -50,33 +50,65 @@ Key flags:
 - `-p @file` — non-interactive, process prompt and exit
 - `> file.jsonl 2>&1 &` — background with captured output
 
-### 4. Launch the monitor
+### 4. Launch the monitor in the same pane
+
+The pi process runs backgrounded (`&`), so the pane is free for the monitor:
 
 ```bash
 tmux send-keys -t "{session}:{window}.{pane}" \
   "python3 {skill_dir}/scripts/pi-monitor.py /tmp/task-output.jsonl" Enter
 ```
 
-The monitor shows: tool calls, files edited, commits, test results, errors, and completion status. Refreshes every 2 seconds.
+The monitor shows a live dashboard: tool calls, files edited, commits, test results, errors, and completion status. Refreshes every 2 seconds. Stops automatically when the agent finishes.
 
-### 5. Poll for completion
+### 5. Poll for completion from your own session
+
+Don't `sleep` with increasing intervals — use `pi-poll.py` which reads the monitor's tmux pane at a fixed interval and reports progress:
 
 ```bash
-for i in $(seq 1 40); do
-  sleep 30
-  status=$(bash ~/.pi/agent/skills/tmux/scripts/tmux-read.sh "{session}:{window}.{pane}" 2>&1)
-  done=$(echo "$status" | grep -c "✅ DONE")
-  tools=$(echo "$status" | grep "Tool calls:" | grep -oP '\d+' | tail -1)
-  echo "[$(date +%H:%M:%S)] tools=$tools"
-  if [ "$done" -gt 0 ]; then
-    echo "=== AGENT FINISHED ==="
-    echo "$status"
-    break
-  fi
-done
+python3 {skill_dir}/scripts/pi-poll.py "{session}:{window}.{pane}" --interval 30
 ```
 
-### 6. Verify results
+This prints one status line every 30 seconds and exits 0 when the agent finishes:
+```
+[22:13:00] tools=13  files=...
+[22:13:30] tools=15  files=test_adversarial_inputs.py
+[22:14:00] tools=20  files=bb-feasibility-check.py, generate-handoff-pa
+[22:14:30] tools=25  files=bb-feasibility-check.py, check-repo-permissi
+✅ Agent finished after 180s (6 polls)
+```
+
+Options:
+- `--interval 30` — poll every 30 seconds (default)
+- `--timeout 1200` — give up after 20 minutes (default)
+
+### 6. Full launch-monitor-poll pattern (copy-paste ready)
+
+```bash
+# 1. Write prompt to file
+cat > /tmp/task-prompt.md << 'EOF'
+Your task description here.
+EOF
+
+# 2. Identify target pane (must be in YOUR session)
+TARGET="{session}:{window}.{pane}"
+
+# 3. Launch pi + monitor in the target pane
+tmux send-keys -t "$TARGET" \
+  "cd /path/to/repo && pi --models 'github-copilot/claude-sonnet-4.6' --no-session --mode json -p @/tmp/task-prompt.md > /tmp/task-output.jsonl 2>&1 &" Enter
+sleep 5
+tmux send-keys -t "$TARGET" \
+  "python3 ~/.pi/agent/skills/pi-sub-agent/scripts/pi-monitor.py /tmp/task-output.jsonl" Enter
+
+# 4. Poll from your session (blocks until done or timeout)
+python3 ~/.pi/agent/skills/pi-sub-agent/scripts/pi-poll.py "$TARGET" --interval 30
+
+# 5. Kill monitor and verify
+tmux send-keys -t "$TARGET" C-c
+git log --oneline -5
+```
+
+### 7. Verify results
 
 After the agent finishes:
 ```bash
