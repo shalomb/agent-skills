@@ -1,0 +1,733 @@
+#!/usr/bin/env bash
+# skills — manage agent skills across source registries and agent targets
+#
+# SYNOPSIS
+#   skills ls [PATTERN]                  list all available skills (all sources)
+#   skills installed [PATTERN]           list globally installed skills + their source
+#   skills install PATTERN [--project]   install matching skill(s) globally or into project
+#   skills uninstall PATTERN             remove from global target(s)
+#   skills update [PATTERN]              re-link/sync skills (pull source changes)
+#   skills sources                       list configured source registries
+#   skills targets                       list configured agent target directories
+#   skills doctor [PATTERN]              audit: broken links, drift, uninstalled, duplicates
+#   skills diff SKILL                    show content diff between source and deployed copies
+#   skills config                        show/edit the skills configuration file
+#
+# INSTALL
+#   ln -sf /path/to/agent-skills/tools/skills ~/.local/bin/skills
+#
+# CONFIGURATION
+#   $XDG_CONFIG_HOME/agent-skills/skills.conf   (auto-created on first run)
+#
+# Project-local install targets are auto-detected from the cwd git repo.
+# Known project install dirs: .github/skills, .claude/skills, .agents/skills, .pi/skills
+
+set -euo pipefail
+
+# ---------------------------------------------------------------------------
+# XDG paths
+# ---------------------------------------------------------------------------
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+XDG_DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
+SKILLS_CONF="$XDG_CONFIG_HOME/agent-skills/skills.conf"
+SKILLS_DATA="$XDG_DATA_HOME/agent-skills"
+
+# ---------------------------------------------------------------------------
+# Defaults (overridden by skills.conf)
+# ---------------------------------------------------------------------------
+# Source registries: name=path pairs (paths to directories containing skill dirs)
+declare -A DEFAULT_SOURCES=(
+  [canonical]="$HOME/shalomb/agent-skills/skills"
+  [superpowers]="$HOME/projects/obra/superpowers/skills"
+  [anthropic]="$HOME/projects/anthropics/skills/skills"
+  [local]="$HOME/agent-skills"
+)
+
+# Global agent target directories (symlink farms)
+DEFAULT_TARGETS=(
+  "$HOME/.pi/agent/skills"
+  "$HOME/.gemini/skills"
+)
+
+# Project-local install dir names (checked inside project root)
+PROJECT_INSTALL_DIRS=(
+  ".github/skills"
+  ".claude/skills"
+  ".agents/skills"
+  ".pi/skills"
+)
+
+# ---------------------------------------------------------------------------
+# Load configuration
+# ---------------------------------------------------------------------------
+load_conf() {
+  # Ensure config dir exists
+  mkdir -p "$(dirname "$SKILLS_CONF")"
+
+  # Auto-create config on first run
+  if [[ ! -f "$SKILLS_CONF" ]]; then
+    cat > "$SKILLS_CONF" << 'CONF'
+# skills configuration
+# Format: KEY=value or KEY+=value (append to array)
+
+# Source registries: name:path  (directories containing skill subdirs)
+# SOURCES+=( "canonical:$HOME/shalomb/agent-skills/skills" )
+# SOURCES+=( "superpowers:$HOME/projects/obra/superpowers/skills" )
+# SOURCES+=( "anthropic:$HOME/projects/anthropics/skills/skills" )
+
+# Global agent targets (symlink farms read by agents)
+# TARGETS+=( "$HOME/.pi/agent/skills" )
+# TARGETS+=( "$HOME/.gemini/skills" )
+
+# Project install method: symlink or copy
+PROJECT_INSTALL_METHOD=copy
+CONF
+    echo "ℹ️  Created config: $SKILLS_CONF" >&2
+  fi
+
+  # Source the conf
+  # shellcheck disable=SC1090
+  source "$SKILLS_CONF" 2>/dev/null || true
+}
+
+# ---------------------------------------------------------------------------
+# Resolve source registries (conf SOURCES array overrides defaults if set)
+# ---------------------------------------------------------------------------
+get_sources() {
+  if [[ -n "${SOURCES[*]:-}" ]]; then
+    for entry in "${SOURCES[@]}"; do
+      local name="${entry%%:*}"
+      local path="${entry#*:}"
+      path="${path/\$HOME/$HOME}"
+      echo "$name:$path"
+    done
+  else
+    for name in "${!DEFAULT_SOURCES[@]}"; do
+      local path="${DEFAULT_SOURCES[$name]}"
+      [[ -d "$path" ]] && echo "$name:$path"
+    done
+  fi
+}
+
+# Get source paths only
+source_paths() {
+  get_sources | cut -d: -f2-
+}
+
+# ---------------------------------------------------------------------------
+# Resolve global targets
+# ---------------------------------------------------------------------------
+get_targets() {
+  if [[ -n "${TARGETS[*]:-}" ]]; then
+    for t in "${TARGETS[@]}"; do
+      echo "${t/\$HOME/$HOME}"
+    done
+  else
+    for t in "${DEFAULT_TARGETS[@]}"; do
+      [[ -d "$t" ]] && echo "$t"
+    done
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# Discover all skills across all source registries
+# Output: source_name:skill_name:skill_path
+# ---------------------------------------------------------------------------
+discover_all() {
+  while IFS=: read -r name root; do
+    [[ -d "$root" ]] || continue
+    find -L "$root" -maxdepth 1 -mindepth 1 -type d | while read -r skill_dir; do
+      skill_name=$(basename "$skill_dir")
+      [[ -f "$skill_dir/SKILL.md" ]] || continue
+      echo "$name:$skill_name:$skill_dir"
+    done
+  done < <(get_sources)
+}
+
+# ---------------------------------------------------------------------------
+# Discover skills in a single directory
+# Output: skill_name:skill_path
+# ---------------------------------------------------------------------------
+discover_in() {
+  local root="$1"
+  [[ -d "$root" ]] || return 0
+  find -L "$root" -maxdepth 1 -mindepth 1 -type d | while read -r skill_dir; do
+    skill_name=$(basename "$skill_dir")
+    [[ -f "$skill_dir/SKILL.md" ]] || continue
+    echo "$skill_name:$skill_dir"
+  done
+}
+
+# ---------------------------------------------------------------------------
+# Extract frontmatter field from SKILL.md
+# ---------------------------------------------------------------------------
+skill_field() {
+  local skill_dir="$1" field="$2"
+  local skill_md="$skill_dir/SKILL.md"
+  [[ -f "$skill_md" ]] || return 0
+  # Extract from YAML frontmatter between first --- delimiters
+  awk "/^---/{f=!f;next} f && /^${field}:/{
+    val=\$0; sub(/^${field}: */,\"\",val)
+    # Strip leading/trailing quotes
+    gsub(/^\"|\"$/,\"\",val); gsub(/^'|'$/,\"\",val)
+    print val; exit
+  }" "$skill_md"
+}
+
+# ---------------------------------------------------------------------------
+# Pattern matching: does SKILL_NAME match PATTERN?
+# Supports substring match, globbing, and exact.
+# ---------------------------------------------------------------------------
+matches_pattern() {
+  local name="$1" pattern="${2:-}"
+  [[ -z "$pattern" ]] && return 0       # no pattern = match all
+  [[ "$name" == *"$pattern"* ]] && return 0   # substring
+  [[ "$name" == $pattern ]] && return 0       # glob
+  return 1
+}
+
+# ---------------------------------------------------------------------------
+# Get the project root and available local install dirs
+# ---------------------------------------------------------------------------
+project_root() {
+  git rev-parse --show-toplevel 2>/dev/null || echo ""
+}
+
+project_install_dirs() {
+  local root
+  root=$(project_root) || true
+  [[ -z "$root" ]] && return 0
+  for d in "${PROJECT_INSTALL_DIRS[@]}"; do
+    echo "$root/$d"
+  done
+}
+
+# First existing project install dir, or first preferred
+project_install_target() {
+  local root
+  root=$(project_root) || true
+  [[ -z "$root" ]] && return 0
+  # Prefer first that already exists
+  for d in "${PROJECT_INSTALL_DIRS[@]}"; do
+    [[ -d "$root/$d" ]] && echo "$root/$d" && return 0
+  done
+  # Default to first option
+  echo "$root/${PROJECT_INSTALL_DIRS[0]}"
+}
+
+# ---------------------------------------------------------------------------
+# CMD: ls
+# ---------------------------------------------------------------------------
+cmd_ls() {
+  local pattern="${1:-}"
+  local prev_name=""
+
+  printf "%-28s %-14s %s\n" "SKILL" "SOURCE" "DESCRIPTION"
+  printf "%-28s %-14s %s\n" "-----" "------" "-----------"
+
+  discover_all | sort -t: -k2,2 -k1,1 | while IFS=: read -r source name path; do
+    matches_pattern "$name" "$pattern" || continue
+    local desc
+    desc=$(skill_field "$path" "description")
+    desc="${desc:0:60}"
+    # Mark duplicate names (same skill in multiple sources)
+    local marker=" "
+    [[ "$name" == "$prev_name" ]] && marker="↑"
+    printf "%s%-27s %-14s %s\n" "$marker" "$name" "$source" "$desc"
+    prev_name="$name"
+  done
+}
+
+# ---------------------------------------------------------------------------
+# CMD: installed
+# ---------------------------------------------------------------------------
+cmd_installed() {
+  local pattern="${1:-}"
+
+  printf "%-28s %-14s %-10s %s\n" "SKILL" "TARGET" "MODE" "SOURCE"
+  printf "%-28s %-14s %-10s %s\n" "-----" "------" "----" "------"
+
+  while read -r target; do
+    local label
+    label=$(echo "$target" | sed "s|$HOME/||")
+    find -L "$target" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | sort | while read -r skill_dir; do
+      local name
+      name=$(basename "$skill_dir")
+      matches_pattern "$name" "$pattern" || continue
+      [[ -f "$skill_dir/SKILL.md" ]] || continue
+
+      # Determine mode: symlink or copy
+      local mode="copy"
+      [[ -L "$target/$name" ]] && mode="symlink"
+
+      # Resolve source
+      local source="(unknown)"
+      if [[ "$mode" == "symlink" ]]; then
+        local real
+        real=$(readlink "$target/$name")
+        real="${real//$HOME\//}"
+        source="$real"
+      else
+        source="(copy)"
+      fi
+
+      printf "%-28s %-14s %-10s %s\n" "$name" "$label" "$mode" "$source"
+    done
+  done < <(get_targets)
+}
+
+# ---------------------------------------------------------------------------
+# CMD: install
+# ---------------------------------------------------------------------------
+cmd_install() {
+  local pattern="" project=false
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --project|-p) project=true ;;
+      *) pattern="$1" ;;
+    esac
+    shift
+  done
+
+  [[ -z "$pattern" ]] && { echo "Usage: skills install PATTERN [--project]" >&2; exit 1; }
+
+  local installed_count=0
+  local already_count=0
+
+  # Find matching skills across all sources
+  local matches=()
+  while IFS=: read -r source name path; do
+    matches_pattern "$name" "$pattern" || continue
+    matches+=("$source:$name:$path")
+  done < <(discover_all)
+
+  if [[ ${#matches[@]} -eq 0 ]]; then
+    echo "✗ No skills found matching: $pattern" >&2
+    echo "  Run 'skills ls $pattern' to see available skills." >&2
+    exit 1
+  fi
+
+  # If multiple matches, show them and confirm unless exact match
+  if [[ ${#matches[@]} -gt 1 ]]; then
+    echo "Matching skills:"
+    for m in "${matches[@]}"; do
+      IFS=: read -r s n p <<< "$m"
+      echo "  [$s] $n  ($p)"
+    done
+    echo ""
+    read -r -p "Install all ${#matches[@]} skills? [y/N] " confirm
+    [[ "$confirm" =~ ^[Yy] ]] || { echo "Aborted."; exit 0; }
+  fi
+
+  for m in "${matches[@]}"; do
+    IFS=: read -r source name skill_path <<< "$m"
+
+    if $project; then
+      # Project-local install
+      local target
+      target=$(project_install_target)
+      [[ -z "$target" ]] && { echo "✗ Not inside a git repository" >&2; exit 1; }
+      local method="${PROJECT_INSTALL_METHOD:-copy}"
+      _install_skill "$name" "$skill_path" "$target" "$method"
+    else
+      # Global install into all targets
+      while read -r target; do
+        _install_skill "$name" "$skill_path" "$target" "symlink"
+      done < <(get_targets)
+    fi
+  done
+}
+
+_install_skill() {
+  local name="$1" source_path="$2" target_dir="$3" method="$4"
+  local dest="$target_dir/$name"
+
+  mkdir -p "$target_dir"
+
+  if [[ -e "$dest" || -L "$dest" ]]; then
+    local existing_real
+    existing_real=$(readlink -f "$dest" 2>/dev/null || echo "$dest")
+    local source_real
+    source_real=$(readlink -f "$source_path")
+    if [[ "$existing_real" == "$source_real" ]]; then
+      echo "  ✓ already installed: $name  →  $(echo "$target_dir" | sed "s|$HOME/||")"
+      return 0
+    else
+      echo "  ~ replacing: $name in $(echo "$target_dir" | sed "s|$HOME/||")"
+      rm -rf "$dest"
+    fi
+  fi
+
+  case "$method" in
+    symlink)
+      ln -s "$source_path" "$dest"
+      echo "  + linked:   $name  →  $(echo "$target_dir" | sed "s|$HOME/||")"
+      ;;
+    copy)
+      rsync -a --delete "$source_path/" "$dest/"
+      echo "  + copied:   $name  →  $(echo "$target_dir" | sed "s|$HOME/||")"
+      ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# CMD: uninstall
+# ---------------------------------------------------------------------------
+cmd_uninstall() {
+  local pattern="${1:-}"
+  [[ -z "$pattern" ]] && { echo "Usage: skills uninstall PATTERN" >&2; exit 1; }
+
+  local removed=0
+  while read -r target; do
+    local label
+    label=$(echo "$target" | sed "s|$HOME/||")
+    find -L "$target" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | while read -r skill_dir; do
+      local name
+      name=$(basename "$skill_dir")
+      matches_pattern "$name" "$pattern" || continue
+      [[ -f "$skill_dir/SKILL.md" ]] || continue
+
+      echo "  - removing: $name  from  $label"
+      rm -rf "$target/$name"
+      (( removed++ )) || true
+    done
+  done < <(get_targets)
+
+  [[ $removed -eq 0 ]] && echo "No installed skills matched: $pattern"
+}
+
+# ---------------------------------------------------------------------------
+# CMD: update
+# Re-applies installs: for symlinks, nothing needed (live); for copies, rsync.
+# ---------------------------------------------------------------------------
+cmd_update() {
+  local pattern="${1:-}"
+
+  while read -r target; do
+    local label
+    label=$(echo "$target" | sed "s|$HOME/||")
+    find "$target" -maxdepth 1 -mindepth 1 ! -type l 2>/dev/null | while read -r skill_dir; do
+      [[ -d "$skill_dir" ]] || continue
+      local name
+      name=$(basename "$skill_dir")
+      matches_pattern "$name" "$pattern" || continue
+      [[ -f "$skill_dir/SKILL.md" ]] || continue
+
+      # It's a copy — find the canonical source and rsync
+      local source_path=""
+      while IFS=: read -r sname spath; do
+        [[ -d "$spath/$name" ]] && source_path="$spath/$name" && break
+      done < <(get_sources | cut -d: -f2- | sed 's/^/x:/')
+
+      if [[ -n "$source_path" ]]; then
+        rsync -a --delete "$source_path/" "$skill_dir/"
+        echo "  ↑ updated (copy): $name  in  $label"
+      else
+        echo "  ? cannot find source for: $name  (skipped)"
+      fi
+    done
+  done < <(get_targets)
+
+  # Also check project local dirs
+  local proj_root
+  proj_root=$(project_root) || true
+  if [[ -n "$proj_root" ]]; then
+    for d in "${PROJECT_INSTALL_DIRS[@]}"; do
+      local target="$proj_root/$d"
+      [[ -d "$target" ]] || continue
+      local label="${target//$HOME\//}"
+      find "$target" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | while read -r skill_dir; do
+        local name
+        name=$(basename "$skill_dir")
+        matches_pattern "$name" "$pattern" || continue
+        [[ -f "$skill_dir/SKILL.md" ]] || continue
+
+        local source_path=""
+        while IFS=: read -r src_name src_root; do
+          [[ -d "$src_root/$name" ]] && source_path="$src_root/$name" && break
+        done < <(get_sources)
+
+        if [[ -n "$source_path" ]]; then
+          rsync -a --delete "$source_path/" "$skill_dir/"
+          echo "  ↑ updated (project copy): $name  in  $label"
+        fi
+      done
+    done
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# CMD: sources
+# ---------------------------------------------------------------------------
+cmd_sources() {
+  printf "%-16s %-6s %s\n" "NAME" "SKILLS" "PATH"
+  printf "%-16s %-6s %s\n" "----" "------" "----"
+  while IFS=: read -r name path; do
+    local count=0
+    [[ -d "$path" ]] && count=$(find -L "$path" -maxdepth 2 -name "SKILL.md" 2>/dev/null | wc -l | tr -d ' ')
+    local status="✓"
+    [[ ! -d "$path" ]] && status="✗ missing"
+    printf "%-16s %-6s %s  %s\n" "$name" "$count" "$path" "$status"
+  done < <(get_sources)
+}
+
+# ---------------------------------------------------------------------------
+# CMD: targets
+# ---------------------------------------------------------------------------
+cmd_targets() {
+  printf "%-40s %-8s %s\n" "PATH" "SKILLS" "STATUS"
+  printf "%-40s %-8s %s\n" "----" "------" "------"
+
+  # Global targets
+  while read -r target; do
+    local label="${target//$HOME\//~\/}"
+    local count=0
+    local status="✓ global"
+    if [[ -d "$target" ]]; then
+      count=$(find -L "$target" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+    else
+      status="✗ missing"
+    fi
+    printf "%-40s %-8s %s\n" "$label" "$count" "$status"
+  done < <(get_targets)
+
+  # Project local (if in a git repo)
+  local proj_root
+  proj_root=$(project_root) || true
+  if [[ -n "$proj_root" ]]; then
+    for d in "${PROJECT_INSTALL_DIRS[@]}"; do
+      local target="$proj_root/$d"
+      local label="${target//$HOME\//~\/}"
+      local count=0
+      local status="project (not present)"
+      if [[ -d "$target" ]]; then
+        count=$(find -L "$target" -maxdepth 1 -mindepth 1 -type d 2>/dev/null | wc -l | tr -d ' ')
+        status="✓ project"
+      fi
+      printf "%-40s %-8s %s\n" "$label" "$count" "$status"
+    done
+  fi
+}
+
+# ---------------------------------------------------------------------------
+# CMD: doctor
+# ---------------------------------------------------------------------------
+cmd_doctor() {
+  local pattern="${1:-}"
+  local _issues_file
+  _issues_file=$(mktemp)
+  echo 0 > "$_issues_file"
+  _inc_issues() { echo $(( $(cat "$_issues_file") + 1 )) > "$_issues_file"; }
+
+  echo "=== skills doctor ==="
+  echo ""
+
+  # 1. Broken symlinks in global targets
+  echo "── Broken symlinks ──────────────────────────────"
+  local found_broken=false
+  while read -r target; do
+    [[ -d "$target" ]] || continue
+    while IFS= read -r link; do
+      local name
+      name=$(basename "$link")
+      matches_pattern "$name" "$pattern" || continue
+      echo "  ✗ broken: $link → $(readlink "$link" 2>/dev/null || echo '?')"
+      _inc_issues; found_broken=true
+    done < <(find "$target" -maxdepth 1 -type l ! -exec test -e {} \; -print 2>/dev/null)
+  done < <(get_targets)
+  $found_broken || echo "  ✓ no broken symlinks"
+  echo ""
+
+  # 2. Skills available in sources but NOT globally installed
+  echo "── Not globally installed ────────────────────────"
+  local -a installed_names=()
+  while read -r target; do
+    [[ -d "$target" ]] || continue
+    while IFS= read -r skill_dir; do
+      installed_names+=("$(basename "$skill_dir")")
+    done < <(find -L "$target" -maxdepth 1 -mindepth 1 -type d 2>/dev/null)
+  done < <(get_targets)
+
+  local found_missing=false
+  while IFS=: read -r source name path; do
+    matches_pattern "$name" "$pattern" || continue
+    local found=false
+    local n
+    for n in "${installed_names[@]:-}"; do
+      [[ "$n" == "$name" ]] && found=true && break
+    done
+    if ! $found; then
+      echo "  ? not installed: [$source] $name"
+      _inc_issues; found_missing=true
+    fi
+  done < <(discover_all)
+  $found_missing || echo "  ✓ all source skills are installed"
+  echo ""
+
+  # 3. Drift in project-local copies vs canonical sources
+  local proj_root
+  proj_root=$(project_root) || true
+  if [[ -n "$proj_root" ]]; then
+    echo "── Project-local drift ($(basename "$proj_root")) ─────────────"
+    local found_drift=false
+    local d
+    for d in "${PROJECT_INSTALL_DIRS[@]}"; do
+      local target="$proj_root/$d"
+      [[ -d "$target" ]] || continue
+      while IFS= read -r skill_dir; do
+        local name
+        name=$(basename "$skill_dir")
+        matches_pattern "$name" "$pattern" || continue
+        [[ -f "$skill_dir/SKILL.md" ]] || continue
+
+        local source_path=""
+        local src_name src_root
+        while IFS=: read -r src_name src_root; do
+          [[ -d "$src_root/$name" ]] && source_path="$src_root/$name" && break
+        done < <(get_sources)
+        [[ -z "$source_path" ]] && continue
+
+        local files_a files_b
+        files_a=$(find -L "$source_path" -type f ! -path '*/.git/*' ! -name '*.pyc' \
+          | sed "s|${source_path}/||" | sort)
+        files_b=$(find -L "$skill_dir"   -type f ! -path '*/.git/*' ! -name '*.pyc' \
+          | sed "s|${skill_dir}/||"   | sort)
+
+        local missing added changed
+        missing=$(comm -23 <(echo "$files_a") <(echo "$files_b") | wc -l | tr -d ' ')
+        added=$(  comm -13 <(echo "$files_a") <(echo "$files_b") | wc -l | tr -d ' ')
+        changed=0
+        while IFS= read -r rel; do
+          [[ -z "$rel" ]] && continue
+          local sha_a sha_b
+          sha_a=$(sha256sum "$source_path/$rel" | awk '{print $1}')
+          sha_b=$(sha256sum "$skill_dir/$rel"   | awk '{print $1}')
+          [[ "$sha_a" != "$sha_b" ]] && (( changed++ )) || true
+        done < <(comm -12 <(echo "$files_a") <(echo "$files_b"))
+
+        local total=$(( missing + added + changed ))
+        if [[ $total -gt 0 ]]; then
+          printf "  ~ drift: %-28s -%-2s +%-2s ~%-2s  (run: skills diff %s)\n" \
+            "$name" "$missing" "$added" "$changed" "$name"
+          _inc_issues; found_drift=true
+        else
+          echo "  ✓ in sync: $name"
+        fi
+      done < <(find -L "$target" -maxdepth 1 -mindepth 1 -type d 2>/dev/null)
+    done
+    $found_drift || echo "  ✓ no drift in project-local copies"
+    echo ""
+  fi
+
+  # 4. Duplicate skill names across sources
+  echo "── Duplicate names across sources ────────────────"
+  local found_dupes=false
+  local dupe
+  while read -r dupe; do
+    matches_pattern "$dupe" "$pattern" || continue
+    echo -n "  ! duplicate: $dupe  →  "
+    while IFS=: read -r src name path; do
+      [[ "$name" == "$dupe" ]] && printf "[%s] " "$src"
+    done < <(discover_all)
+    echo ""
+    _inc_issues; found_dupes=true
+  done < <(discover_all | awk -F: '{print $2}' | sort | uniq -d)
+  $found_dupes || echo "  ✓ no duplicate skill names"
+  echo ""
+
+  echo "── Summary ──────────────────────────────────────"
+  local total_issues
+  total_issues=$(cat "$_issues_file")
+  rm -f "$_issues_file"
+  if [[ $total_issues -eq 0 ]]; then
+    echo "  ✓ all checks passed"
+  else
+    echo "  ✗ $total_issues issue(s) found"
+    return 1
+  fi
+}
+
+
+# ---------------------------------------------------------------------------
+# CMD: diff
+# ---------------------------------------------------------------------------
+cmd_diff() {
+  local skill_name="${1:-}"
+  [[ -z "$skill_name" ]] && { echo "Usage: skills diff SKILL" >&2; exit 1; }
+
+  # Find the tool
+  local tools_dir
+  tools_dir="$(cd "$(dirname "$0")" && pwd)"
+  local drift_tool="$tools_dir/skill-drift.sh"
+  [[ ! -f "$drift_tool" ]] && drift_tool="$(dirname "$(readlink -f "$0")")/skill-drift.sh"
+
+  local proj_root
+  proj_root=$(project_root) || true
+
+  if [[ -n "$proj_root" ]]; then
+    for d in "${PROJECT_INSTALL_DIRS[@]}"; do
+      local target="$proj_root/$d/$skill_name"
+      [[ -d "$target" ]] || continue
+      if [[ -f "$drift_tool" ]]; then
+        bash "$drift_tool" --diff "$skill_name" "$target"
+      else
+        # Fallback: inline diff
+        local source_path=""
+        while IFS=: read -r src_name src_root; do
+          [[ -d "$src_root/$skill_name" ]] && source_path="$src_root/$skill_name" && break
+        done < <(get_sources)
+        [[ -n "$source_path" ]] && diff -rq "$source_path" "$target" || true
+      fi
+      return 0
+    done
+  fi
+
+  echo "No project-local copy of '$skill_name' found in current repo." >&2
+  echo "Run from inside a project that has $skill_name installed locally." >&2
+  exit 1
+}
+
+# ---------------------------------------------------------------------------
+# CMD: config
+# ---------------------------------------------------------------------------
+cmd_config() {
+  echo "Config file: $SKILLS_CONF"
+  echo ""
+  cat "$SKILLS_CONF"
+}
+
+# ---------------------------------------------------------------------------
+# Help
+# ---------------------------------------------------------------------------
+cmd_help() {
+  grep '^#' "$0" | head -16 | sed 's/^# *//'
+}
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+load_conf
+
+# Declare arrays that conf may have populated
+SOURCES=("${SOURCES[@]:-}")
+TARGETS=("${TARGETS[@]:-}")
+
+case "${1:-help}" in
+  ls|list)        shift; cmd_ls "$@" ;;
+  installed)      shift; cmd_installed "$@" ;;
+  install)        shift; cmd_install "$@" ;;
+  uninstall|rm)   shift; cmd_uninstall "$@" ;;
+  update|sync)    shift; cmd_update "$@" ;;
+  sources)        cmd_sources ;;
+  targets)        cmd_targets ;;
+  doctor|check)   shift; cmd_doctor "$@" ;;
+  diff)           shift; cmd_diff "$@" ;;
+  config)         cmd_config ;;
+  help|--help|-h) cmd_help ;;
+  *)
+    echo "Unknown command: $1" >&2
+    echo "Run 'skills help' for usage." >&2
+    exit 1
+    ;;
+esac
