@@ -40,9 +40,7 @@ node_modules/
 **/.venv/
 **/.pytest_cache/
 
-# Skill Data
-**/user_data/
-**/downloads/
-**/__pycache__/
-**/.venv/
-**/.pytest_cache/
+# Config files with secrets — these belong in $XDG_CONFIG_HOME, never in the repo
+# (*.env.template files ARE committed — they're public stubs, not secrets)
+*.env
+!*.env.template
