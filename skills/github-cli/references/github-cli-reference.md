@@ -150,7 +150,7 @@ gh api repos/{owner}/{repo}/pulls/{pr_number} \
 EOF
 
 # Example in practice:
-gh api repos/oneTakeda/gmsgq-dad-10345-fusion-platform-control-tower/pulls/80 \
+gh api repos/YOUR_ORG/YOUR_REPO/pulls/123 \
   --input /dev/stdin \
   --method PATCH << 'EOF'
 {
@@ -258,7 +258,7 @@ gh api graphql -f query='mutation {
 # Mark a PR as draft and add an explanatory comment
 
 PR_NUMBER=80
-REPO="oneTakeda/gmsgq-dad-10345-fusion-platform-control-tower"
+REPO="YOUR_ORG/YOUR_REPO"
 COMMENT_FILE="pr_comment.md"
 
 # Create comment file
@@ -679,3 +679,259 @@ For in-depth workflows, ask the user if they need guidance on:
 - **GitHub GraphQL API**: https://docs.github.com/en/graphql
 - **Scripting with GitHub CLI**: https://github.blog/engineering/engineering-principles/scripting-with-github-cli/
 - **GraphQL API Guide**: https://github.blog/developer-skills/github/exploring-github-cli-how-to-interact-with-githubs-graphql-api-endpoint/
+
+---
+
+## Projects V2: Adding Issues & Setting Fields
+
+GitHub Projects V2 requires GraphQL mutations — there are no `gh issue` flags for this.
+
+### Discover Project IDs
+
+Before hardcoding any IDs, discover them from your own org/project:
+
+```bash
+# List projects for an org
+gh api graphql -f query='
+{
+  organization(login: "YOUR_ORG") {
+    projectsV2(first: 10) {
+      nodes { id title number url }
+    }
+  }
+}'
+
+# Get all field IDs and option values for a project
+gh api graphql -f query='
+{
+  node(id: "YOUR_PROJECT_ID") {
+    ... on ProjectV2 {
+      fields(first: 20) {
+        nodes {
+          ... on ProjectV2Field {
+            id name dataType
+          }
+          ... on ProjectV2SingleSelectField {
+            id name dataType
+            options { id name }
+          }
+          ... on ProjectV2IterationField {
+            id name dataType
+            configuration {
+              iterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+  }
+}'
+```
+
+### Variables Pattern
+
+Resolve IDs once, then reference as variables throughout:
+
+```bash
+PROJECT_ID="YOUR_PROJECT_ID"         # PVT_kwDO...
+PROJECT_URL="https://github.com/orgs/YOUR_ORG/projects/N"
+
+# Status field options (single-select)
+STATUS_TODO="OPTION_ID"
+STATUS_IN_PROGRESS="OPTION_ID"
+STATUS_BLOCKED="OPTION_ID"
+STATUS_DONE="OPTION_ID"
+STATUS_BACKLOG="OPTION_ID"
+
+# Priority field options
+PRIORITY_DEFAULT="OPTION_ID"
+PRIORITY_P0="OPTION_ID"
+PRIORITY_P1="OPTION_ID"
+PRIORITY_P2="OPTION_ID"
+
+# Size field options
+SIZE_XS="OPTION_ID"
+SIZE_S="OPTION_ID"
+SIZE_M="OPTION_ID"
+SIZE_L="OPTION_ID"
+SIZE_XL="OPTION_ID"
+
+# Iteration IDs (rotate on cadence — query to refresh)
+ITER_CURRENT="ITERATION_ID"
+ITER_NEXT="ITERATION_ID"
+
+# Field IDs
+FIELD_STATUS="PVTSSF_..."
+FIELD_PRIORITY="PVTSSF_..."
+FIELD_SIZE="PVTSSF_..."
+FIELD_ITERATION="PVTIF_..."
+FIELD_ESTIMATE="PVTF_..."
+FIELD_START_DATE="PVTF_..."
+FIELD_TARGET_DATE="PVTF_..."
+```
+
+### Step 1: Get Issue Node ID
+
+```bash
+ISSUE_NODE_ID=$(gh api graphql -f query='
+{
+  repository(owner: "YOUR_ORG", name: "YOUR_REPO") {
+    issue(number: '$ISSUE_NUMBER') { id }
+  }
+}' --jq '.data.repository.issue.id')
+```
+
+### Step 2: Add Issue to Project
+
+```bash
+ITEM_ID=$(gh api graphql -f query='
+mutation {
+  addProjectV2ItemById(input: {
+    projectId: "'$PROJECT_ID'"
+    contentId: "'$ISSUE_NODE_ID'"
+  }) {
+    item { id }
+  }
+}' --jq '.data.addProjectV2ItemById.item.id')
+```
+
+### Step 3: Set Field Values
+
+**Single-select field** (Status, Priority, Size):
+```bash
+gh api graphql -f query='
+mutation {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: "'$PROJECT_ID'"
+    itemId: "'$ITEM_ID'"
+    fieldId: "'$FIELD_STATUS'"
+    value: { singleSelectOptionId: "'$STATUS_TODO'" }
+  }) {
+    projectV2Item { id }
+  }
+}'
+```
+
+**Number field** (custom numeric fields e.g. ticket ID, estimate):
+```bash
+gh api graphql -f query='
+mutation {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: "'$PROJECT_ID'"
+    itemId: "'$ITEM_ID'"
+    fieldId: "'$FIELD_ESTIMATE'"
+    value: { number: 1 }
+  }) {
+    projectV2Item { id }
+  }
+}'
+```
+
+**Date field** (Start date, Target date):
+```bash
+gh api graphql -f query='
+mutation {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: "'$PROJECT_ID'"
+    itemId: "'$ITEM_ID'"
+    fieldId: "'$FIELD_START_DATE'"
+    value: { date: "2026-03-27" }
+  }) {
+    projectV2Item { id }
+  }
+}'
+```
+
+**Iteration field**:
+```bash
+gh api graphql -f query='
+mutation {
+  updateProjectV2ItemFieldValue(input: {
+    projectId: "'$PROJECT_ID'"
+    itemId: "'$ITEM_ID'"
+    fieldId: "'$FIELD_ITERATION'"
+    value: { iterationId: "'$ITER_CURRENT'" }
+  }) {
+    projectV2Item { id }
+  }
+}'
+```
+
+### Full Default Setup: One Script
+
+Add a new issue to the project with defaults. Run all mutations in parallel for speed.
+
+```bash
+# Usage: add-to-project.sh <org> <repo> <issue_number>
+ORG=$1
+REPO=$2
+ISSUE_NUMBER=$3
+TODAY=$(date +%Y-%m-%d)
+
+# Source your project config (IDs resolved above)
+# source .project-config.sh
+
+# Get issue node ID
+ISSUE_NODE_ID=$(gh api graphql -f query="{
+  repository(owner: \"$ORG\", name: \"$REPO\") {
+    issue(number: $ISSUE_NUMBER) { id }
+  }
+}" --jq '.data.repository.issue.id')
+
+# Add to project
+ITEM_ID=$(gh api graphql -f query="mutation {
+  addProjectV2ItemById(input: {
+    projectId: \"$PROJECT_ID\"
+    contentId: \"$ISSUE_NODE_ID\"
+  }) { item { id } }
+}" --jq '.data.addProjectV2ItemById.item.id')
+
+# Set defaults in parallel
+for mutation in \
+  "fieldId: \"$FIELD_STATUS\"    value: { singleSelectOptionId: \"$STATUS_TODO\" }" \
+  "fieldId: \"$FIELD_PRIORITY\"  value: { singleSelectOptionId: \"$PRIORITY_DEFAULT\" }" \
+  "fieldId: \"$FIELD_SIZE\"      value: { singleSelectOptionId: \"$SIZE_S\" }" \
+  "fieldId: \"$FIELD_ITERATION\" value: { iterationId: \"$ITER_CURRENT\" }" \
+  "fieldId: \"$FIELD_START_DATE\" value: { date: \"$TODAY\" }"; do
+  gh api graphql -f query="mutation {
+    updateProjectV2ItemFieldValue(input: {
+      projectId: \"$PROJECT_ID\"
+      itemId: \"$ITEM_ID\"
+      $mutation
+    }) { projectV2Item { id } }
+  }" > /dev/null &
+done
+wait
+echo "✅ Issue #$ISSUE_NUMBER → $PROJECT_URL"
+```
+
+### Query: Refresh Iteration IDs
+
+Iterations rotate on a cadence. Re-run this to get current IDs:
+
+```bash
+gh api graphql -f query='
+{
+  node(id: "YOUR_PROJECT_ID") {
+    ... on ProjectV2 {
+      fields(first: 20) {
+        nodes {
+          ... on ProjectV2IterationField {
+            name
+            configuration {
+              iterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+  }
+}' --jq '[.data.node.fields.nodes[] | select(.name == "Iteration") | .configuration.iterations[] | {id, title, startDate}]'
+```
+
+### Notes
+
+- `addProjectV2ItemById` is the correct mutation name — **not** `addProjectV2ItemByContentId` (does not exist)
+- Bracket params in curl URLs cause exit code 3 — use `curl -G --data-urlencode` instead
+- Mutations can be fired in parallel (`&` + `wait`) for faster setup
+- Field IDs and option IDs are stable; iteration IDs rotate — always query before use
