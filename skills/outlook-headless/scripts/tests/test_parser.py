@@ -2,7 +2,7 @@ import os
 import pytest
 from src.parser import OutlookParser
 
-SNAPSHOT_DIR = os.path.expanduser("~/.gemini/skills/outlook-headless/scripts/tests/snapshots")
+SNAPSHOT_DIR = os.path.join(os.path.dirname(__file__), "snapshots")
 
 def get_snapshot(name):
     path = os.path.join(SNAPSHOT_DIR, name)

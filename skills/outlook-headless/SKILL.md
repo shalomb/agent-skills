@@ -1,53 +1,81 @@
 ---
 name: outlook-headless
-description: Background Outlook email search and extraction using Playwright and Google Chrome. Use this skill when you need to search for emails, extract email bodies or conversation threads, filter by sender, subject, or date, and handle Outlook tasks headlessly.
+description: >
+  Search and extract emails from Outlook Web Access using headless browser
+  automation. Use when the user wants to find, read, or summarise emails from
+  Outlook without opening a browser — supports filtering by sender, recipient,
+  subject, date range, and read status. Requires one-time auth setup via
+  setup_auth.py and Google Chrome installed locally.
 ---
 
-# /outlook-headless -- Deterministic Outlook Web Automation
+# Outlook Headless
 
-Background Outlook email search and extraction using Playwright and Google Chrome. Runs entirely in the background without UI interference.
+Background Outlook Web Access email search and extraction using Playwright and
+Google Chrome. Runs entirely headlessly without UI interference.
 
----
+## Prerequisites
 
-## Protocol
+- Google Chrome installed (see path configuration below)
+- `uv` package manager: `pip install uv` or `brew install uv`
+- One-time auth setup completed (Step 0)
 
-### Step 0: Setup Auth (One-time)
+### Chrome path configuration
 
-Before the first headless run, you must log in to establish a persistent session.
-
-```bash
-cd ~/.gemini/skills/outlook-headless/scripts && uv run src/setup_auth.py
-```
-
-### Step 1: Search and Extract Headlessly
-
-Perform a search entirely in the background. Results are returned as JSON.
-
-#### Basic Search
-```bash
-cd ~/.gemini/skills/outlook-headless/scripts && uv run src/scanner.py "your search term"
-```
-
-#### Advanced Search (Recommended)
-Use `src/cli.py` for fine-grained control:
+The scripts read `CHROME_PATH` from the environment, falling back to
+platform defaults:
 
 ```bash
-# Search by sender and subject
-cd ~/.gemini/skills/outlook-headless/scripts && uv run src/cli.py --from "boss@example.com" --subject "Urgent"
+# Linux (common paths)
+export CHROME_PATH="/usr/bin/google-chrome"
+export CHROME_PATH="/usr/bin/chromium-browser"
 
-# Download images for visual analysis
-cd ~/.gemini/skills/outlook-headless/scripts && uv run src/cli.py "Project" --download-images
+# macOS
+export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
 
-# Search within date range
-cd ~/.gemini/skills/outlook-headless/scripts && uv run src/cli.py --after "2024-01-01" --before "2024-01-31"
-
-# Combine everything
-cd ~/.gemini/skills/outlook-headless/scripts && uv run src/cli.py "Project" --from "alice@example.com" --unread --limit 10
+# Or set permanently in ~/.config/agent-skills/outlook-headless.env:
+# CHROME_PATH=/usr/bin/google-chrome
 ```
 
-### Step 2: Summarize
+User data and downloads are stored under
+`$XDG_DATA_HOME/agent-skills/outlook-headless/` (default:
+`~/.local/share/agent-skills/outlook-headless/`).
 
-The output is a JSON array of email objects:
+## Step 0: Setup Auth (one-time)
+
+Log in to establish a persistent browser session:
+
+```bash
+cd skills/outlook-headless/scripts && uv run src/setup_auth.py
+```
+
+A Chrome window opens to `https://outlook.office.com/mail/`. Sign in manually.
+The session is saved and reused for all future headless runs.
+
+## Step 1: Search and Extract
+
+### Basic search
+```bash
+cd skills/outlook-headless/scripts && uv run src/scanner.py "your search term"
+```
+
+### Advanced search (recommended)
+```bash
+# By sender and subject
+uv run src/cli.py --from "boss@example.com" --subject "Urgent"
+
+# With image download for visual analysis
+uv run src/cli.py "Project" --download-images
+
+# Date range
+uv run src/cli.py --after "2024-01-01" --before "2024-01-31"
+
+# Combined filters
+uv run src/cli.py "Project" --from "alice@example.com" --unread --limit 10
+```
+
+## Step 2: Summarise
+
+Output is a JSON array:
 ```json
 [
   {
@@ -59,32 +87,26 @@ The output is a JSON array of email objects:
   }
 ]
 ```
-Summarize the content for the user or perform further analysis.
 
----
+Parse the JSON and summarise or analyse the content for the user.
 
 ## Capabilities
 
-- **Find by Subject:** `--subject "Your Subject"`
-- **Find by Sender:** `--from "email@domain.com"`
-- **Find by Recipient:** `--to "recipient@domain.com"`
-- **Date Filtering:** `--after YYYY-MM-DD`, `--before YYYY-MM-DD`
-- **Status Filtering:** `--unread`
-- **Extraction:** Automatically extracts bodies from conversation threads.
-
----
+| Filter | Flag |
+|--------|------|
+| Subject keyword | `--subject "text"` |
+| Sender | `--from "email@domain.com"` |
+| Recipient | `--to "recipient@domain.com"` |
+| After date | `--after YYYY-MM-DD` |
+| Before date | `--before YYYY-MM-DD` |
+| Unread only | `--unread` |
+| Specific folder | `--folder "Deleted Items"` |
+| Download images | `--download-images` |
+| Show browser UI | `--show-ui` |
 
 ## Notes
 
-- **Safety:** Does not use `pyautogui` or move the mouse. Uses CSS selectors and DOM interaction.
-- **Determinism:** High. Uses direct navigation and specific search commitment logic.
-- **Prerequisites:** Requires the official Google Chrome installed in `/Applications/Google Chrome.app`.
-- **Background:** Page remains invisible (`headless=True`) during standard scans. Use `--show-ui` with `cli.py` to debug.
-
----
-
-## Backlog / Future Ideas
-
-- **Extended Headers:** Implement optional extraction of raw RFC822 internet headers (Message-ID, X-Headers, etc.) via the "View message details" modal for deeper technical analysis.
-- **Attachment Metadata:** List attachment names and sizes without downloading.
-- **Move/Recover Action:** Implement an action to move emails from "Deleted Items" back to "Inbox" or a specific folder.
+- Does **not** use `pyautogui` or move the mouse — uses CSS selectors and DOM
+  interaction only.
+- Page stays invisible (`headless=True`) by default; use `--show-ui` to debug.
+- Session is persistent — re-run `setup_auth.py` only if the session expires.
