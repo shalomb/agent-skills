@@ -36,9 +36,11 @@ export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 # CHROME_PATH=/usr/bin/google-chrome
 ```
 
-User data and downloads are stored under
-`$XDG_DATA_HOME/agent-skills/outlook-headless/` (default:
-`~/.local/share/agent-skills/outlook-headless/`).
+User data and downloads are stored under XDG-compliant directories:
+- Browser session: `$XDG_STATE_HOME/agent-skills/outlook-headless/user_data/`
+  (default: `~/.local/state/`) — **not safe to delete** (breaks auth)
+- Downloaded images: `$XDG_CACHE_HOME/agent-skills/outlook-headless/downloads/`
+  (default: `~/.cache/`) — safe to delete
 
 ## Step 0: Setup Auth (one-time)
 
