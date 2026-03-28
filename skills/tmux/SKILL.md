@@ -1,85 +1,105 @@
 ---
 name: tmux
-description: Execute commands and read output from specific tmux panes. Use this to orchestrate shell commands or monitor interactive tools (Python, GDB) in a user-provided tmux environment.
+description: "Remote control tmux sessions for interactive CLIs (python, gdb, etc.) by sending keystrokes and scraping pane output."
 ---
 
 # Tmux Skill
 
-Simple, reliable tmux orchestration. Use this skill to interact with a specific tmux pane provided by the user.
+Simple, reliable tmux orchestration.  Defaults to the **current session** the agent is running in.
 
-## Pane Targeting Format
+## Critical Rules
 
-**Target Format**: `{session}:{window}.{pane}` or `{window}.{pane}` (current session implied)
+1. **Current session by default.**  All scripts auto-resolve the current tmux session via `$TMUX`.  Do NOT target other sessions unless the user explicitly names one.
+2. **Never create or destroy sessions** unless explicitly instructed.
+3. **Never switch to a random session.**  If you need a pane, create a new window in the _current_ session (`tmux new-window`) rather than hijacking another session.
+4. **Never target the agent's own pane.**  `tmux-exec.sh` refuses if you try (detected via `$TMUX_PANE`).
+5. **Respect busy panes.**  `tmux-exec.sh` tracks running commands.  If a pane is busy it will refuse with details (command, elapsed time).  Do not send `C-c` unless the user asks — instead wait and retry, or use a different pane.
+6. **No default timeout.**  `tmux-exec.sh` waits until the command finishes.  Only pass `-t` when you have a good reason and understand that timeout ≠ cancellation — the command keeps running.
+7. **Verify before acting.**  Use `tmux-list.sh` to confirm targets exist (it also shows busy state).
 
-**Components**:
-- `{session}`: Session name (e.g., "code", "myproject")
-  - **Omit for current session shorthand** (e.g., just use `1.0` instead of `session:1.0`)
-- `{window}`: Window index (0-based numbering, e.g., 0, 1, 2)
-- `{pane}`: Pane index within that window (0-based, e.g., 0, 1, 2)
+## Pane Targeting
 
-**Examples**:
-- `1.0` = Window 1, Pane 0 in **current session** (shorthand)
-- `code:0.0` = Window 0, Pane 0 in session "code" (explicit)
-- `myproject:4.0` = Window 4, Pane 0 in that session
+**Format**: `{session}:{window}.{pane}` or `{window}.{pane}` (current session implied)
 
-**Shorthand Clarification**: When a user says "Use tmux pane 1.0", this means:
-- Window index: 1
-- Pane index: 0 (first/leftmost pane in that window)
-- Session: Current/default (automatically resolved)
+| Target | Meaning |
+|--------|---------|
+| `1.0` | Window 1, Pane 0 — **current session** (preferred) |
+| `code:0.0` | Window 0, Pane 0 in session "code" (only if user asks) |
 
-## 1. Execute and Sync (`scripts/tmux-exec.sh`)
+## 1. Execute (`scripts/tmux-exec.sh`)
 
-This is the primary tool for all interaction. It handles both shell commands and interactive REPLs.
+Primary tool.  Sends a command, waits for completion, returns output + exit code.
 
-### Shell Mode (Default)
-Executes a command, waits for it to finish, and returns clean output and the exit code.
+### Shell Mode (default)
 ```bash
-# Usage: ./scripts/tmux-exec.sh <target> <command>
-# Returns: The command's output. Exit code matches the command.
-./scripts/tmux-exec.sh "my-session:0.0" "ls -la"
+./scripts/tmux-exec.sh "1.0" "ls -la"
 ```
 
-### Interactive Mode (`-w pattern`)
-Sends keys and waits for a specific regex pattern to appear (e.g., a prompt).
+### Interactive Mode (`-w PATTERN`)
+Sends keys and waits for a regex (e.g. a REPL prompt):
 ```bash
-# Usage: ./scripts/tmux-exec.sh -w <regex> <target> <command>
-# Returns: Nothing (success/fail via exit code).
-./scripts/tmux-exec.sh -w "^>>> " "python-session" "print('hello')"
+./scripts/tmux-exec.sh -w '>>> ' "1.0" "print('hello')"
 ```
 
-## 2. Read and Scrape (`scripts/tmux-read.sh`)
+### Options
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `-t SEC` | none (wait forever) | Timeout.  On expiry the command is **still running** and the pane is marked busy. |
+| `-w PATTERN` | — | Interactive mode: wait for regex instead of exit-code markers. |
+| `-S PATH` | — | Custom tmux socket. |
 
-Use this to see what is happening in a pane without sending any input.
+### Busy-pane protection
+
+If a previous command is still running (e.g. after a timeout), the script detects this from its state file before proceeding:
+- **Command finished** → state is cleared, new command proceeds.
+- **Command still running** → error with command name, elapsed time, and recovery options.
+
+## 2. Read (`scripts/tmux-read.sh`)
+
+Read-only scrape of the last command's output.  Warns if the pane is busy.
 
 ```bash
-# Usage: ./scripts/tmux-read.sh <target>
-./scripts/tmux-read.sh "my-session:0.0"
+./scripts/tmux-read.sh "1.0"
 ```
 
-It uses intelligent prompt detection to return only the output of the *last* command, or the most recent block of text.
+| Flag | Default | Meaning |
+|------|---------|---------|
+| `-n LINES` | 2000 | History depth. |
+| `-S PATH` | — | Custom tmux socket. |
 
-## 3. List Environment (`scripts/tmux-list.sh`)
+## 3. List (`scripts/tmux-list.sh`)
 
-Returns a JSON array of all sessions, windows, and panes to help you understand the context.
+JSON inventory of all panes.  Current session is listed first and marked.
+Shows `"busy": true/false` per pane with command and elapsed time.
 
-## Error Handling and Debugging
+```bash
+./scripts/tmux-list.sh
+```
 
-When tmux commands produce unexpected output or fail silently:
+Use this to find idle panes before executing commands.
 
-1. Use `tmux-read.sh` to inspect what's currently in the pane
-2. Test with simple commands first (`echo "test"`)
-3. Check pane state with `tmux-list.sh`
-4. For complex debugging, read `references/error-handling-and-debugging.md`
+## Interactive Tool Notes
 
-Common issues and their solutions are documented in the error handling guide, including:
-- Silent failures and no output
-- Incomplete or truncated output
-- Command not found errors
-- Authentication failures in panes
-- Timeout handling
+### Python REPL
+Always set `PYTHON_BASIC_REPL=1` — the fancy readline REPL breaks send-keys:
+```bash
+./scripts/tmux-exec.sh "1.0" 'PYTHON_BASIC_REPL=1 python3 -q'
+./scripts/tmux-exec.sh -w '>>> ' "1.0" "print('hello')"
+```
 
-## Rules
-1.  **Be Explicit**: Always use the target (session:window.pane) provided by the user.
-2.  **Verify First**: Use `tmux-list.sh` to confirm targets exist before acting.
-3.  **No Magic**: Do not create or destroy sessions unless explicitly instructed.
-4.  **Debug Systematically**: Follow the debugging workflow in error-handling-and-debugging.md when commands fail.
+### Debuggers
+Default to `lldb` (unless user says gdb).  Disable paging before sending commands.
+
+### Long output
+Redirect to a file to avoid tmux scrollback limits:
+```bash
+./scripts/tmux-exec.sh "1.0" 'long-command > /tmp/out.txt 2>&1'
+./scripts/tmux-exec.sh "1.0" 'cat /tmp/out.txt'
+```
+
+## Error Handling
+
+1. `tmux-read.sh` — inspect what's in the pane
+2. `tmux-list.sh` — confirm target exists, check busy state
+3. Test with `echo test` first
+4. For complex issues read `references/error-handling-and-debugging.md`
