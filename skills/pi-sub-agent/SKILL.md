@@ -41,14 +41,35 @@ Pick a pane in your current session with `cmd=bash` that isn't running anything.
 
 ```bash
 tmux send-keys -t "{session}:{window}.{pane}" \
-  'cd /path/to/repo && pi --models "github-copilot/claude-sonnet-4.6" --no-session --mode json -p @/tmp/task-prompt.md > /tmp/task-output.jsonl 2>&1 &' Enter
+  'cd /path/to/repo && pi --models "github-copilot/claude-sonnet-4.6" --no-session --mode json --no-extensions --no-skills --no-prompt-templates --no-themes -p @/tmp/task-prompt.md > /tmp/task-output.jsonl 2>&1 &' Enter
 ```
 
-Key flags:
-- `--no-session` — ephemeral, no persistent state (stateless per Ralph Wiggum pattern)
-- `--mode json` — JSONL streaming output for monitoring
-- `-p @file` — non-interactive, process prompt and exit
-- `> file.jsonl 2>&1 &` — background with captured output
+**Lean / headless flags:**
+
+| Flag | Why |
+|---|---|
+| `--no-session` | Ephemeral — no session written to disk, no prior context loaded |
+| `--mode json` | JSONL stream output for monitoring |
+| `-p @file` | Non-interactive, process prompt and exit |
+| `--no-extensions` | Skip extension discovery and loading — avoids scanning for installed extensions |
+| `--no-skills` | Skip skill loading from disk — reduces startup scan |
+| `--no-prompt-templates` | Skip prompt template loading |
+| `--no-themes` | Skip theme loading |
+
+All four `--no-*` flags combined eliminate disk-scanning startup overhead. Use `--offline` to additionally suppress network calls (e.g. extension update checks):
+
+```bash
+pi --no-session --mode json \
+   --no-extensions --no-skills --no-prompt-templates --no-themes \
+   --offline \
+   -p @/tmp/task-prompt.md \
+   > /tmp/task-output.jsonl 2>&1 &
+```
+
+Other useful flags:
+- `--models "provider/model"` — select specific model
+- `--tools read,bash,edit,write` — already the default; reduce further with e.g. `read,bash` for read-only tasks
+- `--append-system-prompt @file` — inject persona (see Agent/persona section)
 
 ### 4. Launch the monitor in the same pane
 
@@ -95,7 +116,7 @@ TARGET="{session}:{window}.{pane}"
 
 # 3. Launch pi + monitor in the target pane
 tmux send-keys -t "$TARGET" \
-  "cd /path/to/repo && pi --models 'github-copilot/claude-sonnet-4.6' --no-session --mode json -p @/tmp/task-prompt.md > /tmp/task-output.jsonl 2>&1 &" Enter
+  "cd /path/to/repo && pi --models 'github-copilot/claude-sonnet-4.6' --no-session --mode json --no-extensions --no-skills --no-prompt-templates --no-themes -p @/tmp/task-prompt.md > /tmp/task-output.jsonl 2>&1 &" Enter
 sleep 5
 tmux send-keys -t "$TARGET" \
   "python3 ~/.pi/agent/skills/pi-sub-agent/scripts/pi-monitor.py /tmp/task-output.jsonl" Enter
@@ -153,6 +174,32 @@ tmux send-keys -t "session:2.1" 'pi ... -p @/tmp/feature-prompt.md > /tmp/featur
 ```
 
 Monitor each with a separate `pi-monitor.py` instance.
+
+## Agent / persona injection
+
+Pi resolves `@file` syntax in `--append-system-prompt`, so you can load persona files directly:
+
+```bash
+# Append a persona on top of pi's default coding assistant prompt
+pi --no-session --mode json \
+   --append-system-prompt @.pi/agents/bart.md \
+   -p @/tmp/task-prompt.md \
+   > /tmp/pi-output.jsonl 2>&1
+
+# Or replace the system prompt entirely
+pi --no-session --mode json \
+   --system-prompt @.pi/agents/bart.md \
+   -p @/tmp/task-prompt.md \
+   > /tmp/pi-output.jsonl 2>&1
+```
+
+The `@path` is resolved relative to cwd. Both absolute and relative paths work.
+
+In tmux:
+```bash
+tmux send-keys -t "$TARGET" \
+  "cd /path/to/repo && pi --no-session --mode json --append-system-prompt @.pi/agents/bart.md -p @/tmp/task.md > /tmp/pi-output.jsonl 2>&1 &" Enter
+```
 
 ## Troubleshooting
 
