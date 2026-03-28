@@ -13,17 +13,37 @@ except ImportError:
     from models import EmailMessage, EmailSearchResult, SearchCriteria
     from parser import OutlookParser
 
-CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-USER_DATA_DIR = os.path.expanduser("~/.gemini/skills/outlook-headless/user_data")
-DOWNLOAD_DIR = os.path.expanduser("~/.gemini/skills/outlook-headless/downloads")
+def _default_chrome_path() -> str:
+    """Return platform-appropriate Chrome path, overridable via CHROME_PATH env var."""
+    import platform
+    env = os.environ.get("CHROME_PATH")
+    if env:
+        return env
+    if platform.system() == "Darwin":
+        return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    # Linux — try common paths
+    for p in ("/usr/bin/google-chrome", "/usr/bin/chromium-browser", "/usr/bin/chromium"):
+        if os.path.exists(p):
+            return p
+    return "google-chrome"  # fallback: rely on PATH
+
+def _skill_data_dir(subdir: str) -> str:
+    """Return XDG-compliant data dir for this skill."""
+    xdg = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
+    path = os.path.join(xdg, "agent-skills", "outlook-headless", subdir)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+CHROME_PATH = _default_chrome_path()
+USER_DATA_DIR = _skill_data_dir("user_data")
+DOWNLOAD_DIR = _skill_data_dir("downloads")
 
 class OutlookClient:
     def __init__(self, headless: bool = True):
         self.headless = headless
         self.context: Optional[BrowserContext] = None
         self.p = None
-        if not os.path.exists(DOWNLOAD_DIR):
-            os.makedirs(DOWNLOAD_DIR)
+        # DOWNLOAD_DIR already created by _skill_data_dir()
 
     async def __aenter__(self):
         self.p = await async_playwright().start()
