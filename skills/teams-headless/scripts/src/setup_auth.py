@@ -1,11 +1,31 @@
 import asyncio
 import os
+import platform
 from playwright.async_api import async_playwright
 
-CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-USER_DATA_DIR = os.path.expanduser("~/.gemini/skills/teams-headless/user_data")
+try:
+    from .teams_client import CHROME_PATH, USER_DATA_DIR
+except ImportError:
+    def _default_chrome_path() -> str:
+        env = os.environ.get("CHROME_PATH")
+        if env:
+            return env
+        if platform.system() == "Darwin":
+            return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        for p in ("/usr/bin/google-chrome", "/usr/bin/chromium-browser", "/usr/bin/chromium"):
+            if os.path.exists(p):
+                return p
+        return "google-chrome"
+
+    xdg_state = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
+    USER_DATA_DIR = os.path.join(xdg_state, "agent-skills", "teams-headless", "user_data")
+    CHROME_PATH = _default_chrome_path()
 
 async def run():
+    os.makedirs(USER_DATA_DIR, exist_ok=True)
+    print(f"Chrome:    {CHROME_PATH}")
+    print(f"User data: {USER_DATA_DIR}")
+    print()
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
             user_data_dir=USER_DATA_DIR,
