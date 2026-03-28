@@ -70,7 +70,9 @@ After copying skills, restart your agent and try triggering one:
 
 ### Development Tools
 - **github-cli** - Query/manage GitHub repos, issues, PRs, workflows via `gh` CLI
-- **copilot-cli** - Execute GitHub Copilot CLI for AI-powered code generation
+- **copilot-sub-agent** - Launch GitHub Copilot CLI as a headless sub-agent with JSONL monitoring
+- **gemini-sub-agent** - Launch Gemini CLI as a headless sub-agent with stream-json monitoring
+- **claude-sub-agent** - Launch Claude Code CLI as a headless sub-agent with stream-json monitoring
 - **terraform-dev** - Watch & validate Terraform files continuously
 - **justfile-assistant** - Create well-formed justfiles with test patterns
 
