@@ -209,12 +209,12 @@ exec_shell() {
         ecfile=$(mktemp "${STATE_DIR}/ec.XXXXXX")
         channel="tmux_exec_${id}"
 
-        # Payload: run command with stdout+stderr to file, write exit code,
-        # signal the wait-for channel.
+        # Payload: run command, tee stdout+stderr to file (visible in pane
+        # AND captured), write exit code via PIPESTATUS, signal wait-for.
         local payload
         # shellcheck disable=SC2016
         printf -v payload \
-            '{ %s ; } > %q 2>&1; echo $? > %q; tmux wait-for -S %s' \
+            '{ %s ; } 2>&1 | tee %q; echo ${PIPESTATUS[0]} > %q; tmux wait-for -S %s' \
             "${command}" "${outfile}" "${ecfile}" "${channel}"
 
         write_state "${sf}" "${channel}" "${command}" "shell" "${outfile}" "${ecfile}"
