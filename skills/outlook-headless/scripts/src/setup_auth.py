@@ -19,8 +19,8 @@ except ImportError:
                 return p
         return "google-chrome"
 
-    xdg = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
-    USER_DATA_DIR = os.path.join(xdg, "agent-skills", "outlook-headless", "user_data")
+    xdg_state = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
+    USER_DATA_DIR = os.path.join(xdg_state, "agent-skills", "outlook-headless", "user_data")
     CHROME_PATH = _default_chrome_path()
 
 async def run():
