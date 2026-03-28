@@ -27,23 +27,32 @@ def _default_chrome_path() -> str:
             return p
     return "google-chrome"  # fallback: rely on PATH
 
-def _skill_data_dir(subdir: str) -> str:
-    """Return XDG-compliant data dir for this skill."""
-    xdg = os.environ.get("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
-    path = os.path.join(xdg, "agent-skills", "outlook-headless", subdir)
+def _state_dir(subdir: str) -> str:
+    """XDG_STATE_HOME — persistent state that must survive reboots (e.g. browser session).
+    Not safe to delete. Default: ~/.local/state/agent-skills/outlook-headless/"""
+    base = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
+    path = os.path.join(base, "agent-skills", "outlook-headless", subdir)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+def _cache_dir(subdir: str) -> str:
+    """XDG_CACHE_HOME — non-essential, safe to delete (e.g. downloaded images).
+    Default: ~/.cache/agent-skills/outlook-headless/"""
+    base = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
+    path = os.path.join(base, "agent-skills", "outlook-headless", subdir)
     os.makedirs(path, exist_ok=True)
     return path
 
 CHROME_PATH = _default_chrome_path()
-USER_DATA_DIR = _skill_data_dir("user_data")
-DOWNLOAD_DIR = _skill_data_dir("downloads")
+USER_DATA_DIR = _state_dir("user_data")   # browser profile + login cookies
+DOWNLOAD_DIR = _cache_dir("downloads")    # temp images — safe to delete
 
 class OutlookClient:
     def __init__(self, headless: bool = True):
         self.headless = headless
         self.context: Optional[BrowserContext] = None
         self.p = None
-        # DOWNLOAD_DIR already created by _skill_data_dir()
+        # DOWNLOAD_DIR already created by _cache_dir()
 
     async def __aenter__(self):
         self.p = await async_playwright().start()

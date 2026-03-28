@@ -13,13 +13,41 @@ except ImportError:
     from models import TeamsMessage, ImageMetadata
     from parser import TeamsParser
 
-CHROME_PATH = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-USER_DATA_DIR = os.path.expanduser("~/.gemini/skills/teams-headless/user_data")
-DOWNLOAD_DIR = os.path.expanduser("~/.gemini/skills/teams-headless/downloads")
+def _default_chrome_path() -> str:
+    """Return platform-appropriate Chrome path, overridable via CHROME_PATH env var."""
+    import platform
+    env = os.environ.get("CHROME_PATH")
+    if env:
+        return env
+    if platform.system() == "Darwin":
+        return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    for p in ("/usr/bin/google-chrome", "/usr/bin/chromium-browser", "/usr/bin/chromium"):
+        if os.path.exists(p):
+            return p
+    return "google-chrome"  # fallback: rely on PATH
+
+def _state_dir(subdir: str) -> str:
+    """XDG_STATE_HOME — persistent state that must survive reboots (e.g. browser session).
+    Not safe to delete. Default: ~/.local/state/agent-skills/teams-headless/"""
+    base = os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
+    path = os.path.join(base, "agent-skills", "teams-headless", subdir)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+def _cache_dir(subdir: str) -> str:
+    """XDG_CACHE_HOME — non-essential, safe to delete (e.g. downloaded images).
+    Default: ~/.cache/agent-skills/teams-headless/"""
+    base = os.environ.get("XDG_CACHE_HOME", os.path.expanduser("~/.cache"))
+    path = os.path.join(base, "agent-skills", "teams-headless", subdir)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+CHROME_PATH = _default_chrome_path()
+USER_DATA_DIR = _state_dir("user_data")   # browser profile + login cookies
+DOWNLOAD_DIR = _cache_dir("downloads")    # temp files — safe to delete
 
 async def get_recent_chat_messages(target_name: Optional[str] = None, limit: int = 10):
-    if not os.path.exists(DOWNLOAD_DIR):
-        os.makedirs(DOWNLOAD_DIR)
+    # DOWNLOAD_DIR already created by _cache_dir()
 
     async with async_playwright() as p:
         context = await p.chromium.launch_persistent_context(
