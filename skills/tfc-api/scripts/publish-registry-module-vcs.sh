@@ -1,13 +1,13 @@
 #!/bin/bash
 # Publish a Terraform Cloud registry module via VCS integration
 # Usage: publish-registry-module-vcs.sh <organization> <github-repo> <oauth-token-id> [display-identifier]
-# Example: publish-registry-module-vcs.sh example-org example-org/terraform-aws-MSKProvisioned ***REMOVED***
+# Example: publish-registry-module-vcs.sh example-org example-org/terraform-aws-MSKProvisioned ot-EXAMPLE-OAUTH-TOKEN-ID
 
 set -euo pipefail
 
 if [[ $# -lt 3 ]]; then
   echo "Usage: $0 <organization> <github-repo> <oauth-token-id> [display-identifier]"
-  echo "Example: $0 example-org example-org/terraform-aws-MSKProvisioned ***REMOVED***"
+  echo "Example: $0 example-org example-org/terraform-aws-MSKProvisioned ot-EXAMPLE-OAUTH-TOKEN-ID"
   echo ""
   echo "Note: github-repo should be in format 'owner/repo'"
   echo "      oauth-token-id can be found at: https://app.terraform.io/app/settings/tokens"
@@ -29,7 +29,7 @@ fi
 
 # Validate oauth token ID format
 if [[ ! "$OAUTH_TOKEN_ID" =~ ^ot- ]]; then
-  echo "Error: OAuth token ID should start with 'ot-' (e.g., ***REMOVED***)"
+  echo "Error: OAuth token ID should start with 'ot-' (e.g., ot-EXAMPLE-OAUTH-TOKEN-ID)"
   exit 1
 fi
 
