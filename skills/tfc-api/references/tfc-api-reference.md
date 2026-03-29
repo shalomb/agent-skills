@@ -137,7 +137,7 @@ Publish a Terraform module to Terraform Cloud's private registry with automatic 
 ./scripts/publish-registry-module-vcs.sh {ORG} {GITHUB_REPO} {OAUTH_TOKEN_ID}
 
 # Example: Publish MSKProvisioned module
-./scripts/publish-registry-module-vcs.sh example-org example-org/terraform-aws-MSKProvisioned ***REMOVED***
+./scripts/publish-registry-module-vcs.sh example-org example-org/terraform-aws-MSKProvisioned ot-EXAMPLE-OAUTH-TOKEN-ID
 ```
 
 **Prerequisites:**
@@ -199,7 +199,7 @@ Resolve a module stuck in pending status:
 ./scripts/check-registry-module-status.sh example-org example-org mskprovisioned aws  # Should error (not found)
 
 # 4. Publish with correct case and VCS configuration
-./scripts/publish-registry-module-vcs.sh example-org example-org/terraform-aws-MSKProvisioned ***REMOVED***
+./scripts/publish-registry-module-vcs.sh example-org example-org/terraform-aws-MSKProvisioned ot-EXAMPLE-OAUTH-TOKEN-ID
 
 # 5. Verify new status
 ./scripts/check-registry-module-status.sh example-org example-org MSKProvisioned aws
