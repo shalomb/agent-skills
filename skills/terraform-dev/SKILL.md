@@ -110,3 +110,4 @@ find . -name "*.tf" | entr -c make format validate lint
 ## References
 
 - `tfc-api` skill — direct TFC API queries for deeper workspace inspection
+- `terraform-plan-parser` skill — structured analysis of `terraform plan` output for import validation and drift detection
