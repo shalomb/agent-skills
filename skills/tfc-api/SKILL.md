@@ -68,6 +68,46 @@ curl -s -H "Authorization: Bearer $TFC_TOKEN" \
 ./scripts/apply-run.sh <run-id> "Approving"
 ```
 
+### Unlocking a workspace blocked by old runs
+
+Workspaces lock on `cost_estimated` or `pending` runs. To unblock:
+
+```bash
+TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json)
+BASE="https://app.terraform.io/api/v2"
+
+# Discard a planned/cost_estimated run
+curl -s -X POST -H "Authorization: Bearer $TFC_TOKEN" \
+  -H "Content-Type: application/vnd.api+json" \
+  -d '{"comment":"Discarding to re-plan"}' \
+  "$BASE/runs/<run-id>/actions/discard"
+
+# Cancel a pending/planning run (discard won't work on pending)
+curl -s -X POST -H "Authorization: Bearer $TFC_TOKEN" \
+  -H "Content-Type: application/vnd.api+json" \
+  -d '{"comment":"Cancelling"}' \
+  "$BASE/runs/<run-id>/actions/cancel"
+```
+
+**Gotcha**: If the workspace is locked by run A and run B is queued behind it,
+you must discard/cancel A first — B won't start until A releases the lock.
+Check `locked-by` on the workspace to find the blocking run:
+```bash
+curl -s -H "Authorization: Bearer $TFC_TOKEN" \
+  "$BASE/organizations/{ORG}/workspaces/<name>" \
+  | jq '.data.relationships["locked-by"].data.id'
+```
+
+### Switching VCS branch for speculative plans
+
+```bash
+./scripts/set-workspace-branch.sh {ORGANIZATION} <workspace-name> <branch>
+```
+
+Useful for testing a consolidated branch (`iac-reveng`) against workspaces
+that normally point at per-env branches (`iac-reveng-dev`). Remember to
+reset the branch after validation.
+
 ## Workspace State Inspection
 
 ```bash
