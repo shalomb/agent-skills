@@ -7,6 +7,43 @@ description: Continuous validation during Terraform module development. Use when
 
 Fast feedback during active Terraform development using Makefile targets.
 
+## Plan caching
+
+**Always capture plan output to a temp file.** Plans are expensive (network,
+credentials, time). Cache once, grep/parse many times.
+
+```bash
+PLAN_DIR=$(mktemp -d)
+terraform plan -no-color 2>&1 | tee "$PLAN_DIR/plan.txt"
+echo "Plan cached: $PLAN_DIR/plan.txt"
+```
+
+Then use the cached file for all post-hoc analysis:
+
+```bash
+# Quick summary
+grep '^Plan:' "$PLAN_DIR/plan.txt"
+
+# Find destroys
+grep 'will be destroyed' "$PLAN_DIR/plan.txt"
+
+# Non-tag attribute changes
+grep -E '^\s+[~+-].*=' "$PLAN_DIR/plan.txt" | grep -v 'tags'
+
+# Feed to plan parser for structured analysis
+# See terraform-plan-parser skill
+```
+
+For multi-env work, namespace per env:
+
+```bash
+PLAN_DIR=$(mktemp -d)
+for env in dev tst prd; do
+  (cd iac/$env && terraform plan -no-color 2>&1 | tee "$PLAN_DIR/${env}-plan.txt")
+done
+echo "Plans cached in: $PLAN_DIR"
+```
+
 ## Prerequisites
 
 - `make` — drives all targets below
