@@ -18,7 +18,10 @@ if [ ! -f ~/.terraform.d/credentials.tfrc.json ]; then
   echo "❌ Error: ~/.terraform.d/credentials.tfrc.json not found" >&2
   exit 1
 fi
-TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json)
+# Prefer TFC_TOKEN env var; fall back to credentials file
+if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
+  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
+fi
 
 echo "⏳ Waiting for run $RUN_ID status (timeout: ${TIMEOUT}s, interval: ${INTERVAL}s)..."
 
