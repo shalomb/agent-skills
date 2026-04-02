@@ -17,7 +17,10 @@ NAME="$3"
 PROVIDER="$4"
 
 # Get TFC token
-TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json)
+# Prefer TFC_TOKEN env var; fall back to credentials file
+if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
+  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
+fi
 
 if [[ -z "$TFC_TOKEN" || "$TFC_TOKEN" == "null" ]]; then
   echo "Error: TFC token not found in ~/.terraform.d/credentials.tfrc.json"

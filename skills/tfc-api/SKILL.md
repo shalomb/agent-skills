@@ -9,13 +9,22 @@ Query TFC workspaces, runs, logs, and team permissions without leaving the termi
 
 ## Authentication
 
-```bash
-# Standard credentials file
-TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json)
+All scripts use a **two-tier token resolution**: `TFC_TOKEN` env var takes precedence, falling back to `~/.terraform.d/credentials.tfrc.json`. This matters because personal tokens often lack org-level permissions (e.g. team management) that automation tokens have.
 
-# Elevated token (for admin operations) — set via environment
+```bash
+# Option 1: Environment variable (preferred for automation/elevated ops)
 export TFC_TOKEN=<your-token>
+
+# Option 2: Credentials file (automatic fallback)
+# ~/.terraform.d/credentials.tfrc.json — used if TFC_TOKEN is unset
+
+# Typical workflow: source an env file with the automation token
+source /tmp/env.sh  # sets TFC_TOKEN
 ```
+
+> **Gotcha**: A personal token may return 404 or empty results for team/project
+> operations that an automation token can see. If `find-team.sh` returns no
+> results but you know teams exist, try an elevated token.
 
 ## Team & Project Access (permissions management)
 

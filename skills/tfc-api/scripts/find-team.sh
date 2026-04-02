@@ -16,7 +16,10 @@ if [ -z "$ORG" ] || [ -z "$QUERY" ]; then
   exit 1
 fi
 
-TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "${TFC_TOKEN:-}")
+# Prefer TFC_TOKEN env var; fall back to credentials file
+if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
+  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
+fi
 if [ -z "$TFC_TOKEN" ] || [ "$TFC_TOKEN" = "null" ]; then
   echo "❌ TFC token not found. Set TFC_TOKEN or configure ~/.terraform.d/credentials.tfrc.json"
   exit 1
@@ -24,21 +27,37 @@ fi
 
 BASE="https://app.terraform.io/api/v2"
 
-# Use q= for server-side search (case-insensitive), then filter client-side
+# Use q= for server-side search (case-insensitive), paginate all results
 ENCODED_QUERY=$(python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))" "$QUERY")
-RESPONSE=$(curl -s -H "Authorization: Bearer $TFC_TOKEN" \
-  -H "Content-Type: application/vnd.api+json" \
-  "$BASE/organizations/$ORG/teams?q=${ENCODED_QUERY}&page%5Bsize%5D=100")
 
-TOTAL=$(echo "$RESPONSE" | jq '.meta.pagination."total-count" // (.data | length)')
-COUNT=$(echo "$RESPONSE" | jq '.data | length')
+ALL_DATA="[]"
+PAGE=1
+TOTAL_PAGES=1
+
+while [ "$PAGE" -le "$TOTAL_PAGES" ]; do
+  RESPONSE=$(curl -s -H "Authorization: Bearer $TFC_TOKEN" \
+    -H "Content-Type: application/vnd.api+json" \
+    "$BASE/organizations/$ORG/teams?q=${ENCODED_QUERY}&page%5Bsize%5D=100&page%5Bnumber%5D=$PAGE")
+
+  # Check for API errors (e.g. 404 from insufficient permissions)
+  if echo "$RESPONSE" | jq -e '.errors' >/dev/null 2>&1; then
+    echo "❌ API error: $(echo "$RESPONSE" | jq -r '.errors[0].title // .errors[0].detail // "unknown"')" >&2
+    exit 1
+  fi
+
+  TOTAL_PAGES=$(echo "$RESPONSE" | jq -r '.meta.pagination."total-pages" // 1')
+  ALL_DATA=$(echo "$ALL_DATA" "$RESPONSE" | jq -s '.[0] + (.[1].data // [])')
+  PAGE=$((PAGE + 1))
+done
+
+COUNT=$(echo "$ALL_DATA" | jq 'length')
 
 if [ "$COUNT" = "0" ]; then
   echo "❌ No teams found matching: $QUERY"
   exit 1
 fi
 
-echo "🔍 Teams matching '$QUERY' (showing $COUNT of $TOTAL):"
+echo "🔍 Teams matching '$QUERY' (showing $COUNT of $COUNT):"
 echo ""
-echo "$RESPONSE" | jq -r '.data[] | "\(.id)  \(.attributes.name)  members=\(.attributes."users-count")"' | \
+echo "$ALL_DATA" | jq -r '.[] | "\(.id)  \(.attributes.name)  members=\(.attributes."users-count" // (.relationships.users.data | length))"' | \
   awk '{printf "%-35s  %-55s  %s\n", $1, $2, $3}'

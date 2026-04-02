@@ -18,7 +18,10 @@ if [ -z "$PROJECT_A" ] || [ -z "$TEAM_A" ] || [ -z "$PROJECT_B" ] || [ -z "$TEAM
   exit 1
 fi
 
-TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "${TFC_TOKEN:-}")
+# Prefer TFC_TOKEN env var; fall back to credentials file
+if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
+  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
+fi
 if [ -z "$TFC_TOKEN" ] || [ "$TFC_TOKEN" = "null" ]; then
   echo "❌ TFC token not found. Set TFC_TOKEN or configure ~/.terraform.d/credentials.tfrc.json"
   exit 1
