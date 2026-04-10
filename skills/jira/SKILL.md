@@ -185,9 +185,9 @@ To use Jira, you need one of:
 |------|-----------------|
 | View single issue | No |
 | List my tickets | No |
-| Create with description | **Yes** — CLI needs `/tmp` pattern |
-| Edit description (multi-line) | **Yes** — wiki markup, not Markdown; exit-1 gotcha |
-| Write a PI epic description | **Yes** — `references/epic-template.md` |
+| Create with description (no links) | **Yes** — CLI needs `/tmp` pattern |
+| Edit description with hyperlinks | **Yes** — `references/jira-cloud-adf.md` — CLI breaks links; use REST API v3 + ADF JSON |
+| Write a PI epic description | **Yes** — `references/epic-template.md` + `references/jira-cloud-adf.md` |
 | Transition issue | **Yes** — need transition ID workflow |
 | JQL search | **Yes** — for complex queries |
 | Link issues | **Yes** — MCP limitation, need script |
@@ -196,3 +196,4 @@ References:
 - CLI patterns + gotchas: `references/commands.md`
 - MCP patterns: `references/mcp.md`
 - PI epic template: `references/epic-template.md`
+- Jira Cloud ADF (description rendering, hyperlinks): `references/jira-cloud-adf.md`

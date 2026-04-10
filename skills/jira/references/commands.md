@@ -279,19 +279,19 @@ jira issue edit DAD-101 --no-input -b"$(cat /tmp/b.md)" 2>&1
 # jira issue edit DAD-100 & jira issue edit DAD-101
 ```
 
-### Jira description uses wiki markup, not Markdown
+### Jira Cloud descriptions use ADF, not wiki markup
 
-Jira's description field renders **Jira wiki markup**, not Markdown. Key differences:
+Jira Cloud stores descriptions as **Atlassian Document Format (ADF)** JSON.
+The `jira` CLI accepts wiki markup input but **converts hyperlinks incorrectly**:
+`[text|url]` becomes two separate ADF nodes (italic label + bare URL), which
+renders broken in the browser.
 
-| Want | Markdown | Jira wiki markup |
-|------|----------|-----------------|
-| Heading | `## Heading` | `h2. Heading` |
-| Bold | `**bold**` | `*bold*` |
-| Table header | `\| **Col** \|` | `\|\| Col \|\|` |
-| Table row | `\| val \|` | `\| val \|` |
-| Horizontal rule | `---` | `----` |
-| Link | `[text](url)` | `[text\|url]` |
-| Italic | `_italic_` | `_italic_` |
+**Rule**: any description containing hyperlinks must be written via REST API v3
+with ADF JSON directly. The CLI is fine for plain text and simple formatting
+without links.
+
+→ See `references/jira-cloud-adf.md` for the full pattern, Python ADF builder,
+and valid node types.
 
 ### Epic description template
 
@@ -303,3 +303,6 @@ For PI epics, load `references/epic-template.md`. Key structure:
 5. `h2. Dependencies` (table with incoming + outgoing)
 6. `h2. Risks` (table with ID, severity, ROAM, mitigation)
 7. `h2. Notes` (deferred decisions, constraints, carry-over context)
+
+**Note**: use ADF JSON (not wiki markup) when the epic description contains
+hyperlinks — see `references/jira-cloud-adf.md`.
