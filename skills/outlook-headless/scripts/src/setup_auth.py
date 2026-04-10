@@ -41,8 +41,16 @@ async def run():
         await page.goto(url)
 
         print(f"Opened: {url}")
-        print("Sign in to Outlook. Once you see your inbox, come back here.")
-        input("Press Enter after you have logged in...")
+        print("Sign in to Outlook using SSO...")
+        print("Waiting for inbox to load (up to 2 minutes)...")
+
+        try:
+            # Wait for inbox to load — look for mail list or nav element
+            await page.wait_for_selector('[role="main"], [aria-label*="Mail"], .ms-List', timeout=120000)
+            print("✓ Inbox detected!")
+        except Exception as e:
+            print(f"⚠ Timeout waiting for inbox: {e}")
+            print("Proceeding anyway — session may still be valid...")
 
         await context.close()
         print(f"✓ Session saved to {USER_DATA_DIR}")
