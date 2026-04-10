@@ -116,6 +116,158 @@ class OutlookParser:
         )
 
     @staticmethod
+    def _parse_forwarded_headers(text: str) -> dict:
+        """Extract From/Sent/To/Cc/Subject from a forwarded header block.
+
+        Handles both "From: value" on one line and "From:\\nvalue" split across
+        two lines (common when BeautifulSoup extracts text from <b>From:</b> value).
+        """
+        headers = {"from": "", "sent": "", "to": "", "cc": "", "subject": ""}
+        label_map = {
+            r"from|de|von": "from",
+            r"sent|date|envoy[eé]\s*|datum": "sent",
+            r"to|[àa]|an": "to",
+            r"cc": "cc",
+            r"subject|objet|betreff": "subject",
+        }
+        lines = [l.strip() for l in text.split("\n")]
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            if not line:
+                i += 1
+                continue
+            matched = False
+            for pattern, key in label_map.items():
+                # Case 1: "From: value" on one line
+                m = re.match(rf"^(?:{pattern})\s*:\s*(.+)", line, re.IGNORECASE)
+                if m:
+                    headers[key] = m.group(1).strip()
+                    matched = True
+                    break
+                # Case 2: "From:" alone, value on next line
+                m = re.match(rf"^(?:{pattern})\s*:\s*$", line, re.IGNORECASE)
+                if m and i + 1 < len(lines) and lines[i + 1]:
+                    headers[key] = lines[i + 1].strip()
+                    i += 1  # skip value line
+                    matched = True
+                    break
+            i += 1
+        return headers
+
+    @staticmethod
+    def parse_forwarded_chain(doc_html: str, parent_id: str = "0") -> List[EmailMessage]:
+        """Parse forwarded email chains from within a single message body.
+
+        Uses two strategies:
+        1. DOM-based: Split on divRplyFwdMsg elements
+        2. Regex fallback: Split on From:/Sent:/To: header blocks
+        """
+        soup = BeautifulSoup(doc_html, "html.parser")
+
+        # Strategy 1: divRplyFwdMsg markers
+        fwd_markers = soup.find_all(id=re.compile(r"(x_)?divRplyFwdMsg", re.IGNORECASE))
+        if fwd_markers:
+            messages = []
+            for idx, marker in enumerate(fwd_markers):
+                # Extract headers from the marker element text
+                marker_text = marker.get_text("\n", strip=True)
+                headers = OutlookParser._parse_forwarded_headers(marker_text)
+
+                # Body is everything after the marker until the next marker
+                body_parts = []
+                for sibling in marker.next_siblings:
+                    if hasattr(sibling, "get") and sibling.get("id") and \
+                       re.match(r"(x_)?divRplyFwdMsg", sibling.get("id", ""), re.IGNORECASE):
+                        break
+                    if hasattr(sibling, "decode"):
+                        body_parts.append(str(sibling))
+                    elif isinstance(sibling, str) and sibling.strip():
+                        body_parts.append(sibling)
+
+                body_html = "".join(body_parts)
+                body_md = OutlookParser.html_to_markdown(body_html) if body_html.strip() else ""
+
+                messages.append(EmailMessage(
+                    id=f"{parent_id}-fwd-{idx}",
+                    sender=OutlookParser.clean_text(headers["from"]),
+                    timestamp=OutlookParser.clean_text(headers["sent"]),
+                    to=[OutlookParser.clean_text(t) for t in headers["to"].split(";") if t.strip()] if headers["to"] else [],
+                    cc=[OutlookParser.clean_text(c) for c in headers["cc"].split(";") if c.strip()] if headers["cc"] else [],
+                    subject=OutlookParser.clean_text(headers["subject"]) or None,
+                    body=body_md,
+                ))
+            return messages
+
+        # Strategy 2: Regex-based splitting on forwarded header blocks
+        text = soup.get_text("\n", strip=False)
+        # Pattern: From: ... followed by Sent/Date: ... on next lines
+        header_pattern = re.compile(
+            r"^(?:From|De|Von)\s*:\s*.+$",
+            re.MULTILINE | re.IGNORECASE
+        )
+        matches = list(header_pattern.finditer(text))
+        if not matches:
+            return []
+
+        # Validate each match: must be followed by Sent/Date/To lines within 4 lines
+        valid_starts = []
+        lines = text.split("\n")
+        for match in matches:
+            line_no = text[:match.start()].count("\n")
+            # Check next 4 lines for Sent/Date/To pattern
+            following = "\n".join(lines[line_no:line_no + 5])
+            if re.search(r"(?:Sent|Date|Envoy[eé]|Datum)\s*:", following, re.IGNORECASE):
+                valid_starts.append(match.start())
+
+        if not valid_starts:
+            return []
+
+        header_pats = [
+            r"^(?:From|De|Von)\s*:", r"^(?:Sent|Date|Envoy[eé]|Datum)\s*:",
+            r"^(?:To|[ÀàA]|An)\s*:", r"^Cc\s*:", r"^(?:Subject|Objet|Betreff)\s*:",
+        ]
+
+        messages = []
+        for idx, start in enumerate(valid_starts):
+            end = valid_starts[idx + 1] if idx + 1 < len(valid_starts) else len(text)
+            chunk = text[start:end]
+
+            # Split chunk into header lines and body.
+            # Consume all leading lines that are headers or blank, then body is the rest.
+            chunk_lines = chunk.split("\n")
+            header_lines = []
+            body_start = len(chunk_lines)
+            found_any_header = False
+            for i, line in enumerate(chunk_lines):
+                stripped = line.strip()
+                is_header = any(re.match(p, stripped, re.IGNORECASE) for p in header_pats)
+                if is_header:
+                    header_lines.append(stripped)
+                    found_any_header = True
+                elif not stripped and found_any_header:
+                    # Blank line after headers — skip it, might be more headers
+                    continue
+                elif found_any_header and not is_header and stripped:
+                    # First non-header non-blank line after seeing headers = body starts
+                    body_start = i
+                    break
+
+            headers = OutlookParser._parse_forwarded_headers("\n".join(header_lines))
+            body_text = "\n".join(chunk_lines[body_start:]).strip()
+
+            messages.append(EmailMessage(
+                id=f"{parent_id}-fwd-{idx}",
+                sender=OutlookParser.clean_text(headers["from"]),
+                timestamp=OutlookParser.clean_text(headers["sent"]),
+                to=[OutlookParser.clean_text(t) for t in headers["to"].split(";") if t.strip()] if headers["to"] else [],
+                cc=[OutlookParser.clean_text(c) for c in headers["cc"].split(";") if c.strip()] if headers["cc"] else [],
+                subject=OutlookParser.clean_text(headers["subject"]) or None,
+                body=body_text,
+            ))
+        return messages
+
+    @staticmethod
     def parse_document(
         doc_html: str, 
         message_id: str,

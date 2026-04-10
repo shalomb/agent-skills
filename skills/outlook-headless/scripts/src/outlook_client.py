@@ -87,7 +87,7 @@ class OutlookClient:
         except:
             return False
 
-    async def search(self, criteria: SearchCriteria, limit: int = 5, list_only: bool = False, raw: bool = False, download_images: bool = False) -> List[EmailMessage]:
+    async def search(self, criteria: SearchCriteria, limit: int = 5, list_only: bool = False, raw: bool = False, download_images: bool = False, expand_forwarded: bool = True) -> List[EmailMessage]:
         if not self.context:
             raise RuntimeError("Client not initialized. Use 'async with OutlookClient() as client:'")
 
@@ -348,7 +348,8 @@ class OutlookClient:
                         'div[aria-expanded="false"]',
                         'div[aria-label*="messages"]', # e.g. "9 messages"
                         'button:has-text("Show more")',
-                        'button:has-text("Show all")'
+                        'button:has-text("Show all")',
+                        'button[aria-label="Show message history"]',
                     ]
                     for selector in expand_selectors:
                         buttons = reading_pane.locator(selector)
@@ -373,6 +374,34 @@ class OutlookClient:
                     await asyncio.sleep(2.0)
                 except Exception as e:
                     print(f"Non-critical expansion failure: {e}")
+
+                # 2b. Expand intra-message quoted/forwarded content
+                try:
+                    intra_docs = page.locator('div[role="main"] div[role="document"]')
+                    intra_count = await intra_docs.count()
+                    for j in range(intra_count):
+                        doc = intra_docs.nth(j)
+                        intra_selectors = [
+                            'button:has-text("…")',
+                            'button:has-text("...")',
+                            'div[class*="quoted"] button',
+                            'button:has-text("show quoted")',
+                        ]
+                        for sel in intra_selectors:
+                            btns = doc.locator(sel)
+                            btn_count = await btns.count()
+                            for k in range(btn_count):
+                                try:
+                                    btn = btns.nth(k)
+                                    if await btn.is_visible():
+                                        await btn.click()
+                                        await asyncio.sleep(0.5)
+                                except:
+                                    continue
+                    if intra_count > 0:
+                        await asyncio.sleep(1.0)
+                except Exception as e:
+                    print(f"Non-critical intra-message expansion failure: {e}")
 
                 if raw:
                     # Quick Raw Dump mode: extract all text from the reading pane in one go
@@ -403,7 +432,11 @@ class OutlookClient:
 
                 for j in range(doc_count):
                     doc = documents.nth(j)
-                    await doc.scroll_into_view_if_needed()
+                    try:
+                        await doc.scroll_into_view_if_needed(timeout=5000)
+                    except Exception:
+                        # Element may not be scrollable but HTML may still be extractable
+                        pass
                     doc_html = await doc.inner_html()
                     
                     # Try to find headers specifically for THIS document
@@ -489,8 +522,19 @@ class OutlookClient:
                             except Exception as e:
                                 print(f"Failed to download image {idx}: {e}")
 
-                    final_results.append(full_msg)
-                    
+                    # Optional: split forwarded chains into sub-messages
+                    if expand_forwarded:
+                        sub_messages = OutlookParser.parse_forwarded_chain(doc_html, parent_id=f"{i}-{j}")
+                        if sub_messages:
+                            final_results.append(full_msg)
+                            for sub in sub_messages:
+                                sub.subject = sub.subject or full_msg.subject
+                                final_results.append(sub)
+                        else:
+                            final_results.append(full_msg)
+                    else:
+                        final_results.append(full_msg)
+
                     if len(final_results) >= limit:
                         break
             except Exception as e:
@@ -502,8 +546,6 @@ class OutlookClient:
                 break
                 
         return final_results
-                
-        return results
 
 async def quick_search(query: str, limit: int = 5):
     criteria = SearchCriteria(query=query)

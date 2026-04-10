@@ -1,10 +1,5 @@
 import pytest
-import sys
-import os
 from unittest.mock import MagicMock, AsyncMock
-
-# Add src to path if needed for local execution
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from src.outlook_client import OutlookClient
 from src.models import EmailMessage, SearchCriteria
