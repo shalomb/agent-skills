@@ -186,10 +186,13 @@ To use Jira, you need one of:
 | View single issue | No |
 | List my tickets | No |
 | Create with description | **Yes** — CLI needs `/tmp` pattern |
+| Edit description (multi-line) | **Yes** — wiki markup, not Markdown; exit-1 gotcha |
+| Write a PI epic description | **Yes** — `references/epic-template.md` |
 | Transition issue | **Yes** — need transition ID workflow |
 | JQL search | **Yes** — for complex queries |
 | Link issues | **Yes** — MCP limitation, need script |
 
 References:
-- CLI patterns: `references/commands.md`
+- CLI patterns + gotchas: `references/commands.md`
 - MCP patterns: `references/mcp.md`
+- PI epic template: `references/epic-template.md`

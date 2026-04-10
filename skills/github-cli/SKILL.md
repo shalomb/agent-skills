@@ -28,7 +28,8 @@ This skill has a broad command surface and supports powerful API interactions. *
    - Advanced REST API calls via `gh api`
    - Complex GraphQL queries and mutations via `gh api graphql`
    - **Issue Hierarchy (Parent/Child)**: See `references/issue-hierarchy.guide.md`
-   - **Team Management Operations**: See `references/github-team-management.md` for adding teams to repositories, managing permissions, and handling repository redirects
+   - **Team Management Operations**: See `references/github-team-management.md`
+   - **PI Epic Issues**: See `references/epic-issue-template.md` — template, labels, body structure, and the safe issue-rewrite pattern
    - Common developer workflow examples
 
 3. **Team Management Best Practices**:
