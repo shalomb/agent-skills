@@ -249,3 +249,57 @@ jira project list
 # List boards
 jira board list
 ```
+
+---
+
+## Gotchas
+
+### `jira issue edit` exits 1 on success
+
+The CLI prints `✓ Issue updated` and the URL but exits with code 1. Do not treat
+exit code 1 as failure for `jira issue edit`. Check for the `✓` in stdout instead.
+
+```bash
+# Pattern: run sequentially, check output not exit code
+jira issue edit DAD-123 --no-input -b"$(cat /tmp/body.md)" 2>&1
+# ✓ Issue updated → success despite exit 1
+```
+
+### Parallel edits cancel each other
+
+Running multiple `jira issue edit` calls in parallel causes all but the first to be
+cancelled. Always run description updates **sequentially**.
+
+```bash
+# Good — sequential
+jira issue edit DAD-100 --no-input -b"$(cat /tmp/a.md)" 2>&1
+jira issue edit DAD-101 --no-input -b"$(cat /tmp/b.md)" 2>&1
+
+# Bad — parallel (second call cancels)
+# jira issue edit DAD-100 & jira issue edit DAD-101
+```
+
+### Jira description uses wiki markup, not Markdown
+
+Jira's description field renders **Jira wiki markup**, not Markdown. Key differences:
+
+| Want | Markdown | Jira wiki markup |
+|------|----------|-----------------|
+| Heading | `## Heading` | `h2. Heading` |
+| Bold | `**bold**` | `*bold*` |
+| Table header | `\| **Col** \|` | `\|\| Col \|\|` |
+| Table row | `\| val \|` | `\| val \|` |
+| Horizontal rule | `---` | `----` |
+| Link | `[text](url)` | `[text\|url]` |
+| Italic | `_italic_` | `_italic_` |
+
+### Epic description template
+
+For PI epics, load `references/epic-template.md`. Key structure:
+1. Cross-system links block at the top (GitHub issue, TP Objective, TP Feature, epic file)
+2. `h2. Problem Statement`
+3. `h2. Acceptance Criteria`
+4. `h2. Sprint Breakdown` (table)
+5. `h2. Dependencies` (table with incoming + outgoing)
+6. `h2. Risks` (table with ID, severity, ROAM, mitigation)
+7. `h2. Notes` (deferred decisions, constraints, carry-over context)
