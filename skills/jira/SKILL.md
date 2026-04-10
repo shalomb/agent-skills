@@ -189,6 +189,7 @@ To use Jira, you need one of:
 | Edit description with hyperlinks | **Yes** — `references/jira-cloud-adf.md` — CLI breaks links; use REST API v3 + ADF JSON |
 | Write a PI epic description | **Yes** — `references/epic-template.md` + `references/jira-cloud-adf.md` |
 | Transition issue | **Yes** — need transition ID workflow |
+| Transition with required fields (project validators) | **Yes** — `references/workflow-transition.md` — CLI shows success but may silently roll back |
 | JQL search | **Yes** — for complex queries |
 | Link issues | **Yes** — MCP limitation, need script |
 
