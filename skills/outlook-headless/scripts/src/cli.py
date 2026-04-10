@@ -23,6 +23,7 @@ async def main():
     parser.add_argument("--list-only", action="store_true", help="Only list headers (fast)")
     parser.add_argument("--raw", action="store_true", help="Dump raw text of the entire reading pane (fastest for threads)")
     parser.add_argument("--download-images", action="store_true", help="Download images from emails")
+    parser.add_argument("--no-expand-forwarded", dest="expand_forwarded", action="store_false", default=True, help="Disable splitting forwarded email chains into individual messages")
     parser.add_argument("--show-ui", action="store_true", help="Show browser UI")
 
     args = parser.parse_args()
@@ -45,7 +46,8 @@ async def main():
             limit=args.limit, 
             list_only=args.list_only, 
             raw=args.raw,
-            download_images=args.download_images
+            download_images=args.download_images,
+            expand_forwarded=args.expand_forwarded
         )
         
         # Output as JSON

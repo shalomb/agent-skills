@@ -73,6 +73,9 @@ uv run src/cli.py --after "2024-01-01" --before "2024-01-31"
 
 # Combined filters
 uv run src/cli.py "Project" --from "alice@example.com" --unread --limit 10
+
+# Forwarded email chains are expanded by default; disable with:
+uv run src/cli.py "LIP AWS Migration" --no-expand-forwarded
 ```
 
 ## Step 2: Summarise
@@ -104,6 +107,7 @@ Parse the JSON and summarise or analyse the content for the user.
 | Unread only | `--unread` |
 | Specific folder | `--folder "Deleted Items"` |
 | Download images | `--download-images` |
+| Skip forwarded chain expansion | `--no-expand-forwarded` |
 | Show browser UI | `--show-ui` |
 
 ## Notes
