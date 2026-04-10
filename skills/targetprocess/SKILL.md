@@ -120,5 +120,8 @@ url: https://company.tpondemand.com
 For detailed syntax, patterns, and advanced filtering:
 → Read `references/targetprocess-quick-ref.md`
 
+For API update operations returning 404 or silent failures:
+→ Read `references/post-vs-put.md` — TP API uses POST (not PUT) for updates
+
 For API details and entity structure:
 → Read tpcli documentation: `tpcli docs` or the installed package documentation
