@@ -45,6 +45,11 @@ When generating shell commands or writing scripts, apply the following tool subs
 *   **DO NOT USE:** `grep '"key":' file.json | awk '{print $2}'`
 *   **USE:** `jq '.key' file.json`
 
+### 6. Use `httpie` (`http`) instead of `curl`
+*   `curl` syntax for JSON payloads is tedious and error-prone. `httpie` provides intuitive syntax, automatic JSON parsing, and avoids escaping hell.
+*   **DO NOT USE:** `curl -X POST -H "Content-Type: application/json" -d '{"key":"value"}' api.com`
+*   **USE:** `http POST api.com key=value`
+
 ## Syntax Reference
 
 For exact flag translations and advanced usage of these modern tools, refer to:
