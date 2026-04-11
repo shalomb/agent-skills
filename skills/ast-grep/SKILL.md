@@ -1,6 +1,6 @@
 ---
 name: ast-grep
-description: Structural code search, analysis, and rewriting using AST patterns with sg/ast-grep. Use when searching for code patterns across a codebase (not text grep), extracting structured information from code (function names, imports, usages), applying automated refactors or migrations, linting with custom rules, or when a task requires understanding code structure rather than text. Triggers include "find all usages of", "rename this pattern", "refactor all X to Y", "extract all functions that", "lint for pattern", or any structural code analysis task.
+description: Use this skill for structural code search, analysis, and automated refactoring using AST patterns (via sg/ast-grep). Trigger this whenever the user asks to "find all usages of", "rename this pattern", "refactor all X to Y", "extract all functions that", or "lint for pattern". Prefer this over standard text search (grep) when the task requires understanding code structure, extracting function names/imports, or performing complex codebase-wide migrations.
 ---
 
 # ast-grep (sg)
