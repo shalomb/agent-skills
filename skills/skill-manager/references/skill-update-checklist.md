@@ -23,15 +23,17 @@ For each learning, determine:
 □ Does it warrant a new skill entirely?
 ```
 
-## 3. Apply progressive disclosure
+## 3. Apply progressive disclosure and optimization
 
 Before editing, check:
 
 ```
-□ Is SKILL.md still under 500 lines after the addition?
-□ Does the new content justify its token cost?
+□ Is SKILL.md still lean (ideally under 100-300 lines) after the addition?
+□ Does the new content justify its token cost in the main body?
 □ Would a reference file be more appropriate (loaded only when needed)?
-□ Am I duplicating content already in another skill?
+□ Are you using imperative, intent-focused trigger phrases in the description?
+□ Are scripts leveraging `uvx` (with pinned versions) for one-off CLI tools?
+□ Are complex Python scripts using `uv run` with PEP 723 inline dependencies?
 ```
 
 ## 4. Edit and commit

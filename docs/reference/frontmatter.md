@@ -208,7 +208,7 @@ Skills are designed to load incrementally:
 2. **Activation (< 5000 tokens recommended)**: Full `SKILL.md` body loaded
 3. **On-demand (as needed)**: Referenced files loaded when required
 
-**Keep `SKILL.md` body under 500 lines.** Move detailed reference material to separate files in `references/` or `assets/`.
+**Keep `SKILL.md` body lean, ideally under 100-350 lines.** Move detailed reference material to separate files in `references/` or `assets/`.
 
 ## File References
 

@@ -17,33 +17,34 @@ description: Code generation
 ### ✅ Good Descriptions
 
 ```yaml
-description: Generates unit tests for Python functions using pytest. Analyzes function signatures and behavior to create comprehensive test cases with >80% coverage.
-description: Reviews code for security vulnerabilities including injection attacks, authentication issues, and data validation problems.
-description: Refactors code for readability, performance, and maintainability. Suggests specific improvements with explanations.
+description: Use this skill to generate unit tests for Python functions using pytest. Trigger this when implementing new functions or improving coverage. It creates tests with >80% coverage.
+description: Use this skill to review code for security vulnerabilities including injection attacks and authentication issues. Trigger this before merging to main.
+description: Use this skill to refactor code for readability, performance, and maintainability. Trigger this when code is slow or hard to understand.
 ```
 
 ### Description Best Practices
 
-1. **Be Specific**: Include the tool (pytest, pytest) and outcome (>80% coverage)
-2. **Include Keywords**: Use terms Claude will match ("unit tests", "security review")
-3. **Mention When to Use**: "When testing Python functions", "Before code review"
-4. **Action-Oriented**: Start with what the skill does
-5. **One Skill, One Purpose**: Don't try to do too much
+1. **Imperative Phrasing**: Start with an instruction ("Use this skill to...").
+2. **Focus on User Intent**: Describe what the user wants to achieve, not internal mechanics.
+3. **Be Explicit/Pushy**: List explicit triggers ("Trigger this when...").
+4. **Be Specific**: Include the tool (pytest, pytest) and outcome (>80% coverage)
+5. **Include Keywords**: Use terms Claude will match ("unit tests", "security review")
+6. **One Skill, One Purpose**: Don't try to do too much
 
 **Template:**
 
 ```yaml
-description: {Action} for {domain} {artifacts}. Use when {trigger}. {Details about approach or requirements}.
+description: Use this skill to {Action} for {domain} {artifacts}. Trigger this when {trigger}. {Details about approach or requirements}.
 ```
 
 **Examples using the template:**
 
 ```yaml
-description: Generates unit tests for Python functions using pytest. Use when implementing new functions or improving coverage. Analyzes signatures and creates tests with >80% coverage.
+description: Use this skill to generate unit tests for Python functions using pytest. Trigger this when implementing new functions or improving coverage. Analyzes signatures and creates tests with >80% coverage.
 
-description: Identifies security vulnerabilities in code including injection attacks, auth issues, and data validation. Use before merging to main or deploying to production. 
+description: Use this skill to identify security vulnerabilities in code including injection attacks, auth issues, and data validation. Trigger this before merging to main or deploying to production. 
 
-description: Refactors code for performance, readability, and maintainability. Use when code is slow, hard to understand, or violates style guide. Provides specific suggestions with explanations.
+description: Use this skill to refactor code for performance, readability, and maintainability. Trigger this when code is slow, hard to understand, or violates style guide. Provides specific suggestions with explanations.
 ```
 
 ## 2. Structuring Skill Content
