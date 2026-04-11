@@ -202,7 +202,7 @@ Keep file sizes reasonable to manage context usage:
 
 | File | Recommended Size | Rationale |
 |------|------------------|-----------|
-| `SKILL.md` body | < 500 lines / < 5000 tokens | Full load on activation |
+| `SKILL.md` body | < 100-350 lines / < 3500 tokens | Full load on activation |
 | `scripts/*` | < 500 lines each | Execution overhead |
 | `references/*.md` | < 200 lines / < 1500 tokens | On-demand loading |
 | `assets/` | Any size | Static resources |
@@ -297,3 +297,4 @@ Validation checks:
 - **[SKILL.md Frontmatter](./frontmatter.md)** — Metadata field reference
 - **[Best Practices](../how-to/best-practices.md)** — How-to guide
 - **[skills-ref Reference Library](https://github.com/agentskills/agentskills/tree/main/skills-ref)** — Validation tooling
+ation tooling

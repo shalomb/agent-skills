@@ -15,6 +15,40 @@ Skills can include additional files in their directory:
     └── examples.md
 ```
 
+## Using Python Scripts
+
+For Python scripts, leverage `uv` for speed, caching, and isolation:
+
+### One-off Commands (`uvx`)
+Use `uvx` directly in your `SKILL.md` for simple CLI tools. Always pin versions for reproducibility.
+```bash
+uvx ruff@0.8.0 check .
+uvx black@24.10.0 .
+```
+
+### Complex Scripts (`uv run`)
+For more complex domain logic, use dedicated Python scripts in the `scripts/` directory. Use PEP 723 inline metadata to declare dependencies so the script can be run standalone via `uv run`.
+
+```python
+# /// script
+# dependencies = [
+#   "httpx",
+#   "rich",
+# ]
+# ///
+
+import httpx
+from rich import print
+# ... script logic
+```
+
+Invoke this from `SKILL.md` via:
+```bash
+uv run scripts/my_script.py
+```
+
+**Note:** Always state in your `SKILL.md` that `uv` is a prerequisite if you use these patterns.
+
 ## Supported File Types
 
 Skills can include:
