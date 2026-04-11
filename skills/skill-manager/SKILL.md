@@ -71,7 +71,7 @@ When a session reveals new knowledge (gotchas, patterns, workflows):
    - Service-specific gotcha → `references/{topic}.md`
    - Cross-reference to another skill → one-liner in References section
 3. **Edit and verify** — read the skill-creator SKILL.md for progressive
-   disclosure principles. Keep SKILL.md under 500 lines.
+   disclosure principles. Keep SKILL.md lean (ideally under 100-300 lines).
 4. **Commit** — if the skill is in a git-tracked location, use ACP.
 
 Key principle: **add what you fumbled with**. If you had to discover something
