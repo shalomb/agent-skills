@@ -41,27 +41,29 @@ echo "✅ Workspace ID: $WORKSPACE_ID"
 
 # 2. Trigger Run
 echo "🚀 Triggering run (is-destroy: $IS_DESTROY)..."
-RUN_ID=$(curl -s -X POST \
-  --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
-  -d "{
-    \"data\": {
-      \"attributes\": {
-        \"is-destroy\": $IS_DESTROY,
-        \"message\": \"$MESSAGE\"
+RUN_ID=$(jq -n \
+  --arg is_destroy "$IS_DESTROY" \
+  --arg msg "$MESSAGE" \
+  --arg wid "$WORKSPACE_ID" \
+  '{
+    data: {
+      attributes: {
+        "is-destroy": ($is_destroy == "true"),
+        message: $msg
       },
-      \"type\": \"runs\",
-      \"relationships\": {
-        \"workspace\": {
-          \"data\": {
-            \"type\": \"workspaces\",
-            \"id\": \"$WORKSPACE_ID\"
+      type: "runs",
+      relationships: {
+        workspace: {
+          data: {
+            type: "workspaces",
+            id: $wid
           }
         }
       }
     }
-  }" \
-  "https://app.terraform.io/api/v2/runs" \
+  }' | http POST "https://app.terraform.io/api/v2/runs" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json" \
   | jq -r '.data.id // empty')
 
 if [ -z "$RUN_ID" ] || [ "$RUN_ID" == "null" ]; then
