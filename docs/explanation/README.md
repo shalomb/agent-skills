@@ -6,6 +6,11 @@ Deep-dive background and design theory. Read when you want to understand the *wh
 
 ### Core Design
 
+- **[Agent-Native CLI Design](./agent-native-cli-design.md)** — Principles for tools in 2026
+  - **Machine-Interfacing Core** — JSON-first, deterministic exit codes, clean streams
+  - **Advanced Agentic Patterns** — MCP support, predictive actions, plan-then-execute
+  - **Efficiency & Safety** — Context window protection, dry run, idempotency
+
 - **[Core Design Principles](./core-principles.md)** — Three foundational principles
   - **Progressive Disclosure** — Load only what's needed, when needed
   - **Composability** — Skills work alongside each other without conflicts

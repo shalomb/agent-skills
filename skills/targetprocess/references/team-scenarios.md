@@ -11,6 +11,26 @@ High-level view of current and upcoming program increments for an entire Agile R
 - Reviewing ART-wide objectives and commitments
 - Identifying participation levels across 20+ teams
 
+### PI Planning Workflow (DAD/GMSGQ)
+```bash
+# 1. Create Feature linked to an objective atomically (Python client)
+python -c "
+from tpcli_pi.core.api_client import TPAPIClient
+c = TPAPIClient()
+f = c.create_feature('IaCRE', parent_epic_id=0,
+    team_id=2022903, release_id=2033368, objective_id=2284608)
+print(f'Created Feature Id: {f.id}')
+"
+
+# 2. Or via tpcli CLI (two-step)
+tpcli plan create Feature --data '{"Name":"IaCRE","Team":{"Id":2022903},"Release":{"Id":2033368}}'
+tpcli plan link Feature <feature_id> TeamPIObjective 2284608
+
+# 3. Verify
+tpcli get TeamPIObjective 2284608
+# Check Features sub-collection in response
+```
+
 ### Command Pattern
 ```bash
 # View full dashboard for an ART
@@ -40,16 +60,31 @@ Drill down into a specific team to understand their PI commitments, capacity, an
 
 ### Command Pattern
 ```bash
-# Summary view of team status
-tpcli ext team-dashboard --team "Example Team"
+# Summary view of team status — use FULL team name
+tpcli ext team-dashboard --team "DAD - Fusion - Cloud Enablement & Delivery"
 
 # Deep dive into team capacity and risks
-tpcli ext team-deep-dive --team "Example Team" --pi current
+tpcli ext team-deep-dive --team "DAD - Fusion - Cloud Enablement & Delivery" --pi current
 
 # Show specific aspects
-tpcli ext team-deep-dive --team "Example Team" --show capacity
-tpcli ext team-deep-dive --team "Example Team" --show risks
-tpcli ext team-deep-dive --team "Example Team" --show features
+tpcli ext team-deep-dive --team "DAD - Fusion - Cloud Enablement & Delivery" --show capacity
+tpcli ext team-deep-dive --team "DAD - Fusion - Cloud Enablement & Delivery" --show risks
+tpcli ext team-deep-dive --team "DAD - Fusion - Cloud Enablement & Delivery" --show features
+
+# PI-to-PI objective comparison
+tpcli ext compare --release "DAD: PI-1/26" --previous "DAD: PI-4/25" \
+  --team "DAD - Fusion - Cloud Enablement & Delivery"
+tpcli ext compare --release "DAD: PI-1/26" --format markdown
+
+# If previous-release is set in context config, --previous is optional:
+tpcli ext compare --release "DAD: PI-1/26"
+```
+
+### Finding teams by partial name (API workaround)
+```bash
+# TP API rejects --where "Name like '%x%'" for Teams; use find instead:
+tpcli find team "Cloud Enablement"
+tpcli find team --exact "Cloud Enablement & Delivery"
 ```
 
 ### Key Metrics
