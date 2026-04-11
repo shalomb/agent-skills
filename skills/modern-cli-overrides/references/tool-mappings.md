@@ -60,3 +60,16 @@ Never use `grep`, `sed`, or `awk` to parse JSON. Always use `jq`.
 |---|---|---|
 | `grep '"name":' file.json` | `jq '.name' file.json` | Extract top-level field |
 | `cat file.json \| python -m json.tool` | `jq '.' file.json` | Pretty-print JSON |
+
+## API Testing: `curl` → `httpie` (`http`)
+
+`curl` is powerful but its syntax can be arcane for JSON payloads. `httpie` is designed for human readability, offering intuitive syntax and automatic JSON serialization.
+
+| Traditional `curl` | Modern `httpie` (`http`) | Description |
+|---|---|---|
+| `curl api.com` | `http api.com` | Simple GET request |
+| `curl -X POST api.com` | `http POST api.com` | Simple POST request |
+| `curl -H "Authorization: Bearer token" api.com` | `http api.com "Authorization: Bearer token"` | Pass HTTP headers |
+| `curl -H "Content-Type: application/json" -d '{"name":"admin"}' api.com` | `http POST api.com name=admin` | Send JSON payload |
+| `curl -d "name=admin" -X POST api.com` | `http -f POST api.com name=admin` | Send Form data |
+| `curl -O https://example.com/file.zip` | `http -d https://example.com/file.zip` | Download a file |
