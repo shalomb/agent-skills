@@ -1,6 +1,6 @@
 ---
 name: meeting-notes
-description: Process meeting transcripts (VTT format) to extract meeting minutes, action items, and decisions. Use when given transcript files or asked to create meeting documentation, extract action items, or record decisions.
+description: Use this skill to process meeting transcripts (VTT/SRT format) to extract structured minutes, action items, and decisions. Trigger this whenever given a transcript file, or when asked to "create meeting documentation", "extract action items", or "summarize the meeting". This will also optionally integrate the findings into GitHub, Jira, or Slack.
 ---
 
 # Meeting Notes Skill

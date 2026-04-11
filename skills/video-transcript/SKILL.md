@@ -1,6 +1,6 @@
 ---
 name: video-transcript
-description: Extract full transcripts from video content for analysis, summarization, note-taking, or research. Use when the user wants a written version of video content, asks to "transcribe this", "get the text from this video", "convert video to text", or shares a video URL for content extraction. Supports standard YouTube videos, Shorts, and bare video IDs.
+description: Use this skill to extract full transcripts from video content for analysis, summarization, note-taking, or research. Trigger this whenever the user shares a YouTube URL, a video ID, or explicitly asks to "transcribe this", "get the text from this video", or "convert video to text". This is essential for converting video into readable formats.
 ---
 
 # Video Transcript

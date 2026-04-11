@@ -1,6 +1,6 @@
 ---
 name: git-forensics
-description: Diagnose codebase health, risk areas, and perform code archaeology using git history. Use when onboarding to a project, assessing technical debt, finding lost code, tracking function evolution, or analyzing "bus factor" risks.
+description: Use this skill to diagnose codebase health, identify risk areas, and perform code archaeology via git history. Trigger this when onboarding to a new project, assessing technical debt, searching for lost code or deleted files, tracing function evolution, or analyzing team dependency ("bus factor"). This provides deep insights beyond basic git commands.
 ---
 
 # Git Forensics
