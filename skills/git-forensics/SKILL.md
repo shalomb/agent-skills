@@ -1,65 +1,61 @@
 ---
 name: git-forensics
-description: Diagnose codebase health, risk areas, and contributor dynamics using git history. Use when onboarding to a new project, assessing technical debt, identifying high-risk "bug hotspots", or analyzing team velocity and "bus factor" risks.
+description: Diagnose codebase health, risk areas, and perform code archaeology using git history. Use when onboarding to a project, assessing technical debt, finding lost code, tracking function evolution, or analyzing "bus factor" risks.
 ---
 
 # Git Forensics
 
-Analyze git history to identify patterns that indicate code quality, stability, and organizational risk.
+Analyze git history to identify health patterns (codebase drag, organizational risk) and perform deep code archaeology (finding lost code, tracing lines).
 
-## Forensic Analysis Workflow
+## 1. Codebase Health Assessment
 
-When entering an unfamiliar codebase or conducting a health check:
+Use these commands for a high-level view of project health and stability.
 
-1. **Run Full Report**: Get a high-level overview of churn, bugs, and velocity.
-   ```bash
-   uv run scripts/forensics.py report
-   ```
+| Command | Description | Risk Indicated |
+| --- | --- | --- |
+| `uv run scripts/forensics.py report` | Run full health report | - |
+| `uv run scripts/forensics.py churn` | Top 20 most frequently changed files | High Churn ("Codebase drag") |
+| `uv run scripts/forensics.py bus` | Contributor commit distribution | Low Bus Factor (Knowledge silos) |
+| `uv run scripts/forensics.py bugs` | Files most associated with "fix/bug" | Bug Hotspots |
+| `uv run scripts/forensics.py velocity` | Commit counts by month | Declining velocity (Tech debt) |
+| `uv run scripts/forensics.py fire` | "hotfix", "revert", "rollback" commits | Deployment/testing instability |
 
-2. **Identify High-Risk Files**: Files appearing in both "High-Churn" and "Bug Hotspots" are candidates for refactoring.
-3. **Assess Bus Factor**: Check if knowledge is siloed among a few contributors.
-4. **Detect Stability Trends**: Frequent `hotfix` or `revert` commits indicate deployment or testing instability.
+**Interpretation:** Files appearing in BOTH "churn" and "bugs" are the highest risk components in the system and prime candidates for refactoring.
 
-## Capabilities
+## 2. Code Archaeology
 
-### 1. High-Churn Files
-Identify files that are constantly patched. High churn often indicates "codebase drag" where changes are unpredictable and error-prone.
+Use these commands to dig into the history of specific code blocks or find lost context, treating the codebase as a crime scene.
+
+### The Pickaxe (Find Lost Code)
+Find exactly when a specific string, function name, or variable was added or deleted anywhere in the repository's history (across all branches).
 ```bash
-uv run scripts/forensics.py churn
+uv run scripts/forensics.py pickaxe "my_deprecated_key"
+uv run scripts/forensics.py pickaxe "^def legacy_.*" --regex
 ```
 
-### 2. Contributor Distribution (Bus Factor)
-Rank contributors by commit count to identify knowledge silos.
+### X-Ray Blame
+Standard `git blame` is noisy. This ignores whitespace changes (`-w`) and detects if the code was moved/copied from elsewhere (`-M -C`), pointing you to the *true* original author.
 ```bash
-uv run scripts/forensics.py bus
+uv run scripts/forensics.py xblame path/to/file.py
 ```
 
-### 3. Bug Hotspots
-Locate files most frequently associated with bug fixes (`fix`, `bug`, `broken` keywords).
+### Trace Function Evolution
+See every diff that modified a specific function or class. (Opens in a pager; press `q` to exit).
 ```bash
-uv run scripts/forensics.py bugs
+uv run scripts/forensics.py trace "my_function" path/to/file.py
 ```
 
-### 4. Project Velocity
-Visualize commit counts by month to track if the project is accelerating or losing momentum.
+### Find Stale Code
+List the oldest, untouched files in the repository. High churn is bad, but code that hasn't been touched in 5 years might be dead weight or forgotten legacy systems.
 ```bash
-uv run scripts/forensics.py velocity
+uv run scripts/forensics.py stale
 ```
 
-### 5. Firefighting Patterns
-Detect `revert`, `hotfix`, `emergency`, or `rollback` patterns to assess deployment stability.
+### Find Deleted Files
+List recently deleted files across the repository to resurrect lost modules.
 ```bash
-uv run scripts/forensics.py fire
+uv run scripts/forensics.py deleted
 ```
-
-## Interpreting Results
-
-| Signal | Interpretation |
-| --- | --- |
-| **Churn + Bugs** | **High Risk.** Target these files for immediate refactoring or increased test coverage. |
-| **Low Bus Factor** | **Organizational Risk.** Critical knowledge is held by too few people. |
-| **High Firefighting** | **Process Risk.** Indicates unstable CI/CD, poor testing, or high-pressure "crunch" culture. |
-| **Declining Velocity** | **Health Risk.** May indicate growing technical debt making changes harder. |
 
 ## Credits
-Based on recommendations by [Ally Piechowski](https://piechowski.io/post/git-commands-before-reading-code/).
+Based on concepts from Adam Tornhill's *Your Code as a Crime Scene* and recommendations by [Ally Piechowski](https://piechowski.io/post/git-commands-before-reading-code/).
