@@ -497,6 +497,84 @@ tpcli discover --verbose
 
 ---
 
+---
+
+## DAD/GMSGQ Platform Conventions
+
+### Required fields for entity creation
+
+All DAD entities (TeamPIObjective, Feature) require:
+- `Project: {"Id": 223264}` (GMSGQ) — omitting returns cryptic "Project should be specified" error
+
+### Correct team name
+
+Config short name `Cloud Enablement & Delivery` does NOT match TP.
+Full name: `DAD - Fusion - Cloud Enablement & Delivery` (Id: 2022903)
+
+Use `tpcli find team "Cloud Enablement"` to resolve partial names.
+
+### Current PI release
+
+`DAD: PI-1/26` (Id: 2033368) — Previous: `DAD: PI-4/25` (Id: 1942235)
+
+### Linking Features to TeamPIObjectives
+
+Not via Feature fields (no TeamPIObjective field on Feature).
+Use the join entity:
+
+```bash
+tpcli plan link Feature <feature_id> TeamPIObjective <objective_id>
+# POSTs to /api/v1/TeamPIObjectiveFeatures
+# {"TeamPIObjective": {"Id": X}, "Feature": {"Id": Y}}
+
+# Verify:
+# GET /api/v1/TeamPIObjective/{id}/Features
+```
+
+Or use the Python client for atomic create+link:
+```python
+client.create_feature(name="IaCRE", parent_epic_id=0,
+    team_id=2022903, release_id=2033368, objective_id=2284608)
+```
+
+### tpcli list limitations
+
+- `tpcli list Teams --where "Name like '%x%'"` → API 400 (broken)
+  Workaround: `tpcli find team "Cloud Enablement"` (local filtering)
+- `tpcli list TeamPIObjectives --where "Release.Id eq X"` → API 400 for some TP instances
+  Workaround: fetch all then filter client-side
+- `tpcli list TeamPIObjectives` sorts oldest-first — new items at bottom
+  Workaround: use `--skip 200` or `tpcli get TeamPIObjective <id>` directly
+
+### Jira integration
+
+- TP Feature custom field `Jira Key` = Jira issue key (e.g. "DAD-3435")
+- When set, Jira `customfield_12902` is auto-populated with TP entity URL
+- This is the canonical TP↔Jira link — not description text
+
+### Context config
+
+Use context schema in `~/.config/tpcli/config.yaml`:
+
+```bash
+tpcli context list          # see all contexts
+tpcli context use dad-ced-pi-26-1   # switch PI
+tpcli context show          # see active context fields
+```
+
+Context schema supports `previous-release` for `tpcli plan compare`:
+
+```yaml
+current-context: dad-ced-pi-26-1
+contexts:
+  dad-ced-pi-26-1:
+    team: DAD - Fusion - Cloud Enablement & Delivery
+    release: DAD: PI-1/26
+    previous-release: DAD: PI-4/25
+```
+
+---
+
 ## Related Documentation
 
 - Full docs: `tpcli docs` or installed package documentation
