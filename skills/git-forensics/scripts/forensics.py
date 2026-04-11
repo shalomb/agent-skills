@@ -33,8 +33,12 @@ def high_churn(since="1 year ago", limit=20):
     
     for line in output.split("\n"):
         if line.strip():
-            count, path = line.strip().split(None, 1)
-            table.add_row(count, path)
+            parts = line.strip().split(None, 1)
+            if len(parts) == 2:
+                count, path = parts
+                table.add_row(count, path)
+            else:
+                continue
     
     console.print(table)
 
@@ -54,8 +58,12 @@ def bus_factor(since=None, limit=20):
     
     for i, line in enumerate(output.split("\n")):
         if line.strip() and i < limit:
-            count, author = line.strip().split(None, 1)
-            table.add_row(count, author)
+            parts = line.strip().split(None, 1)
+            if len(parts) == 2:
+                count, author = parts
+                table.add_row(count, author)
+            else:
+                continue
     
     console.print(table)
 
@@ -70,8 +78,12 @@ def bug_hotspots(limit=20):
     
     for line in output.split("\n"):
         if line.strip():
-            count, path = line.strip().split(None, 1)
-            table.add_row(count, path)
+            parts = line.strip().split(None, 1)
+            if len(parts) == 2:
+                count, path = parts
+                table.add_row(count, path)
+            else:
+                continue
     
     console.print(table)
 
@@ -86,8 +98,12 @@ def project_velocity():
     
     for line in output.split("\n"):
         if line.strip():
-            count, month = line.strip().split(None, 1)
-            table.add_row(count, month)
+            parts = line.strip().split(None, 1)
+            if len(parts) == 2:
+                count, month = parts
+                table.add_row(count, month)
+            else:
+                continue
     
     console.print(table)
 
