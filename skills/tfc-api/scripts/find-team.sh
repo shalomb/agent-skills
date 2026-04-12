@@ -16,28 +16,23 @@ if [ -z "$ORG" ] || [ -z "$QUERY" ]; then
   exit 1
 fi
 
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
-if [ -z "$TFC_TOKEN" ] || [ "$TFC_TOKEN" = "null" ]; then
-  echo "❌ TFC token not found. Set TFC_TOKEN or configure ~/.terraform.d/credentials.tfrc.json"
-  exit 1
-fi
+# Load TFC token using auth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 BASE="https://app.terraform.io/api/v2"
-
-# Use q= for server-side search (case-insensitive), paginate all results
-ENCODED_QUERY=$(python3 -c "import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1]))" "$QUERY")
 
 ALL_DATA="[]"
 PAGE=1
 TOTAL_PAGES=1
 
 while [ "$PAGE" -le "$TOTAL_PAGES" ]; do
-  RESPONSE=$(curl -s -H "Authorization: Bearer $TFC_TOKEN" \
-    -H "Content-Type: application/vnd.api+json" \
-    "$BASE/organizations/$ORG/teams?q=${ENCODED_QUERY}&page%5Bsize%5D=100&page%5Bnumber%5D=$PAGE")
+  RESPONSE=$(http --ignore-stdin --quiet GET "$BASE/organizations/$ORG/teams" \
+    "Authorization: Bearer $TFC_TOKEN" \
+    "Content-Type: application/vnd.api+json" \
+    "q==$QUERY" \
+    "page[size]==100" \
+    "page[number]==$PAGE")
 
   # Check for API errors (e.g. 404 from insufficient permissions)
   if echo "$RESPONSE" | jq -e '.errors' >/dev/null 2>&1; then

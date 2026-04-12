@@ -12,24 +12,19 @@ if [ -z "$RUN_ID" ]; then
   exit 1
 fi
 
-# Get TFC token
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
-
-if [ "$TFC_TOKEN" = "null" ] || [ -z "$TFC_TOKEN" ]; then
-  echo "❌ TFC token not found at ~/.terraform.d/credentials.tfrc.json"
-  exit 1
-fi
+# Get TFC token using auth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 echo "📋 Fetching run: $RUN_ID"
 echo ""
 
 # Get run details
-RUN_RESPONSE=$(curl -s --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
-  "https://app.terraform.io/api/v2/runs/$RUN_ID?include=plan")
+RUN_RESPONSE=$(http --ignore-stdin --quiet GET \
+  "https://app.terraform.io/api/v2/runs/$RUN_ID" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json" \
+  "include==plan")
 
 # Extract metadata
 echo "📊 Run Metadata:"
@@ -56,9 +51,10 @@ echo "✅ Plan ID: $PLAN_ID"
 echo ""
 
 # Get plan log URL
-PLAN_DETAILS=$(curl -s --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
-  "https://app.terraform.io/api/v2/plans/$PLAN_ID")
+PLAN_DETAILS=$(http --ignore-stdin --quiet GET \
+  "https://app.terraform.io/api/v2/plans/$PLAN_ID" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json")
 
 LOG_URL=$(echo "$PLAN_DETAILS" | jq -r '.data.attributes["log-read-url"]')
 
@@ -69,7 +65,7 @@ fi
 
 # Download logs
 TEMP_LOG="/tmp/tfc-plan-$PLAN_ID.jsonl"
-curl -s "$LOG_URL" > "$TEMP_LOG"
+http --ignore-stdin --quiet GET "$LOG_URL" > "$TEMP_LOG"
 echo "📝 Plan log saved to: $TEMP_LOG"
 echo ""
 

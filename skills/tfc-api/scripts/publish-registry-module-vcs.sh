@@ -42,25 +42,27 @@ echo "Organization: ${ORG}"
 echo "OAuth Token ID: ${OAUTH_TOKEN_ID}"
 echo ""
 
-RESPONSE=$(curl -s -X POST \
-  --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
-  -d "{
-    \"data\": {
-      \"type\": \"registry-modules\",
-      \"attributes\": {
-        \"vcs-repo\": {
-          \"identifier\": \"${GITHUB_REPO}\",
-          \"oauth-token-id\": \"${OAUTH_TOKEN_ID}\",
-          \"display-identifier\": \"${DISPLAY_ID}\",
-          \"tags\": true,
-          \"ingress-submodules\": true
+RESPONSE=$(jq -n \
+  --arg repo "${GITHUB_REPO}" \
+  --arg otid "${OAUTH_TOKEN_ID}" \
+  --arg display "${DISPLAY_ID}" \
+  '{
+    data: {
+      type: "registry-modules",
+      attributes: {
+        "vcs-repo": {
+          identifier: $repo,
+          "oauth-token-id": $otid,
+          "display-identifier": $display,
+          tags: true,
+          "ingress-submodules": true
         }
       },
-      \"no-code\": false
+      "no-code": false
     }
-  }" \
-  "https://app.terraform.io/api/v2/organizations/${ORG}/registry-modules/vcs")
+  }' | http --ignore-stdin --quiet POST "https://app.terraform.io/api/v2/organizations/${ORG}/registry-modules/vcs" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json")
 
 # Check for errors in response
 if echo "$RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then
