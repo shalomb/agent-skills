@@ -13,24 +13,18 @@ if [ -z "$RUN_ID" ]; then
   exit 1
 fi
 
-# Load TFC token
-if [ ! -f ~/.terraform.d/credentials.tfrc.json ]; then
-  echo "❌ Error: ~/.terraform.d/credentials.tfrc.json not found" >&2
-  exit 1
-fi
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
+# Load TFC token using auth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 echo "⏳ Waiting for run $RUN_ID status (timeout: ${TIMEOUT}s, interval: ${INTERVAL}s)..."
 
 START_TIME=$(date +%s)
 while true; do
-  STATUS=$(curl -s \
-    --header "Authorization: Bearer $TFC_TOKEN" \
-    --header "Content-Type: application/vnd.api+json" \
+  STATUS=$(http --ignore-stdin --quiet GET \
     "https://app.terraform.io/api/v2/runs/$RUN_ID" \
+    "Authorization: Bearer $TFC_TOKEN" \
+    "Content-Type: application/vnd.api+json" \
     | jq -r '.data.attributes.status // "unknown"')
 
   CURRENT_TIME=$(date +%s)

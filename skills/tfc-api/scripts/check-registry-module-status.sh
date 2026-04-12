@@ -16,22 +16,15 @@ NAMESPACE="$2"
 NAME="$3"
 PROVIDER="$4"
 
-# Get TFC token
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
-
-if [[ -z "$TFC_TOKEN" || "$TFC_TOKEN" == "null" ]]; then
-  echo "Error: TFC token not found in ~/.terraform.d/credentials.tfrc.json"
-  exit 1
-fi
+# Load TFC token using auth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 # Get module status
-RESPONSE=$(curl -s -X GET \
-  --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
-  "https://app.terraform.io/api/v2/organizations/${ORG}/registry-modules/private/${NAMESPACE}/${NAME}/${PROVIDER}")
+RESPONSE=$(http --ignore-stdin --quiet GET \
+  "https://app.terraform.io/api/v2/organizations/${ORG}/registry-modules/private/${NAMESPACE}/${NAME}/${PROVIDER}" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json")
 
 # Check for errors in response
 if echo "$RESPONSE" | jq -e '.errors' > /dev/null 2>&1; then

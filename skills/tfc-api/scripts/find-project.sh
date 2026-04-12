@@ -15,28 +15,29 @@ if [ -z "$ORG" ] || [ -z "$PATTERN" ]; then
   exit 1
 fi
 
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
-if [ -z "$TFC_TOKEN" ] || [ "$TFC_TOKEN" = "null" ]; then
-  echo "❌ TFC token not found. Set TFC_TOKEN or configure ~/.terraform.d/credentials.tfrc.json"
-  exit 1
-fi
+# Load TFC token using auth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 BASE="https://app.terraform.io/api/v2"
 
 # Get total pages
-TOTAL_PAGES=$(curl -s -H "Authorization: Bearer $TFC_TOKEN" \
-  "$BASE/organizations/$ORG/projects?page%5Bsize%5D=100&page%5Bnumber%5D=1" \
+TOTAL_PAGES=$(http --ignore-stdin --quiet GET \
+  "$BASE/organizations/$ORG/projects" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "page[size]==100" \
+  "page[number]==1" \
   | jq -r '.meta.pagination."total-pages"')
 
 echo "🔍 Searching $TOTAL_PAGES pages for projects matching: $PATTERN"
 
 FOUND=0
 for page in $(seq 1 "$TOTAL_PAGES"); do
-  RESULTS=$(curl -s -H "Authorization: Bearer $TFC_TOKEN" \
-    "$BASE/organizations/$ORG/projects?page%5Bsize%5D=100&page%5Bnumber%5D=$page" \
+  RESULTS=$(http --ignore-stdin --quiet GET \
+    "$BASE/organizations/$ORG/projects" \
+    "Authorization: Bearer $TFC_TOKEN" \
+    "page[size]==100" \
+    "page[number]==$page" \
     | jq -r --arg pat "$PATTERN" \
       '.data[] | select(.attributes.name | test($pat)) | "\(.id)  \(.attributes.name)  workspaces=\(.attributes."workspace-count") teams=\(.attributes."team-count")"')
 

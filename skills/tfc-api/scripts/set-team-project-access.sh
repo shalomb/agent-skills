@@ -27,21 +27,17 @@ case "$ACCESS" in
     ;;
 esac
 
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
-if [ -z "$TFC_TOKEN" ] || [ "$TFC_TOKEN" = "null" ]; then
-  echo "❌ TFC token not found. Set TFC_TOKEN or configure ~/.terraform.d/credentials.tfrc.json"
-  exit 1
-fi
+# Load TFC token using auth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 BASE="https://app.terraform.io/api/v2"
 
 echo "🔍 Finding existing team-project access record..."
-RESPONSE=$(curl -s -H "Authorization: Bearer $TFC_TOKEN" \
-  -H "Content-Type: application/vnd.api+json" \
-  "$BASE/team-projects?filter%5Bproject%5D%5Bid%5D=$PROJECT_ID")
+RESPONSE=$(http --ignore-stdin --quiet GET "$BASE/team-projects" \
+  "filter[project][id]==$PROJECT_ID" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json")
 
 RECORD_ID=$(echo "$RESPONSE" | jq -r --arg tid "$TEAM_ID" \
   '.data[] | select(.relationships.team.data.id == $tid) | .id')
@@ -60,11 +56,10 @@ echo "   Current access: $CURRENT_ACCESS"
 echo "   New access:     $ACCESS"
 echo ""
 
-PATCH_RESPONSE=$(curl -s -X PATCH \
-  -H "Authorization: Bearer $TFC_TOKEN" \
-  -H "Content-Type: application/vnd.api+json" \
-  -d "{\"data\": {\"type\": \"team-projects\", \"attributes\": {\"access\": \"$ACCESS\"}}}" \
-  "$BASE/team-projects/$RECORD_ID")
+PATCH_RESPONSE=$(http --ignore-stdin --quiet PATCH "$BASE/team-projects/$RECORD_ID" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json" \
+  data:="{\"type\": \"team-projects\", \"attributes\": {\"access\": \"$ACCESS\"}}")
 
 NEW_ACCESS=$(echo "$PATCH_RESPONSE" | jq -r '.data.attributes.access')
 

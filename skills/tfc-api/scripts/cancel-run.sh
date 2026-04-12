@@ -19,22 +19,15 @@ if [ -z "$RUN_ID" ]; then
   exit 1
 fi
 
-# Load TFC token
-if [ ! -f ~/.terraform.d/credentials.tfrc.json ]; then
-  echo "❌ Error: ~/.terraform.d/credentials.tfrc.json not found" >&2
-  exit 1
-fi
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
+# Load TFC token using auth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 echo "🚫 Cancelling run ${RUN_ID}..."
-RESPONSE=$(curl -s -X POST \
-  --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
-  --data "{\"comment\": \"${COMMENT}\"}" \
-  "https://app.terraform.io/api/v2/runs/${RUN_ID}/actions/cancel")
+RESPONSE=$(http --ignore-stdin --quiet POST "https://app.terraform.io/api/v2/runs/${RUN_ID}/actions/cancel" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json" \
+  comment="${COMMENT}")
 
 # Check response — TFC returns 202 Accepted on success, empty body
 if echo "$RESPONSE" | grep -q '"errors"'; then
