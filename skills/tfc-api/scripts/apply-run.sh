@@ -12,22 +12,15 @@ if [ -z "$RUN_ID" ]; then
   exit 1
 fi
 
-# Load TFC token
-if [ ! -f ~/.terraform.d/credentials.tfrc.json ]; then
-  echo "❌ Error: ~/.terraform.d/credentials.tfrc.json not found" >&2
-  exit 1
-fi
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
+# Load TFC token using auth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 echo "Applying run $RUN_ID..."
-RESPONSE=$(curl -s -X POST \
-  --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
-  -d "{\"comment\": \"$COMMENT\"}" \
-  "https://app.terraform.io/api/v2/runs/$RUN_ID/actions/apply")
+RESPONSE=$(http --ignore-stdin --quiet POST "https://app.terraform.io/api/v2/runs/$RUN_ID/actions/apply" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json" \
+  comment="$COMMENT")
 
 if [ "$RESPONSE" == "null" ] || [ -z "$RESPONSE" ]; then
   echo "✅ Apply triggered successfully (or run is already applying/applied)."

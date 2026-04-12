@@ -14,22 +14,16 @@ if [ -z "$ORG" ] || [ -z "$WORKSPACE" ]; then
   exit 1
 fi
 
-# Get TFC token
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
-
-if [ "$TFC_TOKEN" = "null" ] || [ -z "$TFC_TOKEN" ]; then
-  echo "❌ TFC token not found at ~/.terraform.d/credentials.tfrc.json"
-  exit 1
-fi
+# Get TFC token using auth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 # Get workspace ID
 echo "🔍 Fetching workspace: $ORG/$WORKSPACE"
-WORKSPACE_RESPONSE=$(curl -s --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
-  "https://app.terraform.io/api/v2/organizations/$ORG/workspaces/$WORKSPACE")
+WORKSPACE_RESPONSE=$(http --ignore-stdin --quiet GET \
+  "https://app.terraform.io/api/v2/organizations/$ORG/workspaces/$WORKSPACE" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json")
 
 WORKSPACE_ID=$(echo "$WORKSPACE_RESPONSE" | jq -r '.data.id')
 
@@ -45,9 +39,11 @@ echo ""
 echo "📋 Recent Runs (limit: $LIMIT):"
 echo ""
 
-RUNS_RESPONSE=$(curl -s --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
-  "https://app.terraform.io/api/v2/workspaces/$WORKSPACE_ID/runs?page%5Bsize%5D=$LIMIT")
+RUNS_RESPONSE=$(http --ignore-stdin --quiet GET \
+  "https://app.terraform.io/api/v2/workspaces/$WORKSPACE_ID/runs" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json" \
+  "page[size]==$LIMIT")
 
 echo "$RUNS_RESPONSE" | jq -r '.data[] | [
   .id,

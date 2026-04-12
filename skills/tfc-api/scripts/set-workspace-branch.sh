@@ -8,16 +8,8 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PARENT_DIR="$(dirname "$SCRIPT_DIR")"
 
-# Get TFC token
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
-
-if [ -z "$TFC_TOKEN" ] || [ "$TFC_TOKEN" = "null" ]; then
-  echo "Error: TFC token not found in ~/.terraform.d/credentials.tfrc.json"
-  exit 1
-fi
+# Load TFC token using auth helper
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 # Handle auto-detect mode
 if [ "${1:-.}" = "." ]; then
@@ -55,10 +47,10 @@ fi
 echo "Fetching workspace ID for: $ORG/$WORKSPACE"
 
 # Get workspace ID
-WORKSPACE_ID=$(curl -s \
-  --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
+WORKSPACE_ID=$(http --ignore-stdin --quiet GET \
   "https://app.terraform.io/api/v2/organizations/$ORG/workspaces/$WORKSPACE" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json" \
   | jq -r '.data.id')
 
 if [ -z "$WORKSPACE_ID" ] || [ "$WORKSPACE_ID" = "null" ]; then
@@ -70,11 +62,11 @@ echo "Workspace ID: $WORKSPACE_ID"
 echo "Updating VCS branch to: $BRANCH"
 
 # Update workspace VCS branch
-RESPONSE=$(curl -s -X PATCH \
-  --header "Authorization: Bearer $TFC_TOKEN" \
-  --header "Content-Type: application/vnd.api+json" \
+RESPONSE=$(http --ignore-stdin --quiet PATCH \
   "https://app.terraform.io/api/v2/workspaces/$WORKSPACE_ID" \
-  -d '{"data": {"type": "workspaces", "attributes": {"vcs-repo": {"branch": "'"$BRANCH"'"}}}}')
+  "Authorization: Bearer $TFC_TOKEN" \
+  "Content-Type: application/vnd.api+json" \
+  data:='{"type": "workspaces", "attributes": {"vcs-repo": {"branch": "'"$BRANCH"'"}}}')
 
 # Check for errors
 ERROR=$(echo "$RESPONSE" | jq -r '.errors[] | .title // empty' 2>/dev/null || echo "")

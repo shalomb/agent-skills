@@ -45,17 +45,30 @@ Key gotchas:
                                          <proj_b> <team_b>        # diff vs reference
 ./scripts/set-team-project-access.sh <project_id> <team_id> admin # fix
 ```
-
 ## Workspace Discovery
 
 ```bash
-# Search by name pattern
+# Search by name pattern (fuzzy)
 BASE="https://app.terraform.io/api/v2"
 curl -s -H "Authorization: Bearer $TFC_TOKEN" \
   "$BASE/organizations/{ORGANIZATION}/workspaces?search[name]=<pattern>" \
   | jq '.data[] | {id, name: .attributes.name}'
 
+# Search by wildcard name pattern (prefix, suffix, or substring)
+# Note: square brackets should be percent-encoded in URLs: [ as %5B and ] as %5D
+curl -s -H "Authorization: Bearer $TFC_TOKEN" \
+  "$BASE/organizations/{ORGANIZATION}/workspaces?search%5Bwildcard-name%5D=*<pattern>*" \
+  | jq '.data[] | {id, name: .attributes.name}'
+
+# Using httpie (modern replacement for curl)
+# httpie handles encoding and provides cleaner syntax
+http GET "$BASE/organizations/{ORGANIZATION}/workspaces" \
+  "Authorization: Bearer $TFC_TOKEN" \
+  "search[wildcard-name]==*<pattern>*" \
+  | jq '.data[] | {id, name: .attributes.name}'
+
 # Get workspace by exact name
+```
 curl -s -H "Authorization: Bearer $TFC_TOKEN" \
   "$BASE/organizations/{ORGANIZATION}/workspaces/<workspace-name>" \
   | jq '{id: .data.id, name: .data.attributes.name}'
@@ -129,6 +142,7 @@ reset the branch after validation.
 
 | Script | Purpose |
 |--------|---------|
+| `find-workspace.sh` | Find workspaces by name or wildcard pattern (prefix/suffix/substring) |
 | `find-team.sh` | Find teams by name pattern using `q=` (handles 1000+ teams) |
 | `find-project.sh` | Find projects by name fragment (paginates all pages) |
 | `list-team-project-access.sh` | List all team access entries for a project |

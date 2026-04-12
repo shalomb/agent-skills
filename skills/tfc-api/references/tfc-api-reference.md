@@ -30,9 +30,23 @@ TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credent
 WORKSPACE_INFO=$(./scripts/get-workspace-info.sh .)
 ORG=$(echo "$WORKSPACE_INFO" | jq -r '.organization')
 WORKSPACE=$(echo "$WORKSPACE_INFO" | jq -r '.workspace')
+
+### 1. Find Workspace by Name or Wildcard
+
+```bash
+# Search by name pattern (fuzzy)
+curl -s -H "Authorization: Bearer $TFC_TOKEN" \
+  "https://app.terraform.io/api/v2/organizations/{ORG}/workspaces?search[name]=<pattern>" \
+  | jq '.data[] | {id, name: .attributes.name}'
+
+# Search by wildcard name pattern (prefix, suffix, or substring)
+# Use * as wildcard. Note: square brackets should be percent-encoded: [ as %5B and ] as %5D
+curl -s -H "Authorization: Bearer $TFC_TOKEN" \
+  "https://app.terraform.io/api/v2/organizations/{ORG}/workspaces?search%5Bwildcard-name%5D=*<pattern>*" \
+  | jq '.data[] | {id, name: .attributes.name}'
 ```
 
-### 1. Trigger a Run (Normal or Destroy)
+### 2. Trigger a Run (Normal or Destroy)
 
 ```bash
 # Trigger a normal run
@@ -112,6 +126,7 @@ grep '"type":"planned_change"' /tmp/plan-log.jsonl | jq -r '."@message"'
 
 | Script | Purpose |
 |----------|---------|
+| `find-workspace.sh` | Find workspaces by name or wildcard pattern |
 | `get-workspace-info.sh` | Detect ORG and Workspace from local TF config |
 | `trigger-run.sh` | Trigger a new run (supports destroy) |
 | `apply-run.sh` | Confirm/Apply a planned run |

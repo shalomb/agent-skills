@@ -18,23 +18,19 @@ if [ -z "$PROJECT_A" ] || [ -z "$TEAM_A" ] || [ -z "$PROJECT_B" ] || [ -z "$TEAM
   exit 1
 fi
 
-# Prefer TFC_TOKEN env var; fall back to credentials file
-if [ -z "${TFC_TOKEN:-}" ] || [ "${TFC_TOKEN:-}" = "null" ]; then
-  TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json 2>/dev/null || echo "")
-fi
-if [ -z "$TFC_TOKEN" ] || [ "$TFC_TOKEN" = "null" ]; then
-  echo "❌ TFC token not found. Set TFC_TOKEN or configure ~/.terraform.d/credentials.tfrc.json"
-  exit 1
-fi
+# Load TFC token using auth helper
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/auth.sh" || exit 1
 
 BASE="https://app.terraform.io/api/v2"
 
 fetch_access() {
   local project_id="$1"
   local team_id="$2"
-  curl -s -H "Authorization: Bearer $TFC_TOKEN" \
-    -H "Content-Type: application/vnd.api+json" \
-    "$BASE/team-projects?filter%5Bproject%5D%5Bid%5D=$project_id" \
+  http --ignore-stdin --quiet GET "$BASE/team-projects" \
+    "filter[project][id]==$project_id" \
+    "Authorization: Bearer $TFC_TOKEN" \
+    "Content-Type: application/vnd.api+json" \
     | jq --arg tid "$team_id" '.data[] | select(.relationships.team.data.id == $tid)'
 }
 
