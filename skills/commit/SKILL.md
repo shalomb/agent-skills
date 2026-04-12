@@ -1,82 +1,61 @@
 ---
 name: commit
-description: "Read this skill before making git commits. Enforces Atomic Commit Protocol (ACP) with Conventional Commits format."
+description: Use this skill to structure and format Git commits. Trigger this whenever you are about to make a commit. This enforces the Atomic Commit Protocol (ACP), ensuring commits are self-contained, tested, documented, and conform to Conventional Commits format.
 ---
 
 # Commit — Atomic Commit Protocol (ACP)
 
-Read this skill before making any git commit. Every commit must be **atomic**
-(one logical change), **verified** (tests pass), and **well-described**
-(Conventional Commits format).
+You must adhere to the Atomic Commit Protocol (ACP) before making any git commit. The ACP guarantees that every commit is a complete, self-contained, and logically indivisible unit of work.
 
-## Format
+## Core ACP Composition Rules
+
+An Atomic Commit MUST contain the following elements. Do not commit until all conditions are met:
+
+1. **One Logical Change:** Do NOT mix functional changes with refactoring or formatting. Split unrelated changes into separate commits.
+2. **Implementation & Verification:** 
+   - You MUST include TDD tests that validate the implementation. At least one test MUST have failed prior to the implementation and pass afterward.
+   - Run the test suite and confirm it passes. **Never commit broken code.**
+3. **Documentation:** You MUST include updates to end-user documentation or inline code comments that reflect the change and explain non-obvious logic.
+4. **Cleanliness:** You MUST remove all temporary files, build artifacts, debug statements (`console.log`, `print`), and leftover comments before committing.
+5. **Intentional Staging:** Use `git add <files>` for specific paths. **Do NOT use `git add .`** blindly.
+
+For the full formal specification, including rationale and TDD mapping, read: **[references/acp-spec.md](references/acp-spec.md)**
+
+## Commit Message Format
 
 ```
-<type>(<scope>): <summary>
+<type>(<scope>): <Summary starting with Capital letter>
 
-[optional body]
+<Body explaining the "why", wrapped at 72 chars>
+
+<Impact and Testing evidence>
 ```
 
-- **type** REQUIRED: `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `perf`, `style`, `ci`
-- **scope** OPTIONAL: short noun for the affected area (e.g., `api`, `tmux`, `auth`)
-- **summary** REQUIRED: imperative, ≤72 chars, no trailing period
+### 1. The Header (Subject Line)
+- **Type (Required):** `feat`, `fix`, `docs`, `refactor`, `chore`, `test`, `perf`, `style`, `ci`
+- **Scope (Optional):** Short noun for the affected area (e.g., `auth`, `api`)
+- **Summary (Required):** 
+  - MUST be 50 characters or less.
+  - MUST be in the **imperative mood** (e.g., "Add feature", not "Added feature").
+  - SHOULD be **Capitalized**.
+  - MUST NOT end with a period.
 
-## ACP Rules
-
-1. **One logical change per commit.** Don't mix a bugfix with a refactor.
-   Split unrelated changes into separate commits.
-2. **Verify before committing.** Run the test suite (or at minimum the
-   relevant tests) and confirm they pass. Never commit broken code.
-3. **Stage intentionally.** Only stage files that belong to this change.
-   Use `git add -p` or explicit paths — not `git add .` blindly.
-4. **Review the diff.** Run `git diff --cached` and read what you're
-   committing. Catch accidental debug lines, leftover comments, unrelated
-   changes.
-5. **Body when needed.** If the "why" isn't obvious from the summary, add
-   a body after a blank line. Keep it to short paragraphs or bullet points.
+### 2. The Body
+- MUST be separated from the header by a single blank line.
+- MUST explain the reasoning and context behind the change (the "why"), rather than just repeating what the code does.
+- SHOULD wrap lines at 72 characters.
+- SHOULD include an `Impact:` section and a `Testing:` section detailing how the code was verified (see Appendix B in the spec for an example).
 
 ## What NOT to Do
 
-- Do NOT add `Signed-off-by` or sign-off footers.
-- Do NOT include breaking-change markers or BREAKING CHANGE footers.
+- Do NOT add `Signed-off-by` or sign-off footers unless explicitly requested.
+- Do NOT include breaking-change markers or BREAKING CHANGE footers unless explicitly requested.
 - Do NOT push — only commit. The user decides when to push.
-- Do NOT commit generated files, build artifacts, or secrets.
-- Do NOT use `git add .` when only a subset of changes are related.
 
-## Steps
+## Steps Before Committing
 
-1. **Understand the scope.** If the user provided file paths or globs,
-   limit to those files. If freeform instructions, use them to guide
-   scope and summary.
-2. **Review changes.** Run `git status` and `git diff` to understand what
-   changed. If staging specific files, `git diff -- <files>`.
-3. **Match conventions.** Run `git log -n 30 --pretty=format:%s` to see
-   the project's existing commit style and commonly used scopes.
-4. **Ask if ambiguous.** If it's unclear which files belong together or
-   what the logical boundary is, ask the user before committing.
-5. **Stage.** `git add` only the intended files.
-6. **Verify.** Run relevant tests if a test suite exists.
-7. **Commit.** `git commit -m "<subject>"` (add `-m "<body>"` if needed).
-
-## Multiple Commits
-
-When changes span multiple logical units, make **separate commits** for each.
-Order them so each commit leaves the codebase in a working state:
-
-```bash
-# Example: refactor + new feature
-git add src/parser.rs
-git commit -m "refactor(parser): extract token validation into helper"
-
-git add src/parser.rs src/api.rs tests/test_api.rs
-git commit -m "feat(api): add streaming response support"
-```
-
-## Commit Sizing Guide
-
-| Good (atomic) | Bad (mixed) |
-|---------------|-------------|
-| One bugfix | Bugfix + unrelated formatting |
-| One new function + its tests | Feature + refactor + docs update |
-| Rename across codebase | Rename + behaviour change |
-| Config change | Config + code + tests for different feature |
+1. **Review Diff:** Run `git diff --cached` to catch accidental debug lines or unrelated changes.
+2. **Verify Tests:** Run tests (e.g., `make test`, `pytest`, `npm test`) and ensure the GREEN state.
+3. **Match Conventions:** Run `git log -n 5 --pretty=format:%s` to match existing project style.
+4. **Draft Message:** Ensure it follows the ACP format and explains the "why".
+5. **Commit:** Execute the commit. If the change spans multiple logical units, make separate, sequential atomic commits.
