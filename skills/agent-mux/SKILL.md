@@ -352,6 +352,12 @@ Fix in Bart prompt: tell Bart to use `gh pr merge --squash` without `--delete-br
 or pass `--repo owner/repo` explicitly. Remote branch deletion still works.
 Add to Bart prompt: `gh pr merge <N> --squash --repo <owner>/<repo>` (omit `--delete-branch`).
 
+### Bart uses --auto and PR stays open
+When branch protection requires CI, Bart correctly sets `gh pr merge --auto`.
+The PR merges automatically once CI clears — wait, don't intervene.
+Check status: `gh pr view <N> --json state,mergedAt`.
+If open after 5 min, check CI: `gh pr checks <N>`. Do NOT merge manually.
+
 ### `gh pr review --comment` vs `gh pr comment`
 `gh pr review --comment "text"` posts an inline diff comment and requires `--file` + `--line`.
 For a standalone PR summary comment, use `gh pr comment <N> --body-file /tmp/verdict.md`.
