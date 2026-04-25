@@ -367,11 +367,68 @@ def main():
             data = parse_events(path)
             render(data, path, clear=not args.no_clear)
             if data["is_done"]:
-                print("\n  Agent finished. Final state above.")
+                completion_summary(data, path)
                 break
             time.sleep(args.interval)
     except KeyboardInterrupt:
         print("\n  Monitor stopped.")
+
+
+def completion_summary(data: dict, path: str) -> None:
+    """Print a concise completion summary with next-action guidance."""
+    from pathlib import Path as _Path
+
+    is_error = data["is_error"]
+    cost = f"${data['cost_usd']:.4f}" if data["cost_usd"] is not None else "?"
+    dur = f"{(data['duration_ms'] or 0) / 1000:.0f}s" if data["duration_ms"] else "?"
+    turns = data["num_turns"]
+    tests = next((t for t in reversed(data["test_results"]) if "passed" in t), None)
+
+    # Infer agent type and task ID from JSONL filename
+    # e.g. claude-ralph-b2.jsonl → ralph, b2
+    #      claude-bart-a15.jsonl → bart, a15
+    stem = _Path(path).stem  # e.g. "claude-ralph-b2"
+    parts = stem.split("-")
+    agent_type = None
+    task_id = None
+    for i, p in enumerate(parts):
+        if p in ("ralph", "bart"):
+            agent_type = p
+            task_id = "-".join(parts[i + 1:]).upper() if i + 1 < len(parts) else None
+            break
+
+    DISPATCH = "~/.pi/agent/skills/agent-mux/scripts/dispatch.py"
+
+    print()
+    if is_error:
+        print("  ╔═══════════════════════════════════╗")
+        print("  ║  ❌  AGENT ERRORED                 ║")
+        print("  ╚═══════════════════════════════════╝")
+        print(f"  Cost: {cost}   Duration: {dur}   Turns: {turns}")
+        if agent_type and task_id:
+            print("\n  ▶ Re-dispatch:")
+            print(f"    python3 {DISPATCH} --repo <repo> {agent_type} {task_id} --pane <pane>")
+    else:
+        print("  ╔═══════════════════════════════════╗")
+        print("  ║  ✅  AGENT COMPLETE                ║")
+        print("  ╚═══════════════════════════════════╝")
+        print(f"  Cost: {cost}   Duration: {dur}   Turns: {turns}")
+        if tests:
+            print(f"  Tests: {tests.strip()}")
+
+        if agent_type and task_id:
+            print("\n  ▶ Next steps:")
+            if agent_type == "ralph":
+                print(f"    1. Get PR number: gh pr list --head fix/{task_id.lower()}")
+                print(f"    2. python3 {DISPATCH} --repo <repo> signal {task_id} ralph_done")
+                print(
+                    f"    3. python3 {DISPATCH} --repo <repo>"
+                    f" bart {task_id} --pr <N> --pane <pane>"
+                )
+            elif agent_type == "bart":
+                print(f"    python3 {DISPATCH} --repo <repo> triage {task_id}")
+        else:
+            print("\n  ▶ Check verdict / commits above.")
 
 
 if __name__ == "__main__":
