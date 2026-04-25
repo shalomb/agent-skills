@@ -345,6 +345,16 @@ Only `gemini-2.5-flash` and `gemini-2.5-pro` work via API key.
 `gemini-3-flash-preview` works via the `gemini` CLI with user auth (OAuth).
 Test first: `echo "hi" | gemini -y -p "say hello" --model <name>` before wiring into agents.
 
+### `gh pr review --comment` vs `gh pr comment`
+`gh pr review --comment "text"` posts an inline diff comment and requires `--file` + `--line`.
+For a standalone PR summary comment, use `gh pr comment <N> --body-file /tmp/verdict.md`.
+Bart often confuses these. The bart skill documents the correct syntax; ensure the prompt
+tells Bart to write verdict to a file first, then use `--body-file`.
+
+### Verdict filename case
+Bart sometimes writes `/tmp/bart-verdict-B2.md` (uppercase) instead of the lowercase convention.
+`dispatch.py triage` now checks both cases automatically.
+
 ### Pre-existing failures
 Always run `uv run pytest tests/ -x -q` on `origin/main` before any wave.
 Note which tests fail. Bart must not flag pre-existing failures as new regressions.

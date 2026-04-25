@@ -478,31 +478,46 @@ def cmd_rebase(args, repo: Path) -> None:
 def cmd_triage(args, repo: Path) -> None:
     """Read Bart's verdict file and summarise what to do next."""
     task_id = args.task_id
-    verdict_path = Path(f"/tmp/bart-verdict-{task_id.lower()}.md")
-    if not verdict_path.exists():
-        print(f"No verdict file at {verdict_path}")
+    # Try both cases — Bart sometimes writes uppercase ID in filename
+    for candidate in [
+        Path(f"/tmp/bart-verdict-{task_id.lower()}.md"),
+        Path(f"/tmp/bart-verdict-{task_id.upper()}.md"),
+        Path(f"/tmp/bart-verdict-{task_id}.md"),
+    ]:
+        if candidate.exists():
+            verdict_path = candidate
+            break
+    else:
+        print(f"No verdict file found for {task_id} in /tmp/")
         sys.exit(1)
 
     text = verdict_path.read_text()
-    first_line = text.splitlines()[0].strip()
-    print(f"\n▶ Triage: {task_id}")
-    print(f"  Verdict: {first_line}")
+    # Scan for VERDICT line (may not be first line)
+    verdict_line = next(
+        (ln.strip() for ln in text.splitlines() if ln.strip().startswith("VERDICT:")),
+        None,
+    )
+    if not verdict_line:
+        print(f"  Could not find VERDICT: line in {verdict_path}")
+        sys.exit(1)
 
-    if "APPROVED" in first_line:
+    print(f"\n▶ Triage: {task_id}")
+    print(f"  Verdict: {verdict_line}")
+
+    if "APPROVED" in verdict_line:
         transition(repo, task_id, "bart_approved")
         print("  State: in_review → done")
         print("  ✅ No action needed.")
-    elif "REJECTED" in first_line:
+    elif "REJECTED" in verdict_line:
         transition(repo, task_id, "bart_rejected")
         print("  State: in_review → todo")
-        # Extract BLOCKERs
         blockers = [line for line in text.splitlines() if "BLOCKER" in line]
         print(f"  {len(blockers)} BLOCKER(s):")
         for b in blockers:
             print(f"    {b.strip()[:100]}")
         print("  Next: dispatch.py ralph to fix BLOCKERs.")
     else:
-        print(f"  Unrecognised verdict format: {first_line}")
+        print(f"  Unrecognised verdict: {verdict_line}")
 
 
 def cmd_bart(args, repo: Path) -> None:
@@ -510,12 +525,31 @@ def cmd_bart(args, repo: Path) -> None:
     task = extract_task(todo, args.task_id)
     print(f"\n▶ Bart: reviewing PR #{args.pr} for {args.task_id} — {task['one_liner']}")
 
-    # Determine worktree (must already exist from Ralph)
-    slug = args.task_id.lower().replace(".", "-")
-    wt = repo / ".worktrees" / slug
+    # Worktree: explicit override, or default fix/<id> convention, or create from branch
+    if getattr(args, "worktree", None):
+        wt = Path(args.worktree)
+    else:
+        slug = args.task_id.lower().replace(".", "-")
+        wt = repo / ".worktrees" / slug
+
     if not wt.exists():
-        print(f"ERROR: Worktree {wt} not found. Run ralph first.")
-        sys.exit(1)
+        # Try to create worktree from the PR's branch
+        pr_branch = subprocess.check_output(
+            ["gh", "pr", "view", str(args.pr), "--json", "headRefName", "--jq", ".headRefName"],
+            cwd=repo, text=True,
+        ).strip()
+        if pr_branch:
+            print(f"  Creating worktree from PR branch: {pr_branch}")
+            wt.mkdir(parents=True, exist_ok=True)
+            wt.rmdir()
+            subprocess.run(
+                ["git", "worktree", "add", str(wt), pr_branch],
+                cwd=repo, check=True,
+            )
+            subprocess.run(["uv", "sync", "-q"], cwd=wt, check=False)
+        else:
+            print(f"ERROR: Worktree {wt} not found and could not determine PR branch.")
+            sys.exit(1)
 
     prompt = write_prompt("bart", task, wt, repo,
                           pr=args.pr, preexisting=args.preexisting or "none")
@@ -584,6 +618,7 @@ def main():
     p_bart.add_argument("--pr", type=int, required=True, help="PR number to review")
     p_bart.add_argument("--pane", help="Tmux pane target")
     p_bart.add_argument("--preexisting", help="Pre-existing failures to ignore")
+    p_bart.add_argument("--worktree", help="Override worktree path (for non-standard branch names)")
 
     # pr — open PR for a committed branch
     p_pr = sub.add_parser("pr", help="Rebase branch and open PR (when Ralph forgot to)")
