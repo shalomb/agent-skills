@@ -280,6 +280,24 @@ RALPH_TEMPLATE = """\
 {detail}
 """
 
+RALPH_WAVE_TEMPLATE = """\
+# Ralph — Wave [{ids}]
+
+{guardrails}
+
+## Tasks — implement ALL of the following in one branch, one commit per task
+
+Work through each task in order. For each:
+1. Write a failing test (Red)
+2. Minimal code to pass (Green)
+3. Run full suite before moving on
+4. One atomic commit per task (`type(scope): description`)
+
+After all tasks are committed: push the branch and open ONE PR covering all.
+
+{tasks}
+"""
+
 BART_TEMPLATE = """\
 # Bart review — PR #{pr} ({id}: {one_liner})
 
@@ -449,6 +467,72 @@ def cmd_ralph(args, repo: Path) -> None:
     dispatch_to_pane(pane, script)
     print("\n  State: todo → in_progress")
     print(f"  Monitor JSONL: {AGENT_CONFIG['ralph']['jsonl'].format(id=args.task_id.lower())}")
+
+
+def cmd_wave(args, repo: Path) -> None:
+    """Dispatch Ralph to implement multiple related TODO items in one branch."""
+    todo = find_todo_md(repo)
+    task_ids = args.task_ids  # e.g. ["D2", "D3", "D4"]
+    tasks = [extract_task(todo, tid) for tid in task_ids]
+    wave_id = "-".join(t["id"].lower() for t in tasks)
+    one_liner = ", ".join(t["id"] for t in tasks)
+
+    print(f"\n▶ Wave Ralph: [{one_liner}]")
+
+    wt = ensure_worktree(repo, wave_id,
+                         branch_prefix=args.branch_prefix or "fix")
+    print(f"  Worktree: {wt}")
+
+    if not getattr(args, "skip_baseline", False):
+        ok = baseline_check(wt)
+        if not ok:
+            print("  ❌ Baseline is red. Fix before dispatching.")
+            sys.exit(1)
+
+    guardrails = GUARDRAILS.format(worktree=wt)
+    tasks_section = "\n\n".join(
+        f"---\n\n{t['detail']}" for t in tasks
+    )
+    content = RALPH_WAVE_TEMPLATE.format(
+        ids=one_liner,
+        guardrails=guardrails,
+        tasks=tasks_section,
+    )
+    prompt_path = Path(f"/tmp/ralph-wave-{wave_id}.md")
+    prompt_path.write_text(content)
+    print(f"  Prompt: {prompt_path}")
+
+    # Build launch script using first task's AGENT_CONFIG
+    cfg = AGENT_CONFIG["ralph"]
+    jsonl = f"/tmp/claude-ralph-wave-{wave_id}.jsonl"
+    persona_line = f"  --append-system-prompt @{cfg['persona']} \\\n" if cfg.get("persona") else ""
+    script_content = LAUNCH_TEMPLATE.format(
+        worktree=wt,
+        jsonl=jsonl,
+        model=cfg["model"],
+        persona_line=persona_line,
+        prompt=prompt_path,
+        monitor=cfg["monitor"],
+    )
+    script_path = Path(f"/tmp/launch-ralph-wave-{wave_id}.sh")
+    script_path.write_text(script_content)
+    script_path.chmod(0o755)
+    print(f"  Script: {script_path}")
+
+    pane = args.pane or find_free_pane()
+    if not pane:
+        print("ERROR: No free tmux pane found.")
+        sys.exit(1)
+
+    for tid in task_ids:
+        try:
+            transition(repo, tid, "ralph_start")
+        except ValueError:
+            pass  # already in_progress is fine for re-runs
+
+    dispatch_to_pane(pane, script_path)
+    print(f"\n  Dispatched wave [{one_liner}] to pane: {pane}")
+    print(f"  Monitor JSONL: {jsonl}")
 
 
 def cmd_pr(args, repo: Path) -> None:
@@ -622,6 +706,16 @@ def main():
         help="Skip baseline check (for known pre-existing failures)",
     )
 
+    # wave — batch multiple related items into one Ralph session
+    p_wave = sub.add_parser(
+        "wave",
+        help="Dispatch Ralph to implement multiple TODO items in one branch",
+    )
+    p_wave.add_argument("task_ids", nargs="+", help="TODO item IDs to group (e.g. D2 D3 D4)")
+    p_wave.add_argument("--pane", help="Tmux pane target")
+    p_wave.add_argument("--branch-prefix", default="fix", help="Branch prefix (default: fix)")
+    p_wave.add_argument("--skip-baseline", action="store_true", help="Skip baseline check")
+
     # bart
     p_bart = sub.add_parser("bart", help="Dispatch Bart to review a PR")
     p_bart.add_argument("task_id", help="TODO item ID")
@@ -659,6 +753,7 @@ def main():
 
     dispatch = {
         "ralph": cmd_ralph,
+        "wave": cmd_wave,
         "bart": cmd_bart,
         "pr": cmd_pr,
         "rebase": cmd_rebase,
