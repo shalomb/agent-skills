@@ -17,6 +17,7 @@ across git worktrees.
 **Read these skills first — agent-mux builds on them, not instead of them:**
 - `ralph` — TDD build loop
 - `bart` — adversarial review loop
+- `claude-sub-agent` — launching + monitoring Claude CLI agents
 - `gemini-sub-agent` — launching + monitoring gemini agents
 - `pi-sub-agent` — launching + monitoring pi agents
 - `dispatching-parallel-agents` — independent task dispatch principles
@@ -72,10 +73,24 @@ Rules:
 
 | Task character | Model | Via |
 |---|---|---|
-| Focused feature, new API/CLI commands | `anthropic/claude-haiku-4-5` | pi sub-agent |
-| Large refactor, structural surgery, complex reasoning | `gemini-3-flash-preview` | gemini -y -p @file |
-| Bart review (all) | `gemini-3-flash-preview` | gemini -y -p @file |
+| Focused feature, new API/CLI commands | `haiku` | claude-sub-agent |
+| Bug fixes, correctness-sensitive changes | `sonnet` | claude-sub-agent |
+| Large refactor, structural surgery, complex reasoning | `gemini-3-flash-preview` | gemini-sub-agent |
+| Bart review (all) | `gemini-3-flash-preview` | gemini-sub-agent |
+| Fallback when Gemini quota exhausted | `sonnet` | claude-sub-agent |
 | Re-run after rejection | same model as original | consistency |
+
+Claude CLI invocation for headless use:
+```bash
+claude --print --output-format stream-json \
+  --dangerously-skip-permissions \
+  --no-session-persistence \
+  --model haiku \
+  -p @/tmp/ralph-<feature>.md \
+  > /tmp/claude-<feature>.jsonl 2>&1 &
+```
+Monitor: `python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py /tmp/claude-<feature>.jsonl`
+Poll:    `python3 ~/.pi/agent/skills/claude-sub-agent/scripts/poll.py "$TARGET" --interval 30`
 
 See `references/model-spread.md` for the rationale.
 
@@ -83,13 +98,34 @@ See `references/model-spread.md` for the rationale.
 
 ## Step 4 — Write Agent Artifacts
 
-For each feature, write:
-- `<worktree>/GEMINI.md` — persona loaded by gemini from CWD (guardrails + persona)
-- `/tmp/ralph-<feature>.md` — scoped task prompt (pi agents read via `-p @file`)
-- `/tmp/bart-<feature>.md` — review prompt written after Ralph opens PR
+**Use `dispatch.py` — do not write prompts or launch scripts by hand.**
 
-Use existing persona files from the `ralph` and `bart` skills as the base.
-Prepend with project-specific guardrails. See `references/guardrails-template.md`.
+```bash
+DISPATCH=~/.pi/agent/skills/agent-mux/scripts/dispatch.py
+
+# Ralph: implement a task
+python3 $DISPATCH --repo /path/to/repo ralph <TASK_ID> --pane <session:window.pane>
+
+# Bart: review a PR
+python3 $DISPATCH --repo /path/to/repo bart <TASK_ID> --pr <N> --pane <session:window.pane>
+
+# Show state
+python3 $DISPATCH --repo /path/to/repo status
+
+# List TODO items
+python3 $DISPATCH --repo /path/to/repo list
+```
+
+`dispatch.py` automatically:
+- Reads the task detail section from TODO.md and uses it verbatim as the prompt
+- Creates the worktree off `origin/main` (`fix/<task-id>` branch)
+- Selects model from `AGENT_CONFIG` in the script (edit once, applies everywhere)
+- Writes `/tmp/ralph-<id>.md` (or `bart-<id>.md`) and `/tmp/launch-<agent>-<id>.sh`
+- Sends the launch script to the tmux pane
+- Updates dispatch state (`.worktrees/planning/.dispatch-state.json`)
+
+For persona injection and model overrides, edit `AGENT_CONFIG` at the top of `dispatch.py`.
+See `scripts/dispatch.py` for the full config and template details.
 
 ---
 
@@ -97,12 +133,33 @@ Prepend with project-specific guardrails. See `references/guardrails-template.md
 
 **Always write a shell script. Never inline long commands in tmux send-keys.**
 
+### Claude sub-agent (preferred for focused features, quota-safe)
+
 ```bash
-# Pattern for BOTH gemini and pi agents
 cat > /tmp/launch-<feature>.sh << 'SCRIPT'
 #!/bin/bash
 cd /path/to/worktree
-# gemini: background it so monitor can run in same pane
+> /tmp/claude-<feature>.jsonl
+claude --print --output-format stream-json \
+  --dangerously-skip-permissions \
+  --no-session-persistence \
+  --model haiku \
+  -p @/tmp/ralph-<feature>.md \
+  >> /tmp/claude-<feature>.jsonl 2>&1 &
+echo "PID: $!"
+python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py \
+  /tmp/claude-<feature>.jsonl
+SCRIPT
+chmod +x /tmp/launch-<feature>.sh
+tmux send-keys -t "$TARGET" "bash /tmp/launch-<feature>.sh" Enter
+```
+
+### Gemini sub-agent (large refactors, complex reasoning)
+
+```bash
+cat > /tmp/launch-<feature>.sh << 'SCRIPT'
+#!/bin/bash
+cd /path/to/worktree
 > /tmp/gemini-<feature>.jsonl
 gemini -y --output-format stream-json --model gemini-3-flash-preview \
   -p @/tmp/ralph-<feature>.md \
@@ -115,30 +172,69 @@ chmod +x /tmp/launch-<feature>.sh
 tmux send-keys -t "$TARGET" "bash /tmp/launch-<feature>.sh" Enter
 ```
 
-For pi agents, same pattern — background with `&`, then launch `pi-monitor.py`.
+For pi agents, same background-then-monitor pattern with `pi-monitor.py`.
 
-See `gemini-sub-agent` and `pi-sub-agent` skills for full invocation flags.
+See `claude-sub-agent`, `gemini-sub-agent`, and `pi-sub-agent` skills for full invocation flags.
 
 ---
 
 ## Step 6 — Bart Review Loop
 
-After Ralph opens a PR:
+After Ralph opens a PR, launch Bart as a Claude sub-agent using the `bart` skill.
+Bart handles both evidence gathering and the merge/reject decision.
 
 ```bash
-# Swap persona
-cat guardrails.md bart-persona.md > <worktree>/GEMINI.md
+cat > /tmp/bart-<feature>.md << 'EOF'
+# Bart review — PR #<N>
 
-# Write launch script (same backgrounded pattern as Step 5)
-# Direct Bart to read the PR, run tests, decide approve/reject
+## Working directory
+You are in /path/to/worktree. Do NOT cd elsewhere for any command.
+
+## Context
+- PR: #<N> on <owner>/<repo>
+- Branch: <branch>
+- Task: <copy one-line description from TODO.md>
+- Pre-existing failures to ignore: <list from baseline run, or "none">
+
+## Your job
+Use the `bart` skill. Review PR #<N> in PR review mode:
+1. Read the diff: `gh pr diff <N>`
+2. Run the tests
+3. Apply the adversarial checklist
+4. Post inline comments for BLOCKERs
+5. Write verdict to /tmp/bart-verdict-<feature>.md
+6. If APPROVED: merge with `gh pr merge <N> --squash --delete-branch`
+   If REJECTED: leave open, write issues, do NOT merge
+EOF
 ```
 
-Bart's decision:
+Launch via claude-sub-agent with bart persona appended:
+```bash
+cat > /tmp/launch-bart-<feature>.sh << 'SCRIPT'
+#!/bin/bash
+cd /path/to/worktree
+> /tmp/claude-bart-<feature>.jsonl
+claude --print --output-format stream-json \
+  --dangerously-skip-permissions \
+  --no-session-persistence \
+  --model sonnet \
+  --append-system-prompt @~/.pi/agents/bart.md \
+  -p @/tmp/bart-<feature>.md \
+  >> /tmp/claude-bart-<feature>.jsonl 2>&1 &
+echo "PID: $!"
+python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py \
+  /tmp/claude-bart-<feature>.jsonl
+SCRIPT
+chmod +x /tmp/launch-bart-<feature>.sh
+tmux send-keys -t "$TARGET" "bash /tmp/launch-bart-<feature>.sh" Enter
+```
+
+### Orchestrator actions on verdict
 
 | Outcome | Bart action | Orchestrator action |
 |---|---|---|
-| APPROVED | Merges PR (`gh pr merge --squash --delete-branch`) | Accumulate non-critical to FEEDBACK.md |
-| REJECTED | Writes issues file, does NOT merge | Triage, write targeted Ralph v2 prompt, re-run |
+| APPROVED | Posts inline comments (if any MINOR), merges PR | Accumulate MINOR notes to FEEDBACK.md |
+| REJECTED | Posts BLOCKER comments, writes verdict, does NOT merge | Triage; write targeted ralph-v2 prompt; relaunch Ralph |
 
 ---
 
@@ -202,9 +298,11 @@ Keep `/tmp/supervisor-state.md` updated:
 ### Quota management
 
 Gemini has a per-session quota. If you get `exhausted capacity` errors:
-- Switch all pending agents to `pi --models anthropic/claude-haiku-4-5`
-- Update launch scripts from `gemini -y` to `pi --models haiku` pattern
-- Gemini quota resets — check back before Wave 2
+- Switch pending gemini agents to `claude-sub-agent` with `--model haiku`
+- Update launch scripts: replace `gemini -y --output-format stream-json` with
+  `claude --print --output-format stream-json --dangerously-skip-permissions --no-session-persistence --model haiku`
+- Monitor with `claude-sub-agent/scripts/monitor.py` instead of `gemini-sub-agent/scripts/monitor.py`
+- Gemini quota resets — switch back before Wave 2 if preferred
 
 ## Pitfalls (hard-won, not obvious)
 
