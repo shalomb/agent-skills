@@ -250,11 +250,20 @@ GUARDRAILS = """\
 You are running in {worktree}. Do NOT cd elsewhere for any command.
 All git, gh, pytest, and uv commands run from this directory.
 
+## Git safety (pre-flight before any git operation)
+```bash
+export GPG_TTY=$(tty)
+export GIT_EDITOR=true GIT_SEQUENCE_EDITOR=true EDITOR=true VISUAL=true
+export GIT_TERMINAL_PROMPT=0 GIT_ASK_YESNO=false GIT_PAGER=cat
+```
+- Never disable GPG signing (`--no-gpg-sign` or `commit.gpgsign=false` are forbidden)
+- If GPG key is locked: stop and report — do not work around it
+- Use `git -c commit.gpgsign=false commit` ONLY if GPG is genuinely unavailable in this env
+
 ## Non-negotiable rules
 - Red/Green TDD: write a failing test first, minimal code to pass, then refactor
 - One atomic ACP commit: code + tests together, Conventional Commits format
 - Use `uv run pytest tests/ --ignore=tests/uat -q --override-ini="addopts="` to run tests
-- Use `git -c commit.gpgsign=false commit` if GPG causes issues
 - Do NOT fix anything outside the scope of this task
 - After committing: push the branch and open a PR with `gh pr create`
 - After opening PR: rebase onto latest origin/main before requesting review:
