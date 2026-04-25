@@ -352,6 +352,25 @@ Fix in Bart prompt: tell Bart to use `gh pr merge --squash` without `--delete-br
 or pass `--repo owner/repo` explicitly. Remote branch deletion still works.
 Add to Bart prompt: `gh pr merge <N> --squash --repo <owner>/<repo>` (omit `--delete-branch`).
 
+### poll.py reads stale pane scrollback
+`poll.py` reads tmux pane text for `✅ DONE`. After multiple monitor sessions in the
+same pane, old DONE boxes trigger false positives. Monitor the JSONL directly instead:
+```bash
+python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py /tmp/claude-bart-<id>.jsonl --no-clear
+```
+Or check the verdict file: `ls -lt /tmp/bart-verdict-*.md | head -1`
+
+### Wave Bart: pass --worktree explicitly
+When dispatching Bart after a `wave` command, the default worktree slug (`fix/<id>`)
+won't match the wave worktree (`fix/<id1>-<id2>-...`). Always pass `--worktree`:
+```bash
+python3 dispatch.py bart D2 --pr <N> --worktree /path/to/repo/.worktrees/d2-d3-d4 --pane <pane>
+```
+To triage all wave items after Bart approves, use `signal` in a loop:
+```bash
+for id in D2 D3 D4; do python3 dispatch.py signal $id bart_approved; done
+```
+
 ### Bart uses --auto and PR stays open
 When branch protection requires CI, Bart correctly sets `gh pr merge --auto`.
 The PR merges automatically once CI clears — wait, don't intervene.
