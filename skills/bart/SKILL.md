@@ -164,17 +164,18 @@ Same as standalone — focus on the changed lines in the diff.
 ### 3. Post inline comments (BLOCKERs only)
 
 ```bash
-# One call per BLOCKER, referencing the exact file and line in the diff
+# Inline comment on a specific diff line
 gh pr review <N> \
   --comment "BLOCKER: <what> — <why risk> — <suggested fix>" \
   --file path/to/file.py \
   --line 42
 ```
 
-Post a summary comment with the full verdict table:
+Post a summary comment with the full verdict (use `gh pr comment`, not `gh pr review --comment`):
 
 ```bash
-gh pr review <N> --comment "$(cat /tmp/bart-verdict-<feature>.md)"
+# Summary comment on the PR (body text, not inline)
+gh pr comment <N> --body-file /tmp/bart-verdict-<feature>.md
 ```
 
 ### 4. Write verdict file
