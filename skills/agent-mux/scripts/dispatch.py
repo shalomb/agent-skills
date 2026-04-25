@@ -175,8 +175,72 @@ def ensure_worktree(repo: Path, task_id: str, branch_prefix: str = "fix") -> Pat
         ["git", "worktree", "add", str(wt_path), "-b", branch, "origin/main"],
         cwd=repo, check=True,
     )
-    subprocess.run(["uv", "sync", "-q"], cwd=wt_path, check=False)
+    result = subprocess.run(["uv", "sync", "-q"], cwd=wt_path, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"  ⚠️  uv sync warning: {result.stderr.strip()[:120]}")
     return wt_path
+
+
+def baseline_check(worktree: Path, test_cmd: list[str] | None = None) -> bool:
+    """Run test suite; return True if green. Print summary."""
+    cmd = test_cmd or [
+        "uv", "run", "pytest", "tests/", "--ignore=tests/uat",
+        "-q", "--override-ini=addopts=", "--tb=no",
+    ]
+    print("  Baseline check...", end=" ", flush=True)
+    result = subprocess.run(cmd, cwd=worktree, capture_output=True, text=True)
+    last = (result.stdout + result.stderr).strip().splitlines()
+    summary = last[-1] if last else "(no output)"
+    ok = result.returncode == 0
+    icon = "✅" if ok else "❌"
+    print(f"{icon} {summary}")
+    return ok
+
+
+def open_pr(worktree: Path, task: dict, repo: Path) -> int | None:
+    """Open a GitHub PR for the task branch; return PR number or None."""
+    remote = subprocess.check_output(
+        ["git", "remote", "get-url", "origin"], cwd=repo, text=True
+    ).strip()
+    m = re.search(r"[:/]([^/]+)/([^/]+?)(?:\.git)?$", remote)
+    _owner = m.group(1) if m else "owner"
+    _repo_name = m.group(2) if m else "repo"
+
+    body = (
+        f"## Summary\n\nImplements {task['id']} from the backlog.\n\n"
+        f"{task['detail'][:500]}\n\n"
+        f"Closes {task['id']} in TODO.md"
+    )
+    result = subprocess.run(
+        ["gh", "pr", "create",
+         "--title", f"{task['one_liner']} ({task['id']})",
+         "--body", body,
+         "--base", "main"],
+        cwd=worktree, capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print(f"  ⚠️  PR creation failed: {result.stderr.strip()[:120]}")
+        return None
+    url = result.stdout.strip()
+    pr_num = int(url.rstrip("/").split("/")[-1])
+    print(f"  PR: {url}")
+    return pr_num
+
+
+def rebase_on_main(worktree: Path) -> bool:
+    """Fetch origin/main and rebase; return True on success."""
+    subprocess.run(["git", "fetch", "origin"], cwd=worktree,
+                   capture_output=True, check=False)
+    result = subprocess.run(
+        ["git", "rebase", "origin/main"],
+        cwd=worktree, capture_output=True, text=True,
+    )
+    if result.returncode != 0:
+        print(f"  ⚠️  Rebase failed: {result.stderr.strip()[:120]}")
+        return False
+    subprocess.run(["git", "push", "--force-with-lease"], cwd=worktree,
+                   capture_output=True, check=False)
+    return True
 
 
 # ── Prompt generation ──────────────────────────────────────────────────────────
@@ -192,6 +256,9 @@ All git, gh, pytest, and uv commands run from this directory.
 - Use `uv run pytest tests/ --ignore=tests/uat -q --override-ini="addopts="` to run tests
 - Use `git -c commit.gpgsign=false commit` if GPG causes issues
 - Do NOT fix anything outside the scope of this task
+- After committing: push the branch and open a PR with `gh pr create`
+- After opening PR: rebase onto latest origin/main before requesting review:
+  `git fetch origin && git rebase origin/main && git push --force-with-lease`
 """
 
 RALPH_TEMPLATE = """\
@@ -351,6 +418,15 @@ def cmd_ralph(args, repo: Path) -> None:
                          branch_prefix=args.branch_prefix or "fix")
     print(f"  Worktree: {wt}")
 
+    # Refuse to proceed on a red baseline unless explicitly skipped
+    if not getattr(args, "skip_baseline", False):
+        ok = baseline_check(wt)
+        if not ok:
+            print("  ❌ Baseline is red. Fix the baseline before dispatching Ralph.")
+            print("  Tip: add a TODO entry for the baseline fix and dispatch that first.")
+            print("  Override with --skip-baseline if failures are known pre-existing.")
+            sys.exit(1)
+
     prompt = write_prompt("ralph", task, wt, repo)
     script = write_launch_script("ralph", task, wt, prompt)
 
@@ -363,6 +439,70 @@ def cmd_ralph(args, repo: Path) -> None:
     dispatch_to_pane(pane, script)
     print("\n  State: todo → in_progress")
     print(f"  Monitor JSONL: {AGENT_CONFIG['ralph']['jsonl'].format(id=args.task_id.lower())}")
+
+
+def cmd_pr(args, repo: Path) -> None:
+    """Open a PR for a task branch that Ralph committed but didn't push/PR."""
+    todo = find_todo_md(repo)
+    task = extract_task(todo, args.task_id)
+    slug = args.task_id.lower().replace(".", "-")
+    wt = repo / ".worktrees" / slug
+    if not wt.exists():
+        print(f"ERROR: Worktree {wt} not found.")
+        sys.exit(1)
+
+    # Rebase onto latest main first
+    print(f"\n▶ PR: rebasing {args.task_id} onto origin/main...")
+    if not rebase_on_main(wt):
+        print("  ❌ Rebase failed. Resolve conflicts manually then re-run.")
+        sys.exit(1)
+
+    pr_num = open_pr(wt, task, repo)
+    if pr_num:
+        transition(repo, args.task_id, "ralph_done")
+        print("  State: in_progress → in_review")
+
+
+def cmd_rebase(args, repo: Path) -> None:
+    """Rebase a task branch onto latest origin/main."""
+    slug = args.task_id.lower().replace(".", "-")
+    wt = repo / ".worktrees" / slug
+    if not wt.exists():
+        print(f"ERROR: Worktree {wt} not found.")
+        sys.exit(1)
+    print(f"\n▶ Rebase: {args.task_id} onto origin/main...")
+    ok = rebase_on_main(wt)
+    print("  ✅ Done" if ok else "  ❌ Failed")
+
+
+def cmd_triage(args, repo: Path) -> None:
+    """Read Bart's verdict file and summarise what to do next."""
+    task_id = args.task_id
+    verdict_path = Path(f"/tmp/bart-verdict-{task_id.lower()}.md")
+    if not verdict_path.exists():
+        print(f"No verdict file at {verdict_path}")
+        sys.exit(1)
+
+    text = verdict_path.read_text()
+    first_line = text.splitlines()[0].strip()
+    print(f"\n▶ Triage: {task_id}")
+    print(f"  Verdict: {first_line}")
+
+    if "APPROVED" in first_line:
+        transition(repo, task_id, "bart_approved")
+        print("  State: in_review → done")
+        print("  ✅ No action needed.")
+    elif "REJECTED" in first_line:
+        transition(repo, task_id, "bart_rejected")
+        print("  State: in_review → todo")
+        # Extract BLOCKERs
+        blockers = [line for line in text.splitlines() if "BLOCKER" in line]
+        print(f"  {len(blockers)} BLOCKER(s):")
+        for b in blockers:
+            print(f"    {b.strip()[:100]}")
+        print("  Next: dispatch.py ralph to fix BLOCKERs.")
+    else:
+        print(f"  Unrecognised verdict format: {first_line}")
 
 
 def cmd_bart(args, repo: Path) -> None:
@@ -433,6 +573,10 @@ def main():
     p_ralph.add_argument("task_id", help="TODO item ID (e.g. B2, D1)")
     p_ralph.add_argument("--pane", help="Tmux pane target (e.g. terrapyne:2.0)")
     p_ralph.add_argument("--branch-prefix", default="fix", help="Branch prefix (default: fix)")
+    p_ralph.add_argument(
+        "--skip-baseline", action="store_true",
+        help="Skip baseline check (for known pre-existing failures)",
+    )
 
     # bart
     p_bart = sub.add_parser("bart", help="Dispatch Bart to review a PR")
@@ -440,6 +584,18 @@ def main():
     p_bart.add_argument("--pr", type=int, required=True, help="PR number to review")
     p_bart.add_argument("--pane", help="Tmux pane target")
     p_bart.add_argument("--preexisting", help="Pre-existing failures to ignore")
+
+    # pr — open PR for a committed branch
+    p_pr = sub.add_parser("pr", help="Rebase branch and open PR (when Ralph forgot to)")
+    p_pr.add_argument("task_id", help="TODO item ID")
+
+    # rebase — rebase a branch onto latest main
+    p_rebase = sub.add_parser("rebase", help="Rebase task branch onto origin/main")
+    p_rebase.add_argument("task_id", help="TODO item ID")
+
+    # triage — read Bart verdict and determine next action
+    p_triage = sub.add_parser("triage", help="Read Bart verdict and show next action")
+    p_triage.add_argument("task_id", help="TODO item ID")
 
     # signal
     p_sig = sub.add_parser("signal", help="Manually apply a state transition signal")
@@ -459,6 +615,9 @@ def main():
     dispatch = {
         "ralph": cmd_ralph,
         "bart": cmd_bart,
+        "pr": cmd_pr,
+        "rebase": cmd_rebase,
+        "triage": cmd_triage,
         "signal": cmd_signal,
         "status": cmd_status,
         "list": cmd_list,

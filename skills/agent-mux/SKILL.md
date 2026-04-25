@@ -34,6 +34,26 @@ The unique value not covered by the above skills:
 
 ---
 
+## Orchestrator role and boundaries
+
+The orchestrator's job is **routing, not implementing**.
+
+| Orchestrator DOES | Orchestrator does NOT do |
+|---|---|
+| Run `dispatch.py` commands | Write code or tests |
+| Read agent verdicts | Fix failing tests directly |
+| Apply state transitions | Commit or push code |
+| Triage Bart rejections into TODO entries | Rebase branches manually |
+| Decide wave ordering | Investigate root causes inline |
+| Update TODO.md status | Open PRs |
+
+If you find yourself running `git`, `uv run pytest`, or editing source files — **stop**.
+Write a TODO entry and dispatch an agent instead.
+
+**Ralph owns:** implementing, testing, committing, pushing, opening PRs, rebasing onto main.
+**Bart owns:** reviewing diff, running tests, posting comments, merging or rejecting.
+**Orchestrator owns:** dispatch decisions, state tracking, triage of verdicts, wave sequencing.
+
 ## Step 1 — Dependency Analysis
 
 Before creating worktrees, identify which TODO items touch the same source files.
