@@ -34,25 +34,39 @@ gh api graphql -f query='
 ## 2. Sprint Stocktake (WIP Extraction)
 Used to fetch non-completed items from a specific iteration.
 
+> ⚠️ Always use `--limit 200`. The default page size silently truncates results on active projects, causing items to appear missing from the stocktake.
+
 ```bash
-gh project item-list <number> --owner <org> --format json | \
+gh project item-list <number> --owner <org> --limit 200 --format json | \
   jq '.items[] | select(.iteration.title == "Iteration X" and .status != "Done") | \
   {id, title, status, priority, size, issue_number: .content.number, repo: .content.repository}'
 ```
 
 ---
 
-## 3. Bulk Updates (Item Edit)
-Used to execute moves and metadata updates confirmed in the planning sheet.
+## 3. Bulk Updates (Item Edit via GraphQL)
+Used to execute moves confirmed in the planning sheet. Use the GraphQL mutation directly — `gh project item-edit --field Iteration` does not accept iteration IDs reliably.
 
 ```bash
-# Update Iteration and Size
-gh project item-edit --id <item_id> --field Iteration --value "Iteration Y"
-gh project item-edit --id <item_id> --field Size --value "M"
+# Move item to a specific iteration (iterationId from post-discovery fetch)
+gh api graphql -f query='
+  mutation {
+    updateProjectV2ItemFieldValue(input: {
+      projectId: "<project_node_id>",
+      itemId: "<item_node_id>",
+      fieldId: "<iteration_field_id>",
+      value: { iterationId: "<iteration_id>" }
+    }) {
+      projectV2Item { id }
+    }
+  }
+'
 
-# Move to Backlog
-gh project item-edit --id <item_id> --field Status --value "Backlog"
+# Move to Backlog (status update)
+gh project item-edit --id <item_id> --project-id <project_id> --field-id <status_field_id> --single-select-option-id <backlog_option_id>
 ```
+
+> ⚠️ After any `updateProjectV2Field` mutation, all iteration IDs are regenerated. Re-fetch IDs before running bulk item assignments.
 
 ---
 

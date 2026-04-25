@@ -34,7 +34,8 @@ For command references, GraphQL mutations, and delivery metrics, refer to:
 ## Orchestration Flow
 
 1.  **Phase 1: Knowledge Gathering & Retrospective**
-    - Use GraphQL to fetch full iteration config (IDs, Dates).
+    - Use GraphQL to fetch full iteration config (IDs, Dates) — including `completedIterations`.
+    - Always use `--limit 200` on `gh project item-list` to avoid silent truncation.
     - Load the "Working Set" for the current iteration.
     - **Perform Retro**: Calculate Completion % and identify stalled items (Refer to `delivery-metrics.guide.md`).
 2.  **Phase 2: Planning Sheet Generation**
@@ -44,7 +45,15 @@ For command references, GraphQL mutations, and delivery metrics, refer to:
 3.  **Phase 3: User Review & Edit**
     - Prompt user to edit the sheet and save.
 4.  **Phase 4: Synthesis & Execution**
-    - Parse edited sheet and execute `gh project item-edit` calls.
+    - Before any `updateProjectV2Field` mutation: snapshot all item→iteration assignments.
+    - Include ALL past iterations in the mutation payload (see `iteration-crud.guide.md`).
+    - After mutation: re-fetch new iteration IDs, then re-assign all items.
+    - Verify with `gh project item-list --limit 200` that assignments are correct.
 
 ---
-**Maintained by**: contributors | **Version**: 1.1 | **Last Updated**: 2026-03-14
+**Maintained by**: contributors | **Version**: 1.2 | **Last Updated**: 2026-04-21
+
+## Changelog
+- **1.2 (2026-04-21)**: Added lessons from live session — `--limit 200` requirement for stocktake,
+  `completedIterations` must be preserved to keep `@current` views working, ID regeneration
+  side-effect on every mutation, GraphQL item assignment pattern. See `iteration-crud.guide.md`.
