@@ -633,14 +633,32 @@ def cmd_bart(args, repo: Path) -> None:
             cwd=repo, text=True,
         ).strip()
         if pr_branch:
-            print(f"  Creating worktree from PR branch: {pr_branch}")
-            wt.mkdir(parents=True, exist_ok=True)
-            wt.rmdir()
-            subprocess.run(
-                ["git", "worktree", "add", str(wt), pr_branch],
-                cwd=repo, check=True,
+            # Check if branch is already checked out in another worktree
+            existing = subprocess.run(
+                ["git", "worktree", "list", "--porcelain"],
+                cwd=repo, capture_output=True, text=True,
+            ).stdout
+            already_checked_out = any(
+                f"branch refs/heads/{pr_branch}" in line
+                for line in existing.splitlines()
             )
-            subprocess.run(["uv", "sync", "-q"], cwd=wt, check=False)
+            if already_checked_out:
+                # Find the existing worktree path for this branch
+                lines = existing.splitlines()
+                for i, line in enumerate(lines):
+                    if f"refs/heads/{pr_branch}" in line and i > 0:
+                        wt = Path(lines[i - 1].replace("worktree ", ""))
+                        print(f"  Using existing worktree: {wt}")
+                        break
+            else:
+                print(f"  Creating worktree from PR branch: {pr_branch}")
+                wt.mkdir(parents=True, exist_ok=True)
+                wt.rmdir()
+                subprocess.run(
+                    ["git", "worktree", "add", str(wt), pr_branch],
+                    cwd=repo, check=True,
+                )
+                subprocess.run(["uv", "sync", "-q"], cwd=wt, check=False)
         else:
             print(f"ERROR: Worktree {wt} not found and could not determine PR branch.")
             sys.exit(1)
