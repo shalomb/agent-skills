@@ -5,83 +5,75 @@ description: Launch Claude Code CLI as a headless sub-agent in a tmux pane, moni
 
 # Claude Sub-Agent Skill
 
-Launch `claude` as a headless sub-agent in a tmux pane with live monitoring. Depends on the `tmux` skill for pane interaction.
+Launch `claude` as a headless sub-agent in a tmux pane with live JSONL monitoring. Depends on the `tmux` skill for pane interaction.
 
 ## When to use
 
-- Delegating a scoped task to Claude Code running autonomously
-- Parallel execution alongside other sub-agents (copilot-sub-agent, gemini-sub-agent, pi-sub-agent)
-- Tasks where per-turn cost tracking (`total_cost_usd`) or token budgeting (`--max-budget-usd`) matters
+- Delegating a scoped task to Claude CLI running autonomously
+- Parallel execution alongside other sub-agents (gemini-sub-agent, pi-sub-agent)
+- Running Ralph or Bart loops where each iteration is a separate claude process
+- Tasks where cost tracking (`total_cost_usd`) per agent run matters
 
 ## Output format
 
-Claude has **two output modes** for headless use:
+Claude CLI streams **newline-delimited JSON** via `--output-format stream-json`. Key event types:
 
-### `--output-format json` (single object, after completion)
-Returns one JSON blob when the agent finishes. Best for simple one-shot tasks.
+| Type | Meaning |
+|------|---------|
+| `system` / `subtype: init` | Startup: `session_id`, `model`, tools list |
+| `assistant` | Model turn: `message.content` array with `tool_use` and `text` blocks |
+| `user` | Tool result: `tool_use_result.content[].text` |
+| `result` | **Completion signal**: `subtype`, `is_error`, `total_cost_usd`, `duration_ms`, `num_turns` |
+
+Tool calls live inside `assistant.message.content[]` as `{"type":"tool_use","name":"Bash","input":{"command":"..."}}`.
+
+Completion signal:
 ```json
-{
-  "type": "result",
-  "subtype": "success",
-  "result": "...",
-  "session_id": "uuid",
-  "total_cost_usd": 0.029,
-  "usage": {
-    "input_tokens": 3,
-    "cache_creation_input_tokens": 22749,
-    "cache_read_input_tokens": 0,
-    "output_tokens": 61
-  },
-  "duration_ms": 1687,
-  "num_turns": 1
-}
+{"type":"result","subtype":"success","is_error":false,"total_cost_usd":0.039,"duration_ms":11300,"num_turns":2,"result":"..."}
 ```
-
-### `--output-format stream-json` (JSONL, streaming) ← use for monitoring
-Streams events as they happen. Key event types:
-- Assistant message chunks (`type: "assistant"`)
-- Tool use events (`type: "tool_use"`, `type: "tool_result"`)
-- Final result (`type: "result"`) — **completion signal**
-
-Completion signal: `"type":"result"` line in the stream.
 
 ## Non-interactive invocation
 
-### Lean / headless invocation
+### Lean / headless flags
 
 ```bash
-cat /tmp/task-prompt.md | claude \
+claude \
   --print \
-  --dangerously-skip-permissions \
   --output-format stream-json \
+  --dangerously-skip-permissions \
   --no-session-persistence \
-  --strict-mcp-config \
-  --disable-slash-commands \
-  --setting-sources "" \
-  --max-turns 20 \
+  -p @/tmp/task-prompt.md \
   > /tmp/claude-output.jsonl 2>&1
 ```
 
-**What each flag does:**
-
 | Flag | Why |
-|---|---|
-| `--print` / `-p` | Non-interactive, exit after response |
-| `--dangerously-skip-permissions` | Bypass all permission prompts — required for headless (trusted env only) |
-| `--output-format stream-json` | JSONL stream for monitoring; use `json` for simple one-shot tasks |
-| `--no-session-persistence` | Don't write session to disk — ephemeral, no leftover state |
-| `--strict-mcp-config` | Ignore all MCP servers except explicitly passed ones — don't inherit user's MCP config |
-| `--disable-slash-commands` | Don't load skills from disk — reduces startup scan overhead |
-| `--setting-sources ""` | Don't load user/project/local settings files — clean slate, ~20% fewer cached tokens |
-| `--max-turns <n>` | Safety cap on agentic turns; prevents runaway loops |
+|------|-----|
+| `--print` | Non-interactive: process prompt and exit |
+| `--output-format stream-json` | JSONL stream for monitoring; completion signalled by `"type":"result"` |
+| `--dangerously-skip-permissions` | Auto-approve all tool calls — required for headless use in trusted sandboxes |
+| `--no-session-persistence` | Ephemeral — no session written to disk, no prior context loaded |
+| `-p @file` | Load prompt from file (avoids shell quoting issues) |
 
-The `--setting-sources ""` flag is particularly effective: it reduces context from ~22k cached tokens to ~18k by not loading user settings that inject extra system prompt content.
+Additional useful flags:
+- `--model sonnet` / `--model opus` / `--model haiku` — model selection
+- `--system-prompt @file` — replace system prompt (e.g. for persona injection)
+- `--append-system-prompt @file` — append persona on top of default prompt
+- `--max-budget-usd 1.00` — hard spending cap for the run
+- `--tools "Bash,Edit,Read,Write"` — restrict available tools
+- `--bare` — minimal mode: skip hooks, LSP, CLAUDE.md discovery, plugins (fastest cold start)
 
-Other useful flags:
-- `--model sonnet` / `opus` / `haiku` — model selection
-- `--max-budget-usd <amount>` — spend cap per run
-- `--allowedTools "Bash,Edit,Read,Write"` — restrict to minimal tool set if task is scoped
-- `--system-prompt "$(cat file)"` — persona injection (see Agent/persona section)
+### Bare mode (fastest, for simple tasks)
+
+```bash
+claude --print --output-format stream-json \
+  --dangerously-skip-permissions \
+  --no-session-persistence \
+  --bare \
+  -p @/tmp/task-prompt.md \
+  > /tmp/claude-output.jsonl 2>&1
+```
+
+`--bare` skips CLAUDE.md auto-discovery, extensions, MCP, plugins, and keychain reads. Use when the worktree has no CLAUDE.md persona you need loaded.
 
 ## Workflow
 
@@ -105,8 +97,8 @@ bash ~/.pi/agent/skills/tmux/scripts/tmux-list.sh
 TARGET="{session}:{window}.{pane}"
 
 tmux send-keys -t "$TARGET" \
-  "cd /path/to/repo && cat /tmp/task-prompt.md | claude -p --output-format stream-json --dangerously-skip-permissions > /tmp/claude-output.jsonl 2>&1 &" Enter
-sleep 3
+  "cd /path/to/repo && claude --print --output-format stream-json --dangerously-skip-permissions --no-session-persistence -p @/tmp/task-prompt.md > /tmp/claude-output.jsonl 2>&1 &" Enter
+sleep 5
 tmux send-keys -t "$TARGET" \
   "python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py /tmp/claude-output.jsonl" Enter
 ```
@@ -117,25 +109,12 @@ tmux send-keys -t "$TARGET" \
 python3 ~/.pi/agent/skills/claude-sub-agent/scripts/poll.py "$TARGET" --interval 30
 ```
 
-### 5. Check result and cost
+### 5. Verify results
 
 ```bash
 tmux send-keys -t "$TARGET" C-c   # kill monitor
-
-# Extract result + cost
-python3 -c "
-import json
-for line in open('/tmp/claude-output.jsonl'):
-    line = line.strip()
-    if not line: continue
-    d = json.loads(line)
-    if d.get('type') == 'result':
-        print('Status:', d.get('subtype'))
-        print('Cost USD:', d.get('total_cost_usd'))
-        print('Turns:', d.get('num_turns'))
-        print('Tokens in/out:', d.get('usage', {}).get('input_tokens'), '/', d.get('usage', {}).get('output_tokens'))
-"
 git log --oneline -5
+uv run pytest tests/ -x -q        # or project test command
 ```
 
 ## Full copy-paste pattern
@@ -148,8 +127,8 @@ EOF
 TARGET="{session}:{window}.{pane}"
 
 tmux send-keys -t "$TARGET" \
-  "cd /path/to/repo && cat /tmp/task-prompt.md | claude -p --output-format stream-json --dangerously-skip-permissions --no-session-persistence --strict-mcp-config --disable-slash-commands --setting-sources '' --max-turns 20 > /tmp/claude-output.jsonl 2>&1 &" Enter
-sleep 3
+  "cd /path/to/repo && claude --print --output-format stream-json --dangerously-skip-permissions --no-session-persistence -p @/tmp/task-prompt.md > /tmp/claude-output.jsonl 2>&1 &" Enter
+sleep 5
 tmux send-keys -t "$TARGET" \
   "python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py /tmp/claude-output.jsonl" Enter
 
@@ -161,94 +140,74 @@ git log --oneline -5
 
 ## Agent / persona injection
 
-Claude has two mechanisms — inline JSON agents and direct system prompt override:
-
-### Option A: `--agents` + `--agent` (inline, ephemeral)
-
 ```bash
-# Define agents inline as JSON, then select one with --agent
-claude \
-  --agents '{"bart":{"description":"Adversarial reviewer","prompt":"You are Bart. Find bugs."}}' \
-  --agent bart \
-  -p "$(cat /tmp/task.md)" --dangerously-skip-permissions
+# Append a persona on top of claude's default system prompt
+claude --print --output-format stream-json \
+  --dangerously-skip-permissions --no-session-persistence \
+  --append-system-prompt @.pi/agents/bart.md \
+  -p @/tmp/task.md \
+  > /tmp/claude-output.jsonl 2>&1 &
 ```
 
-This is stateless — the agent definition exists only for that invocation.
-
-### Option B: `--system-prompt "$(cat file)"` (file-based)
-
+In tmux:
 ```bash
-# Load a .md persona file as the full system prompt
-claude \
-  --system-prompt "$(cat .pi/agents/bart.md)" \
-  -p "$(cat /tmp/task.md)" --dangerously-skip-permissions
+tmux send-keys -t "$TARGET" \
+  "cd /repo && claude --print --output-format stream-json --dangerously-skip-permissions --no-session-persistence --append-system-prompt @.pi/agents/bart.md -p @/tmp/task.md > /tmp/claude-output.jsonl 2>&1 &" Enter
 ```
 
-Use `--system-prompt` to fully replace the default prompt, or `--append-system-prompt` to add to it.
-
-```bash
-# Append persona on top of the default coding assistant prompt
-claude \
-  --append-system-prompt "$(cat .pi/agents/bart.md)" \
-  -p "review this code" --dangerously-skip-permissions
-```
-
-> **Note**: Unlike pi, claude does NOT resolve `@file` syntax in `--system-prompt`. Use `$(cat file)` instead.
+Unlike Gemini (which uses `GEMINI.md`), Claude supports `--system-prompt` and `--append-system-prompt` flags directly — no CWD file needed.
 
 ## Model selection
 
 ```bash
-claude -p "task" --model haiku --dangerously-skip-permissions   # fast/cheap
-claude -p "task" --model sonnet --dangerously-skip-permissions  # default
-claude -p "task" --model opus --dangerously-skip-permissions    # most capable
+claude --model haiku   # fastest, cheapest (claude-haiku-4-5)
+claude --model sonnet  # balanced (claude-sonnet-4-6) — default
+claude --model opus    # most capable (claude-opus-4-5)
 ```
 
-## Tool scoping
+## Cost control
 
 ```bash
-# Read-only (safe analysis tasks)
-claude -p "task" --allowedTools "Read,Bash(git:*)" --dangerously-skip-permissions
-
-# Code editing only (no shell)
-claude -p "task" --allowedTools "Read,Edit,Write" --dangerously-skip-permissions
-
-# Full access
-claude -p "task" --dangerously-skip-permissions
+# Hard cap — agent stops if budget exceeded
+claude --print --output-format stream-json \
+  --dangerously-skip-permissions \
+  --max-budget-usd 0.50 \
+  -p @/tmp/task.md \
+  > /tmp/claude-output.jsonl 2>&1
 ```
 
-## Budget and turn caps
-
+Final cost is in the `result` line:
 ```bash
-# Cap spend
-claude -p "task" --max-budget-usd 0.10 --dangerously-skip-permissions
-
-# Cap turns (prevents runaway loops)
-claude -p "task" --max-turns 10 --dangerously-skip-permissions
-```
-
-## Session resumption
-
-```bash
-# Continue the most recent session
-claude -c -p "follow up question" --dangerously-skip-permissions
-
-# Resume specific session
-claude -r "session-uuid" -p "continue from here" --dangerously-skip-permissions
+grep '"type":"result"' /tmp/claude-output.jsonl | python3 -c "
+import json, sys
+d = json.loads(sys.stdin.read())
+print(f'Cost: \${d[\"total_cost_usd\"]:.4f}  Duration: {d[\"duration_ms\"]/1000:.1f}s  Turns: {d[\"num_turns\"]}')
+"
 ```
 
 ## Troubleshooting
 
-**Permission prompts block headless run**: Ensure `--dangerously-skip-permissions` is set. Only use in sandboxed/trusted environments.
+**Prompt mangled by shell quoting**: Always use `-p @/tmp/file.md` — never inline long prompts.
 
-**Output is empty**: Check if the process exited with an error — inspect stderr:
+**Permission prompts blocking headless run**: Ensure `--dangerously-skip-permissions` is set. Without it, claude pauses for approval.
+
+**`--bare` missing CLAUDE.md context**: If your repo's `CLAUDE.md` has important guardrails, omit `--bare` or use `--append-system-prompt @CLAUDE.md` explicitly.
+
+**Agent runs forever**: Check if stuck in a retry loop:
 ```bash
-grep -v '^{' /tmp/claude-output.jsonl | head -20
+tail -3 /tmp/claude-output.jsonl | python3 -c "import json,sys; [print(json.loads(l).get('type','?')) for l in sys.stdin]"
 ```
 
-**Stuck with no `result` line**: Check turn count; `--max-turns` may have silently capped it.
-
-**Parse cost from single-JSON mode**:
+**Parse the result stats**:
 ```bash
-claude -p "task" --output-format json --dangerously-skip-permissions | \
-  python3 -c "import json,sys; d=json.load(sys.stdin); print(d['total_cost_usd'])"
+python3 -c "
+import json
+for line in open('/tmp/claude-output.jsonl'):
+    d = json.loads(line)
+    if d.get('type') == 'result':
+        print('Status:', d['subtype'], '| Error:', d['is_error'])
+        print('Cost: \$' + str(d['total_cost_usd']))
+        print('Duration:', d['duration_ms'] / 1000, 's')
+        print('Turns:', d['num_turns'])
+"
 ```
