@@ -291,7 +291,8 @@ Use the `bart` skill in PR review mode:
 3. Apply the adversarial checklist
 4. Post inline BLOCKER comments: `gh pr review {pr} --comment "BLOCKER: ..." --file path --line N`
 5. Write verdict to /tmp/bart-verdict-{id}.md
-6. If APPROVED: `gh pr merge {pr} --squash --delete-branch`
+6. If APPROVED: `gh pr merge {pr} --squash --repo {owner}/{repo_name}`
+   (omit --delete-branch to avoid "main is already used by worktree" error)
    If REJECTED: write issues, do NOT merge, do NOT edit source files
 """
 

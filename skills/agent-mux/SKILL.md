@@ -345,6 +345,13 @@ Only `gemini-2.5-flash` and `gemini-2.5-pro` work via API key.
 `gemini-3-flash-preview` works via the `gemini` CLI with user auth (OAuth).
 Test first: `echo "hi" | gemini -y -p "say hello" --model <name>` before wiring into agents.
 
+### Bart `gh pr merge` fails with "main is already used by worktree"
+When Bart runs from a worktree, `gh pr merge --delete-branch` tries to checkout `main`
+locally to fast-forward — but `main` is locked by the primary worktree.
+Fix in Bart prompt: tell Bart to use `gh pr merge --squash` without `--delete-branch`,
+or pass `--repo owner/repo` explicitly. Remote branch deletion still works.
+Add to Bart prompt: `gh pr merge <N> --squash --repo <owner>/<repo>` (omit `--delete-branch`).
+
 ### `gh pr review --comment` vs `gh pr comment`
 `gh pr review --comment "text"` posts an inline diff comment and requires `--file` + `--line`.
 For a standalone PR summary comment, use `gh pr comment <N> --body-file /tmp/verdict.md`.
