@@ -241,3 +241,54 @@ A: Customize `test-unit`, `test-integration`, and `test-e2e` recipes with your s
 
 - **just official docs**: https://github.com/casey/just
 - **Task automation patterns**: The skill is modeled after best practices from large open-source projects
+
+## Pre-commit hook pattern
+
+Always include an `install-hooks` recipe that wires a tracked hook:
+
+```justfile
+# Install the git pre-commit hook into .git/hooks/
+install-hooks:
+    @cp .githooks/pre-commit .git/hooks/pre-commit
+    @chmod +x .git/hooks/pre-commit
+    @printf "✅ pre-commit hook installed\n"
+```
+
+Store the hook at `.githooks/pre-commit` (tracked in git) so it's shareable.
+The hook should run the fast phases of the test ladder — syntax + lint + unit:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+printf "pre-commit checks\n"
+
+printf "  syntax ... "
+find src tests -name "*.py" -exec python3 -m py_compile {} +
+printf "ok\n"
+
+printf "  lint   ... "
+uv run ruff check src/ tests/ --output-format=concise
+uv run ruff format --check src/ tests/
+printf "ok\n"
+
+printf "  unit   ... "
+uv run pytest tests/unit/ -q --tb=short
+printf "ok\n"
+
+printf "all checks passed\n"
+```
+
+**Do not run the full test suite in pre-commit** — it blocks fast commits.
+Save coverage and e2e for CI. The hook should complete in < 15 seconds.
+
+## Python-specific test ladder phases
+
+For Python projects using uv + ruff + pytest:
+
+| Phase | Recipe | Command | Time |
+|-------|--------|---------|------|
+| 0 | `test-syntax` | `find src -name "*.py" -exec py_compile` | ~1s |
+| 0.5 | `test-lint` | `ruff check + ruff format --check` | ~2s |
+| 1 | `test-unit` | `uv run pytest tests/unit/ -q` | ~5s |
+| 2 | `test-cov` | `uv run pytest --cov --cov-fail-under=N` | ~15s |
