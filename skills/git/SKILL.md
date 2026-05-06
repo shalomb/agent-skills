@@ -67,3 +67,63 @@ export GPG_TTY=$(tty)
 export GIT_EDITOR=true GIT_SEQUENCE_EDITOR=true EDITOR=true VISUAL=true
 export GIT_TERMINAL_PROMPT=0 GIT_ASK_YESNO=false
 ```
+
+## Squash merge gotcha: check the branch base before merging
+
+When squash-merging a PR, GitHub squashes **all commits on the branch that
+are not on the base branch** — including any inherited history if the branch
+was cut from the wrong point.
+
+**Before every squash merge, verify the diff is only what you intend:**
+
+```bash
+# Three-dot diff = only what this branch uniquely adds
+git diff origin/main...HEAD --stat
+
+# Count of commits that will be squashed
+git log --oneline origin/main..HEAD | wc -l
+```
+
+If the branch was accidentally cut from a feature branch instead of `main`,
+the squash will swallow everything:
+
+```
+# WRONG — feature-branch cut from another feature branch
+git checkout -b ci/my-change some-feature-branch  # ← inherits 30 commits
+
+# RIGHT — always cut from the actual base
+git checkout -b ci/my-change origin/main
+```
+
+If a branch was cut from the wrong base and already has commits, cherry-pick
+the meaningful commits onto a fresh branch from `main`:
+
+```bash
+# Identify the commits that actually matter
+git log --oneline origin/main..HEAD  # these are the commits to cherry-pick
+
+# Create clean branch from correct base
+git checkout -b ci/my-change-clean origin/main
+git cherry-pick <sha1> <sha2>       # only the real work
+
+# Verify
+git diff origin/main...HEAD --stat  # should be minimal and correct
+```
+
+## Reverting a bad squash merge from main
+
+If a squash swallowed too much and landed on `main`:
+
+```bash
+# Identify the bad commit
+git log --oneline origin/main -3
+
+# Reset locally
+git checkout main && git pull
+git reset --hard <sha-before-bad-commit>
+
+# Force push (confirm no one else has pulled the bad state)
+git push origin main --force
+```
+
+Always force-push `main` with care — coordinate with the team first.
