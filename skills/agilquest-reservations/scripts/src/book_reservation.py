@@ -200,6 +200,23 @@ def submit_with_retries(page, target_str: str, asset_id: str, when_value: str) -
             page.wait_for_timeout(1000)
 
             final_url = page.url
+
+            # Check for asset-unavailable error before testing for success —
+            # Agilquest stays on /asset/{id} and renders error-message.font-error
+            error_el = page.locator(".error-message.font-error")
+            if error_el.count() > 0:
+                error_text = error_el.first.text_content().strip()
+                print(f"Asset unavailable: {error_text}", file=sys.stderr)
+                return {
+                    "status": "asset_unavailable",
+                    "asset_id": asset_id,
+                    "target_date": target_str,
+                    "when_value": when_value,
+                    "attempts": attempt,
+                    "message": error_text,
+                    "url": final_url,
+                }
+
             success = (
                 final_url.rstrip("/").endswith("/home")
                 or "myreservations" in final_url.lower()
