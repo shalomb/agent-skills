@@ -8,21 +8,27 @@ advance** booking policy. The window opens at **midnight Europe/Bratislava
 
 ## What happens when booking outside the window (8+ days ahead)
 
-Agilquest enforces this client-side in a non-obvious way:
+Agilquest enforces this client-side:
 
 1. The calendar day cells for out-of-window dates render as `rdtDay` — **no
    visual disabled state** (`rdtDisabled` is absent).
 2. Clicking an out-of-window day cell **silently does nothing** — the `#resv_form_when`
    input value does not update.
-3. Clicking **APPLY** with no valid date selected causes the popup to **refuse
-   to close** — it stays open with no error message or toast.
+3. Clicking **APPLY** causes the popup to stay open and renders an explicit
+   error inside it:
+   ```
+   div.error-message.font-error (inside div.popup):
+   "The Start Date and/or End Date selected exceeds the User's Maximum
+    Days in Advance for making Reservations."
+   ```
 4. There is no server-side rejection — the form never reaches SUBMIT.
 
 ## How `book_reservation.py` detects this
 
-After clicking APPLY, the script waits up to 5 seconds for `.when-popup` to
-become hidden. If it times out (popup stayed open), the error message is
-prefixed with `booking_window_closed:` and the exit status is:
+After clicking APPLY, the script checks for `.popup .error-message.font-error`.
+If present, its text is read and the error is raised with a `booking_window_closed:`
+prefix. Fallback: if no error element but popup is still visible, same error is
+raised. The exit status is:
 
 ```json
 {
