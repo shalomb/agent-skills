@@ -189,6 +189,10 @@ def stage(page, asset_id: str, target: datetime) -> str:
     return when_value
 
 
+def _parse_target(target_str: str) -> datetime:
+    return datetime.strptime(target_str, "%Y-%m-%d")
+
+
 def submit_with_retries(page, target_str: str, asset_id: str, when_value: str) -> dict:
     """Click SUBMIT up to SUBMIT_RETRIES times, returning on first success."""
     last_error = ""
@@ -241,10 +245,29 @@ def submit_with_retries(page, target_str: str, asset_id: str, when_value: str) -
             last_error = f"Unexpected URL after submit: {final_url}"
             print(f"Attempt {attempt} inconclusive — {last_error}", file=sys.stderr)
 
-            # Navigate back to asset page to retry
             if attempt < SUBMIT_RETRIES:
-                print(f"Returning to asset page for retry in {RETRY_DELAY_S}s...", file=sys.stderr)
+                # Before retrying, verify the booking didn't actually succeed
+                # (the redirect to /home can be missed if networkidle fires early)
+                print(f"Verifying reservation wasn't silently created...", file=sys.stderr)
                 time.sleep(RETRY_DELAY_S)
+                page.goto(RESERVATIONS_URL, wait_until="domcontentloaded", timeout=30000)
+                page.wait_for_load_state("networkidle", timeout=30000)
+                existing = check_existing(page, asset_id, _parse_target(target_str))
+                if existing:
+                    print(f"Reservation confirmed created on attempt {attempt} — stopping retries.", file=sys.stderr)
+                    return {
+                        "status": "success",
+                        "asset_id": asset_id,
+                        "target_date": target_str,
+                        "start_time": START_TIME,
+                        "end_time": END_TIME,
+                        "when_value": when_value,
+                        "attempts": attempt,
+                        "message": f"Reservation booked for {target_str}",
+                        "url": page.url,
+                    }
+                # Not found — re-stage and retry
+                print(f"Not found — re-staging for retry...", file=sys.stderr)
                 page.goto(ASSET_URL.format(asset_id=asset_id), wait_until="domcontentloaded", timeout=30000)
                 page.wait_for_load_state("networkidle", timeout=30000)
 
