@@ -160,17 +160,22 @@ def stage(page, asset_id: str, target: datetime) -> str:
 
     print("Clicking APPLY...", file=sys.stderr)
     page.locator(".when-popup .save-button").click()
-    try:
-        page.wait_for_selector(".when-popup", state="hidden", timeout=5000)
-    except Exception:
-        # APPLY refused — popup stays open. Agilquest silently rejects dates
-        # outside the booking window: day cells appear enabled but clicks do
-        # nothing, and APPLY won't close the popup. This means the target date
-        # is not yet within the 7-days-ahead window.
+    page.wait_for_timeout(1000)
+
+    # Check for the explicit booking-window error Agilquest shows inside the popup
+    error_el = page.locator(".popup .error-message.font-error")
+    if error_el.count() > 0:
+        error_text = error_el.first.text_content().strip()
+        print(f"Booking window error: {error_text}", file=sys.stderr)
+        raise RuntimeError(f"booking_window_closed: {error_text}")
+
+    # Fallback: if popup is still visible with no error text, the date was also rejected
+    if page.locator(".when-popup").is_visible():
         raise RuntimeError(
             f"booking_window_closed: {target_str} is not yet bookable "
             f"(booking window opens at midnight exactly 7 days before)"
         )
+
     page.wait_for_timeout(500)
 
     when_value = page.locator("#resv_form_when").get_attribute("value") or ""
