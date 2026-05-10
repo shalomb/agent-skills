@@ -1,16 +1,23 @@
 #!/usr/bin/env python3
 """
-Book a reservation 7 days in advance on Agilquest.
+Book a workspace reservation on Agilquest with fallback assets.
 
-Normal cron flow (two jobs):
-  23:57  warmup.py           — auth check + preload
+Tries assets in order, moving to the next on asset_unavailable.
+
+Usage:
+  uv run src/book_reservation.py [options]
+
+Options:
+  --assets   343,257,14006,14005   Ordered fallback list (default: all four)
+  --date     YYYY-MM-DD | +N       Target date; +N = N days from today (default: +7)
+  --start    HH:MM AM/PM           Start time (default: 08:30 AM)
+  --end      HH:MM AM/PM           End time   (default: 04:00 PM)
+  --prestage                       Stage form now, sleep until 23:59:58, then submit
+
+Cron flow:
+  23:55  warmup.py
   23:57  book_reservation.py --prestage
-                             — auth, navigate, stage date/time, sleep until
-                               23:59:58, then SUBMIT with up to 3 retries
-  (the --prestage job holds the browser open across the minute boundary)
-
-Alternatively run without --prestage for an immediate book (used by
-ensure_reservation.py as a fallback).
+  14:00  ensure_reservation.py  (fallback + health-check)
 """
 
 import sys
@@ -30,8 +37,10 @@ except ImportError:
 APP_LAUNCHER = "https://launcher.myapps.microsoft.com/api/signin/cb15e862-80aa-4d9c-95af-4748246cecd7?tenantId=57fdf63b-7e22-45a3-83dc-d37003163aae"
 ASSET_URL = "https://login.agilquest.com/asset/{asset_id}"
 RESERVATIONS_URL = "https://login.agilquest.com/myreservations/active?viewMode=table"
-START_TIME = "09:00 AM"
-END_TIME = "06:00 PM"
+
+DEFAULT_ASSETS = ["343", "257", "14006", "14005"]
+DEFAULT_START = "08:30 AM"
+DEFAULT_END = "04:00 PM"
 SUBMIT_RETRIES = 3
 RETRY_DELAY_S = 5
 
@@ -53,8 +62,15 @@ def get_chrome_path() -> str:
     )
 
 
+def parse_date(date_arg: str) -> datetime:
+    """Parse '+N' (days from today) or 'YYYY-MM-DD'."""
+    if date_arg.startswith("+"):
+        return datetime.now() + timedelta(days=int(date_arg[1:]))
+    return datetime.strptime(date_arg, "%Y-%m-%d")
+
+
 def check_existing(page, asset_id: str, target: datetime) -> dict | None:
-    """Return existing reservation dict if one already exists for target date, else None."""
+    """Return reservation dict if one already exists for this asset+date, else None."""
     page.goto(RESERVATIONS_URL, wait_until="domcontentloaded", timeout=30000)
     page.wait_for_load_state("networkidle", timeout=30000)
     try:
@@ -77,18 +93,18 @@ def check_existing(page, asset_id: str, target: datetime) -> dict | None:
                     "asset_id": asset_id,
                     "target_date": target.strftime("%Y-%m-%d"),
                     "reservation_id": id_parts[0] if id_parts else "",
-                    "message": f"Reservation already exists for {target.strftime('%Y-%m-%d')}",
+                    "message": f"Reservation already exists for {target.strftime('%Y-%m-%d')} on asset {asset_id}",
                 }
     except Exception:
         pass
     return None
 
 
-def stage(page, asset_id: str, target: datetime) -> str:
+def stage(page, asset_id: str, target: datetime, start_time: str, end_time: str) -> str:
     """
-    Navigate to asset page, fill in date/time picker, click APPLY.
+    Navigate to asset page, set date/time in picker, click APPLY.
     Returns the confirmed when_value string.
-    Does NOT click SUBMIT — caller decides when to fire that.
+    Raises RuntimeError with booking_window_closed: prefix if date is out of window.
     """
     target_day = str(target.day)
     target_month_idx = str(target.month - 1)
@@ -138,7 +154,7 @@ def stage(page, asset_id: str, target: datetime) -> str:
     click_day(0)
 
     time_selectors = page.locator(".when-popup .time-selector")
-    start_opt = time_selectors.nth(0).locator(".time-selector-option").filter(has_text=START_TIME).first
+    start_opt = time_selectors.nth(0).locator(".time-selector-option").filter(has_text=start_time).first
     start_opt.scroll_into_view_if_needed()
     start_opt.click()
     page.wait_for_timeout(500)
@@ -149,27 +165,26 @@ def stage(page, asset_id: str, target: datetime) -> str:
     end_opts = time_selectors.nth(1).locator(".time-selector-option")
     for i in range(end_opts.count()):
         opt = end_opts.nth(i)
-        if opt.text_content().strip().startswith(END_TIME):
+        if opt.text_content().strip().startswith(end_time):
             opt.scroll_into_view_if_needed()
             opt.click()
             print(f"Selected end time: {opt.text_content().strip()}", file=sys.stderr)
             break
     else:
-        raise RuntimeError(f"End time option starting with '{END_TIME}' not found")
+        raise RuntimeError(f"End time option starting with '{end_time}' not found")
     page.wait_for_timeout(300)
 
     print("Clicking APPLY...", file=sys.stderr)
     page.locator(".when-popup .save-button").click()
     page.wait_for_timeout(1000)
 
-    # Check for the explicit booking-window error Agilquest shows inside the popup
+    # Booking window error appears inside the popup
     error_el = page.locator(".popup .error-message.font-error")
     if error_el.count() > 0:
         error_text = error_el.first.text_content().strip()
         print(f"Booking window error: {error_text}", file=sys.stderr)
         raise RuntimeError(f"booking_window_closed: {error_text}")
 
-    # Fallback: if popup is still visible with no error text, the date was also rejected
     if page.locator(".when-popup").is_visible():
         raise RuntimeError(
             f"booking_window_closed: {target_str} is not yet bookable "
@@ -177,7 +192,6 @@ def stage(page, asset_id: str, target: datetime) -> str:
         )
 
     page.wait_for_timeout(500)
-
     when_value = page.locator("#resv_form_when").get_attribute("value") or ""
     print(f"Staged: {when_value}", file=sys.stderr)
     if target.strftime("%b").upper() not in when_value.upper():
@@ -185,28 +199,31 @@ def stage(page, asset_id: str, target: datetime) -> str:
             f"booking_window_closed: {target_str} is not yet bookable — "
             f"when input shows: '{when_value}'"
         )
-
     return when_value
 
 
-def _parse_target(target_str: str) -> datetime:
-    return datetime.strptime(target_str, "%Y-%m-%d")
-
-
-def submit_with_retries(page, target_str: str, asset_id: str, when_value: str) -> dict:
-    """Click SUBMIT up to SUBMIT_RETRIES times, returning on first success."""
+def submit_with_retries(
+    page, target_str: str, asset_id: str, when_value: str,
+    start_time: str, end_time: str,
+) -> dict:
+    """Click SUBMIT up to SUBMIT_RETRIES times. Returns on first definitive outcome."""
     last_error = ""
+    target = datetime.strptime(target_str, "%Y-%m-%d")
+
     for attempt in range(1, SUBMIT_RETRIES + 1):
         try:
-            print(f"SUBMIT attempt {attempt}/{SUBMIT_RETRIES} at {datetime.now().strftime('%H:%M:%S.%f')[:-3]}...", file=sys.stderr)
+            print(
+                f"SUBMIT attempt {attempt}/{SUBMIT_RETRIES} at "
+                f"{datetime.now().strftime('%H:%M:%S.%f')[:-3]}...",
+                file=sys.stderr,
+            )
             page.locator('button[type="submit"]').filter(has_text="SUBMIT").click(timeout=10000)
             page.wait_for_load_state("networkidle", timeout=30000)
             page.wait_for_timeout(1000)
 
             final_url = page.url
 
-            # Check for asset-unavailable error before testing for success —
-            # Agilquest stays on /asset/{id} and renders error-message.font-error
+            # Asset unavailable — Agilquest renders error on the asset page
             error_el = page.locator(".error-message.font-error")
             if error_el.count() > 0:
                 error_text = error_el.first.text_content().strip()
@@ -234,11 +251,11 @@ def submit_with_retries(page, target_str: str, asset_id: str, when_value: str) -
                     "status": "success",
                     "asset_id": asset_id,
                     "target_date": target_str,
-                    "start_time": START_TIME,
-                    "end_time": END_TIME,
+                    "start_time": start_time,
+                    "end_time": end_time,
                     "when_value": when_value,
                     "attempts": attempt,
-                    "message": f"Reservation booked for {target_str}",
+                    "message": f"Reservation booked for {target_str} on asset {asset_id}",
                     "url": final_url,
                 }
 
@@ -246,28 +263,26 @@ def submit_with_retries(page, target_str: str, asset_id: str, when_value: str) -
             print(f"Attempt {attempt} inconclusive — {last_error}", file=sys.stderr)
 
             if attempt < SUBMIT_RETRIES:
-                # Before retrying, verify the booking didn't actually succeed
-                # (the redirect to /home can be missed if networkidle fires early)
-                print(f"Verifying reservation wasn't silently created...", file=sys.stderr)
+                # Check whether booking silently succeeded before retrying
+                print("Verifying reservation wasn't silently created...", file=sys.stderr)
                 time.sleep(RETRY_DELAY_S)
                 page.goto(RESERVATIONS_URL, wait_until="domcontentloaded", timeout=30000)
                 page.wait_for_load_state("networkidle", timeout=30000)
-                existing = check_existing(page, asset_id, _parse_target(target_str))
+                existing = check_existing(page, asset_id, target)
                 if existing:
-                    print(f"Reservation confirmed created on attempt {attempt} — stopping retries.", file=sys.stderr)
+                    print(f"Reservation confirmed on attempt {attempt} — stopping.", file=sys.stderr)
                     return {
                         "status": "success",
                         "asset_id": asset_id,
                         "target_date": target_str,
-                        "start_time": START_TIME,
-                        "end_time": END_TIME,
+                        "start_time": start_time,
+                        "end_time": end_time,
                         "when_value": when_value,
                         "attempts": attempt,
-                        "message": f"Reservation booked for {target_str}",
+                        "message": f"Reservation booked for {target_str} on asset {asset_id}",
                         "url": page.url,
                     }
-                # Not found — re-stage and retry
-                print(f"Not found — re-staging for retry...", file=sys.stderr)
+                print("Not confirmed — re-staging for retry...", file=sys.stderr)
                 page.goto(ASSET_URL.format(asset_id=asset_id), wait_until="domcontentloaded", timeout=30000)
                 page.wait_for_load_state("networkidle", timeout=30000)
 
@@ -283,17 +298,27 @@ def submit_with_retries(page, target_str: str, asset_id: str, when_value: str) -
         "target_date": target_str,
         "when_value": when_value,
         "attempts": SUBMIT_RETRIES,
-        "message": f"All {SUBMIT_RETRIES} submit attempts failed. Last error: {last_error}",
+        "message": f"All {SUBMIT_RETRIES} submit attempts failed. Last: {last_error}",
     }
 
 
-def book_reservation(asset_id: str = "343", prestage: bool = False) -> dict:
+def book_with_fallbacks(
+    assets: list[str],
+    target: datetime,
+    start_time: str,
+    end_time: str,
+    prestage: bool,
+) -> dict:
     user_data_dir = get_user_data_dir()
     chrome_path = get_chrome_path()
-    target = datetime.now() + timedelta(days=7)
     target_str = target.strftime("%Y-%m-%d")
 
-    print(f"{'[prestage] ' if prestage else ''}Booking asset {asset_id} for {target_str} ({START_TIME}-{END_TIME})...", file=sys.stderr)
+    print(
+        f"{'[prestage] ' if prestage else ''}"
+        f"Booking {target_str} {start_time}-{end_time} "
+        f"(assets: {', '.join(assets)})...",
+        file=sys.stderr,
+    )
 
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
@@ -312,27 +337,70 @@ def book_reservation(asset_id: str = "343", prestage: bool = False) -> dict:
             if "microsoftonline" in page.url or "login.microsoft" in page.url:
                 raise RuntimeError("Not authenticated — run setup_auth.py to establish session")
 
-            existing = check_existing(page, asset_id, target)
-            if existing:
-                print(existing["message"], file=sys.stderr)
-                return existing
+            tried = []
+            for asset_id in assets:
+                print(f"\n--- Trying asset {asset_id} ---", file=sys.stderr)
 
-            when_value = stage(page, asset_id, target)
+                # Idempotency check
+                existing = check_existing(page, asset_id, target)
+                if existing:
+                    print(existing["message"], file=sys.stderr)
+                    return existing
 
-            if prestage:
-                # Sleep until 23:59:58, then fire SUBMIT
-                now = datetime.now()
-                fire_at = now.replace(hour=23, minute=59, second=58, microsecond=0)
-                if fire_at <= now:
-                    # Already past 23:59:58 (e.g. running in testing) — fire immediately
-                    print("Past fire time — submitting immediately.", file=sys.stderr)
-                else:
-                    wait_s = (fire_at - now).total_seconds()
-                    print(f"Staged. Sleeping {wait_s:.1f}s until {fire_at.strftime('%H:%M:%S')}...", file=sys.stderr)
-                    time.sleep(wait_s)
-                    print(f"Firing SUBMIT at {datetime.now().strftime('%H:%M:%S.%f')[:-3]}.", file=sys.stderr)
+                # Stage the form
+                try:
+                    when_value = stage(page, asset_id, target, start_time, end_time)
+                except RuntimeError as e:
+                    msg = str(e)
+                    if msg.startswith("booking_window_closed:"):
+                        raise  # window not open yet — no point trying other assets
+                    print(f"Stage failed for {asset_id}: {msg}", file=sys.stderr)
+                    tried.append({"asset_id": asset_id, "status": "stage_error", "message": msg})
+                    continue
 
-            return submit_with_retries(page, target_str, asset_id, when_value)
+                # Prestage sleep on first asset only
+                if prestage and asset_id == assets[0]:
+                    now = datetime.now()
+                    fire_at = now.replace(hour=23, minute=59, second=58, microsecond=0)
+                    if fire_at <= now:
+                        print("Past fire time — submitting immediately.", file=sys.stderr)
+                    else:
+                        wait_s = (fire_at - now).total_seconds()
+                        print(
+                            f"Staged. Sleeping {wait_s:.1f}s until {fire_at.strftime('%H:%M:%S')}...",
+                            file=sys.stderr,
+                        )
+                        time.sleep(wait_s)
+                        print(
+                            f"Firing SUBMIT at {datetime.now().strftime('%H:%M:%S.%f')[:-3]}.",
+                            file=sys.stderr,
+                        )
+
+                result = submit_with_retries(page, target_str, asset_id, when_value, start_time, end_time)
+                tried.append(result)
+
+                if result["status"] in ("success", "already_exists"):
+                    return result
+
+                if result["status"] == "asset_unavailable":
+                    print(f"Asset {asset_id} unavailable — trying next fallback...", file=sys.stderr)
+                    continue
+
+                # Any other error (unexpected) — stop
+                return result
+
+            # All assets exhausted
+            return {
+                "status": "all_unavailable",
+                "target_date": target_str,
+                "start_time": start_time,
+                "end_time": end_time,
+                "assets_tried": tried,
+                "message": (
+                    f"All assets unavailable for {target_str} {start_time}-{end_time}: "
+                    + ", ".join(assets)
+                ),
+            }
 
         finally:
             browser.close()
@@ -340,16 +408,44 @@ def book_reservation(asset_id: str = "343", prestage: bool = False) -> dict:
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser()
-    parser.add_argument("asset_id", nargs="?", default="343")
-    parser.add_argument("--prestage", action="store_true",
-                        help="Stage form now, sleep until 23:59:58, then submit")
+
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument(
+        "--assets", default=",".join(DEFAULT_ASSETS),
+        help=f"Comma-separated ordered asset IDs (default: {','.join(DEFAULT_ASSETS)})",
+    )
+    parser.add_argument(
+        "--date", default="+7",
+        help="Target date as YYYY-MM-DD or +N days from today (default: +7)",
+    )
+    parser.add_argument(
+        "--start", default=DEFAULT_START,
+        help=f"Start time e.g. '08:30 AM' (default: {DEFAULT_START})",
+    )
+    parser.add_argument(
+        "--end", default=DEFAULT_END,
+        help=f"End time e.g. '04:00 PM' (default: {DEFAULT_END})",
+    )
+    parser.add_argument(
+        "--prestage", action="store_true",
+        help="Stage form now, sleep until 23:59:58, then submit",
+    )
     args = parser.parse_args()
 
     try:
-        result = book_reservation(args.asset_id, prestage=args.prestage)
+        target = parse_date(args.date)
+        assets = [a.strip() for a in args.assets.split(",") if a.strip()]
+        result = book_with_fallbacks(
+            assets=assets,
+            target=target,
+            start_time=args.start,
+            end_time=args.end,
+            prestage=args.prestage,
+        )
         print(json.dumps(result, indent=2))
-        if result["status"] == "error":
+        if result["status"] in ("error", "all_unavailable"):
+            sys.exit(1)
+        if result["status"] == "asset_unavailable":
             sys.exit(1)
     except Exception as e:
         msg = str(e)
