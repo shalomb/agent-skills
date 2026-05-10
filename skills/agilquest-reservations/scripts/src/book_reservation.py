@@ -62,10 +62,16 @@ def get_chrome_path() -> str:
     )
 
 
-def parse_date(date_arg: str) -> datetime:
-    """Parse '+N' (days from today) or 'YYYY-MM-DD'."""
+def parse_date(date_arg: str, prestage: bool = False) -> datetime:
+    """Parse '+N' (days from today) or 'YYYY-MM-DD'.
+
+    When --prestage is set the script launches before midnight but submits
+    after midnight, so 'today' for the purpose of +N is tomorrow.
+    e.g. launched at 23:57 on May 10 with +7 → target is May 18, not May 17.
+    """
     if date_arg.startswith("+"):
-        return datetime.now() + timedelta(days=int(date_arg[1:]))
+        base = datetime.now() + timedelta(days=1) if prestage else datetime.now()
+        return base + timedelta(days=int(date_arg[1:]))
     return datetime.strptime(date_arg, "%Y-%m-%d")
 
 
@@ -433,7 +439,7 @@ def main():
     args = parser.parse_args()
 
     try:
-        target = parse_date(args.date)
+        target = parse_date(args.date, prestage=args.prestage)
         assets = [a.strip() for a in args.assets.split(",") if a.strip()]
         result = book_with_fallbacks(
             assets=assets,
