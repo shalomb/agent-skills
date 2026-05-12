@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/agent-skills/agilquest-reservations/logs"
+LOG_DIR="/Users/egn8687/.local/state/agent-skills/agilquest-reservations/logs"
 mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/booking-$(date +%Y-%m-%d).log"
 
