@@ -7,6 +7,17 @@ exec >> "$LOG_FILE" 2>&1
 
 set -euo pipefail
 echo "=== $(date '+%Y-%m-%dT%H:%M:%S') ==="
+
+# Wait for network — machine may have just woken from sleep
+echo "Waiting for network..."
+for i in $(seq 1 30); do
+  if curl -sf --max-time 3 https://login.agilquest.com > /dev/null 2>&1; then
+    echo "Network ready after ${i}s"
+    break
+  fi
+  sleep 2
+done
+
 cd "$(dirname "$0")"
 uv run src/book_reservation.py "$@"
 echo "Exit: $?"
