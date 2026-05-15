@@ -10,6 +10,7 @@ setup_auth.py interactively before midnight).
 import sys
 import json
 import os
+import time
 from pathlib import Path
 
 try:
@@ -54,10 +55,19 @@ def warmup() -> dict:
         try:
             page = browser.new_page()
 
-            # Step 1: app launcher — must always go through this first
+            # Step 1: app launcher — retry up to 3x to handle post-sleep Chrome
+            # network initialisation lag (curl sees network up before Chrome does)
             print("Warming up via app launcher...", file=sys.stderr)
-            page.goto(APP_LAUNCHER, wait_until="domcontentloaded", timeout=30000)
-            page.wait_for_load_state("networkidle", timeout=30000)
+            for attempt in range(1, 4):
+                try:
+                    page.goto(APP_LAUNCHER, wait_until="domcontentloaded", timeout=30000)
+                    page.wait_for_load_state("networkidle", timeout=30000)
+                    break
+                except Exception as e:
+                    if attempt == 3:
+                        raise
+                    print(f"Attempt {attempt} failed ({e}), retrying in 10s...", file=sys.stderr)
+                    time.sleep(10)
 
             if "microsoftonline" in page.url or "login.microsoft" in page.url:
                 return {
