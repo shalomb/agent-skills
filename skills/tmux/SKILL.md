@@ -26,19 +26,38 @@ Simple, reliable tmux orchestration.  Defaults to the **current session** the ag
 | `1.0` | Window 1, Pane 0 — **current session** (preferred) |
 | `code:0.0` | Window 0, Pane 0 in session "code" (only if user asks) |
 
+## Script Location
+
+All scripts live in the `scripts/` directory **alongside this SKILL.md file**.
+The canonical source is `~/shalomb/agent-skills/skills/tmux/scripts/`, hardlinked
+into each agent's skill directory (e.g. `~/.pi/agent/skills/tmux/scripts/`,
+`~/.claude/skills/tmux/scripts/`).
+
+The skill file's own location tells you where the scripts are. When this skill is
+loaded, note the path it was read from and derive the script directory from it:
+```
+<skill-file-path>  →  $(dirname <skill-file-path>)/scripts/
+```
+For example, if this file was read from `/home/unop/.pi/agent/skills/tmux/SKILL.md`,
+the scripts are at `/home/unop/.pi/agent/skills/tmux/scripts/`.
+
+**Never use `./scripts/`** — that resolves against the agent's current working
+directory (the project repo), not the skill directory.
+
 ## 1. Execute (`scripts/tmux-exec.sh`)
 
 Primary tool.  Sends a command, waits for completion, returns output + exit code.
 
 ### Shell Mode (default)
 ```bash
-./scripts/tmux-exec.sh "1.0" "ls -la"
+# SKILL_SCRIPTS = $(dirname <path-to-this-SKILL.md>)/scripts
+$SKILL_SCRIPTS/tmux-exec.sh "1.0" "ls -la"
 ```
 
 ### Interactive Mode (`-w PATTERN`)
 Sends keys and waits for a regex (e.g. a REPL prompt):
 ```bash
-./scripts/tmux-exec.sh -w '>>> ' "1.0" "print('hello')"
+$SKILL_SCRIPTS/tmux-exec.sh -w '>>> ' "1.0" "print('hello')"
 ```
 
 ### Options
@@ -59,7 +78,7 @@ If a previous command is still running (e.g. after a timeout), the script detect
 Read-only scrape of the last command's output.  Warns if the pane is busy.
 
 ```bash
-./scripts/tmux-read.sh "1.0"
+$SKILL_SCRIPTS/tmux-read.sh "1.0"
 ```
 
 | Flag | Default | Meaning |
@@ -73,7 +92,7 @@ JSON inventory of all panes.  Current session is listed first and marked.
 Shows `"busy": true/false` per pane with command and elapsed time.
 
 ```bash
-./scripts/tmux-list.sh
+$SKILL_SCRIPTS/tmux-list.sh
 ```
 
 Use this to find idle panes before executing commands.
@@ -83,8 +102,8 @@ Use this to find idle panes before executing commands.
 ### Python REPL
 Always set `PYTHON_BASIC_REPL=1` — the fancy readline REPL breaks send-keys:
 ```bash
-./scripts/tmux-exec.sh "1.0" 'PYTHON_BASIC_REPL=1 python3 -q'
-./scripts/tmux-exec.sh -w '>>> ' "1.0" "print('hello')"
+$SKILL_SCRIPTS/tmux-exec.sh "1.0" 'PYTHON_BASIC_REPL=1 python3 -q'
+$SKILL_SCRIPTS/tmux-exec.sh -w '>>> ' "1.0" "print('hello')"
 ```
 
 ### Debuggers
@@ -93,13 +112,13 @@ Default to `lldb` (unless user says gdb).  Disable paging before sending command
 ### Long output
 Redirect to a file to avoid tmux scrollback limits:
 ```bash
-./scripts/tmux-exec.sh "1.0" 'long-command > /tmp/out.txt 2>&1'
-./scripts/tmux-exec.sh "1.0" 'cat /tmp/out.txt'
+$SKILL_SCRIPTS/tmux-exec.sh "1.0" 'long-command > /tmp/out.txt 2>&1'
+$SKILL_SCRIPTS/tmux-exec.sh "1.0" 'cat /tmp/out.txt'
 ```
 
 ## Error Handling
 
-1. `tmux-read.sh` — inspect what's in the pane
-2. `tmux-list.sh` — confirm target exists, check busy state
+1. `$SKILL_SCRIPTS/tmux-read.sh` — inspect what's in the pane
+2. `$SKILL_SCRIPTS/tmux-list.sh` — confirm target exists, check busy state
 3. Test with `echo test` first
 4. For complex issues read `references/error-handling-and-debugging.md`

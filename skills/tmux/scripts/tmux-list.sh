@@ -29,7 +29,9 @@ build_busy_map() {
         local -A st=()
         local line key val
         while IFS= read -r line; do
+            [[ -z ${line} ]] && continue
             key=${line%%=*}; val=${line#*=}
+            [[ -z ${key} ]] && continue
             st["${key}"]=${val}
         done < "${sf}"
 
