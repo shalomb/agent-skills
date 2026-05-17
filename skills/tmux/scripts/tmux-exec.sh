@@ -211,11 +211,14 @@ exec_shell() {
 
         # Payload: run command, tee stdout+stderr to file (visible in pane
         # AND captured), write exit code via PIPESTATUS, signal wait-for.
-        local payload
+        # Pretty-print: vars on line 1, { on line 2, command body indented
+        # at 2 spaces with --flags at 4 spaces, } + plumbing on last line.
+        local pretty_command payload
+        pretty_command=$(printf '%s' "${command}" | sed 's/ --/ \\\n    --/g')
         # shellcheck disable=SC2016
         printf -v payload \
-            '{ %s ; } 2>&1 | tee %q; echo ${PIPESTATUS[0]} > %q; tmux wait-for -S %s' \
-            "${command}" "${outfile}" "${ecfile}" "${channel}"
+            '_o=%q _e=%q _c=%s _ps2=$PS2 PS2=" "\n{\n  %s\n} 2>&1 | tee $_o; echo ${PIPESTATUS[0]} > $_e; PS2=$_ps2; tmux wait-for -S $_c' \
+            "${outfile}" "${ecfile}" "${channel}" "${pretty_command}"
 
         write_state "${sf}" "${channel}" "${command}" "shell" "${outfile}" "${ecfile}"
 
