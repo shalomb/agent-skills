@@ -339,16 +339,16 @@ def book_with_fallbacks(
             # Retry app launcher navigation — Chrome network stack can lag behind
             # the OS network stack after wake from sleep
             print("Authenticating via app launcher...", file=sys.stderr)
-            for attempt in range(1, 4):
+            for attempt in range(1, 6):
                 try:
                     page.goto(APP_LAUNCHER, wait_until="domcontentloaded", timeout=30000)
                     page.wait_for_load_state("networkidle", timeout=30000)
                     break
                 except Exception as e:
-                    if attempt == 3:
+                    if attempt == 5:
                         raise
-                    print(f"Auth attempt {attempt} failed ({e}), retrying in 10s...", file=sys.stderr)
-                    time.sleep(10)
+                    print(f"Auth attempt {attempt} failed ({e}), retrying in 20s...", file=sys.stderr)
+                    time.sleep(20)
 
             if "microsoftonline" in page.url or "login.microsoft" in page.url:
                 raise RuntimeError("Not authenticated — run setup_auth.py to establish session")

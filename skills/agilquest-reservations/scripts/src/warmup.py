@@ -58,16 +58,16 @@ def warmup() -> dict:
             # Step 1: app launcher — retry up to 3x to handle post-sleep Chrome
             # network initialisation lag (curl sees network up before Chrome does)
             print("Warming up via app launcher...", file=sys.stderr)
-            for attempt in range(1, 4):
+            for attempt in range(1, 6):
                 try:
                     page.goto(APP_LAUNCHER, wait_until="domcontentloaded", timeout=30000)
                     page.wait_for_load_state("networkidle", timeout=30000)
                     break
                 except Exception as e:
-                    if attempt == 3:
+                    if attempt == 5:
                         raise
-                    print(f"Attempt {attempt} failed ({e}), retrying in 10s...", file=sys.stderr)
-                    time.sleep(10)
+                    print(f"Attempt {attempt} failed ({e}), retrying in 20s...", file=sys.stderr)
+                    time.sleep(20)
 
             if "microsoftonline" in page.url or "login.microsoft" in page.url:
                 return {
