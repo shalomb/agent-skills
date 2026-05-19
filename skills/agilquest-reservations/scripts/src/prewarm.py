@@ -1,15 +1,22 @@
 #!/usr/bin/env python3
 """
-Browser pre-warm: open Chrome, hit app launcher and asset page, then close.
+Browser pre-warm: seed OS DNS cache and warm Chrome's network stack.
 
-Runs at 23:51 — seeds OS DNS cache and Chrome's disk cache so the 23:55
-warmup and 23:57 booking script find everything ready. No browser lock is
-held after this exits.
+Runs at 23:51 — 4 minutes before warmup.py, 6 before book_reservation.py.
+Strategy: open Chrome headless, do a lightweight TLS connect to each domain
+we'll need, then close. This populates the OS DNS cache and Chrome's disk
+cache so subsequent scripts connect immediately.
+
+We deliberately do NOT navigate through the Microsoft app launcher here —
+that URL's auth redirect chain is slow and unreliable in headless context.
+The warmup/booking scripts handle auth with their own retry logic.
 """
 
 import sys
 import os
 import time
+import ssl
+import socket
 from pathlib import Path
 
 try:
@@ -18,7 +25,12 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-APP_LAUNCHER = "https://launcher.myapps.microsoft.com/api/signin/cb15e862-80aa-4d9c-95af-4748246cecd7?tenantId=57fdf63b-7e22-45a3-83dc-d37003163aae"
+DOMAINS = [
+    "launcher.myapps.microsoft.com",
+    "login.microsoftonline.com",
+    "login.agilquest.com",
+    "auth.agilquest.com",
+]
 ASSET_URL = "https://login.agilquest.com/asset/343"
 
 
@@ -39,10 +51,25 @@ def get_chrome_path() -> str:
     )
 
 
-def prewarm():
-    user_data_dir = get_user_data_dir()
-    chrome_path = get_chrome_path()
+def seed_dns(domains: list[str]):
+    """Make TLS connections to seed OS DNS cache for all target domains."""
+    ctx = ssl.create_default_context()
+    for domain in domains:
+        for attempt in range(1, 4):
+            try:
+                with socket.create_connection((domain, 443), timeout=10) as sock:
+                    with ctx.wrap_socket(sock, server_hostname=domain):
+                        print(f"  DNS/TLS seeded: {domain}", file=sys.stderr)
+                        break
+            except Exception as e:
+                if attempt == 3:
+                    print(f"  Warning: could not seed {domain}: {e}", file=sys.stderr)
+                else:
+                    time.sleep(3)
 
+
+def warm_chrome(user_data_dir: Path, chrome_path: str):
+    """Open Chrome, navigate to the asset page, then close."""
     with sync_playwright() as p:
         browser = p.chromium.launch_persistent_context(
             user_data_dir=str(user_data_dir),
@@ -52,37 +79,41 @@ def prewarm():
         )
         try:
             page = browser.new_page()
+            # Give Chrome's NetworkService time to initialise
+            print("Waiting for Chrome network service...", file=sys.stderr)
+            time.sleep(8)
 
-            # Navigate through app launcher — seeds DNS, session cookies, CDN cache
-            print("Pre-warming via app launcher...", file=sys.stderr)
-            # Use "commit" — fires on first byte received, doesn't wait for the
-            # full Microsoft auth redirect chain (which takes >30s to complete)
-            for attempt in range(1, 6):
+            # Navigate directly to asset page — skip the launcher here,
+            # this just warms Chrome's internal DNS resolver and disk cache
+            print("Loading asset page to warm Chrome cache...", file=sys.stderr)
+            for attempt in range(1, 4):
                 try:
-                    page.goto(APP_LAUNCHER, wait_until="commit", timeout=30000)
-                    print(f"App launcher commit on attempt {attempt}: {page.url}", file=sys.stderr)
-                    # Let auth redirects run for a few seconds to warm the session
-                    page.wait_for_timeout(5000)
-                    print(f"After 5s: {page.url}", file=sys.stderr)
+                    page.goto(ASSET_URL, wait_until="commit", timeout=20000)
+                    print(f"  Asset page commit on attempt {attempt}: {page.url}", file=sys.stderr)
+                    page.wait_for_timeout(3000)
                     break
                 except Exception as e:
-                    if attempt == 5:
-                        raise
-                    print(f"Attempt {attempt} failed ({e}), retrying in 20s...", file=sys.stderr)
-                    time.sleep(20)
-
-            # Pre-load the asset page to warm CDN/DNS cache
-            print("Pre-loading asset page...", file=sys.stderr)
-            try:
-                page.goto(ASSET_URL, wait_until="commit", timeout=30000)
-                page.wait_for_timeout(3000)
-                print(f"Asset page reached: {page.url}", file=sys.stderr)
-            except Exception as e:
-                print(f"Asset page warning (non-fatal): {e}", file=sys.stderr)
-
+                    if attempt == 3:
+                        print(f"  Chrome warm warning (non-fatal): {e}", file=sys.stderr)
+                    else:
+                        print(f"  Attempt {attempt} failed, retrying...", file=sys.stderr)
+                        time.sleep(5)
         finally:
             browser.close()
-            print("Browser closed — DNS and session cache warm.", file=sys.stderr)
+            print("Chrome closed — cache warm.", file=sys.stderr)
+
+
+def prewarm():
+    user_data_dir = get_user_data_dir()
+    chrome_path = get_chrome_path()
+
+    print("Step 1: Seeding OS DNS cache via TLS connects...", file=sys.stderr)
+    seed_dns(DOMAINS)
+
+    print("Step 2: Warming Chrome network stack...", file=sys.stderr)
+    warm_chrome(user_data_dir, chrome_path)
+
+    print("Pre-warm complete.", file=sys.stderr)
 
 
 if __name__ == "__main__":
