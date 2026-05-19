@@ -11,7 +11,7 @@ echo "=== $(date '+%Y-%m-%dT%H:%M:%S') ==="
 # Wait for network — machine may have just woken from sleep
 echo "Waiting for network..."
 for i in $(seq 1 30); do
-  if curl -sf --max-time 3 https://login.agilquest.com > /dev/null 2>&1; then
+  if dig @8.8.8.8 +short +time=3 login.agilquest.com | grep -q "\."; then
     echo "Network ready after ${i}s"
     break
   fi
