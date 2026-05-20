@@ -18,6 +18,21 @@ for i in $(seq 1 30); do
   sleep 2
 done
 
+# Clear any stale Chrome singleton lock from a previous run
+LOCK="$HOME/.local/state/agent-skills/agilquest-reservations/user_data/SingletonLock"
+if [ -L "$LOCK" ]; then
+  LOCK_PID=$(readlink "$LOCK" | grep -oE '[0-9]+$' || true)
+  if [ -n "$LOCK_PID" ] && ! kill -0 "$LOCK_PID" 2>/dev/null; then
+    echo "Removing stale SingletonLock (pid $LOCK_PID gone)"
+    rm -f "$LOCK"
+  elif [ -n "$LOCK_PID" ]; then
+    echo "WARNING: Chrome pid $LOCK_PID still alive — killing"
+    kill "$LOCK_PID" 2>/dev/null || true
+    sleep 2
+    rm -f "$LOCK"
+  fi
+fi
+
 cd "$(dirname "$0")"
 uv run src/book_reservation.py "$@"
 echo "Exit: $?"
