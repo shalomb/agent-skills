@@ -12,7 +12,7 @@ echo "=== $(date '+%Y-%m-%dT%H:%M:%S') ==="
 # job fires before idle sleep kicks in. Runs in background; exits on its
 # own so it doesn't block the prewarm script.
 echo "Holding awake for 600s via caffeinate..."
-caffeinate -i -t 600 &
+nohup caffeinate -i -t 600 &
 CAFFEINATE_PID=$!
 echo "caffeinate pid: $CAFFEINATE_PID"
 
