@@ -8,6 +8,14 @@ exec >> "$LOG_FILE" 2>&1
 set -euo pipefail
 echo "=== $(date '+%Y-%m-%dT%H:%M:%S') ==="
 
+# Hold machine awake for 10 minutes (23:51–00:01) so the 23:57 booking
+# job fires before idle sleep kicks in. Runs in background; exits on its
+# own so it doesn't block the prewarm script.
+echo "Holding awake for 600s via caffeinate..."
+caffeinate -i -t 600 &
+CAFFEINATE_PID=$!
+echo "caffeinate pid: $CAFFEINATE_PID"
+
 # Wait for OS network to be up before even trying Chrome
 echo "Waiting for network..."
 for i in $(seq 1 30); do
