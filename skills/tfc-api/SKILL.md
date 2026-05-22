@@ -5,6 +5,10 @@ description: Query Terraform Cloud (TFC) workspaces, runs, plans, logs, and team
 
 # Terraform Cloud API
 
+> **CRITICAL DIRECTIVE**: Always prefer using the `terrapyne` CLI (e.g. `uv run terrapyne` or `tfc`) for TFC operations. Only fall back to raw API calls (`curl`/`httpie`) or the bash scripts listed below if `terrapyne` is not available in the environment or lacks the required functionality.
+> 
+> Example: Instead of `./scripts/list-runs.sh`, use `uv run terrapyne run list`. Instead of manual curl for workspace discovery, use `uv run terrapyne workspace list` or `tfc project find`.
+
 Query TFC workspaces, runs, logs, and team permissions without leaving the terminal.
 
 ## Authentication
