@@ -24,6 +24,7 @@ import sys
 import json
 import os
 import time
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -351,7 +352,12 @@ def book_with_fallbacks(
                     time.sleep(20)
 
             if "microsoftonline" in page.url or "login.microsoft" in page.url:
-                raise RuntimeError("Not authenticated — run setup_auth.py to establish session")
+                # Session has lapsed — open a real Chrome window via open -a so
+                # the user can complete Entra SSO interactively (works from cron
+                # because open -a routes through the macOS Aqua session)
+                print("Session lapsed — opening Chrome for interactive SSO...", file=sys.stderr)
+                subprocess.Popen(["open", "-a", "Google Chrome", APP_LAUNCHER])
+                raise RuntimeError("Not authenticated — complete SSO in the Chrome window that just opened, then ensure_reservation.py at 14:00 will rebook")
 
             tried = []
             for asset_id in assets:
