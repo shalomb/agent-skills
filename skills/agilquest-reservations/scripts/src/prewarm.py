@@ -7,9 +7,8 @@ Strategy: open Chrome headless, do a lightweight TLS connect to each domain
 we'll need, then close. This populates the OS DNS cache and Chrome's disk
 cache so subsequent scripts connect immediately.
 
-We deliberately do NOT navigate through the Microsoft app launcher here —
-that URL's auth redirect chain is slow and unreliable in headless context.
-The warmup/booking scripts handle auth with their own retry logic.
+We also warm Chrome's DNS resolver against the MS app launcher URL using
+wait_until="commit" so book_reservation.py finds a warm connection at 23:57.
 """
 
 import sys
@@ -32,6 +31,7 @@ DOMAINS = [
     "auth.agilquest.com",
 ]
 ASSET_URL = "https://login.agilquest.com/asset/343"
+APP_LAUNCHER = "https://launcher.myapps.microsoft.com/api/signin/cb15e862-80aa-4d9c-95af-4748246cecd7?tenantId=57fdf63b-7e22-45a3-83dc-d37003163aae"
 
 
 def get_user_data_dir() -> Path:
@@ -83,21 +83,22 @@ def warm_chrome(user_data_dir: Path, chrome_path: str):
             print("Waiting for Chrome network service...", file=sys.stderr)
             time.sleep(8)
 
-            # Navigate directly to asset page — skip the launcher here,
-            # this just warms Chrome's internal DNS resolver and disk cache
-            print("Loading asset page to warm Chrome cache...", file=sys.stderr)
-            for attempt in range(1, 4):
-                try:
-                    page.goto(ASSET_URL, wait_until="commit", timeout=20000)
-                    print(f"  Asset page commit on attempt {attempt}: {page.url}", file=sys.stderr)
-                    page.wait_for_timeout(3000)
-                    break
-                except Exception as e:
-                    if attempt == 3:
-                        print(f"  Chrome warm warning (non-fatal): {e}", file=sys.stderr)
-                    else:
-                        print(f"  Attempt {attempt} failed, retrying...", file=sys.stderr)
-                        time.sleep(5)
+            # Warm Chrome's internal DNS resolver for both the MS launcher and
+            # the asset page — OS DNS seed alone doesn't warm Chrome's resolver.
+            for label, url in [("launcher", APP_LAUNCHER), ("asset page", ASSET_URL)]:
+                print(f"Loading {label} to warm Chrome cache...", file=sys.stderr)
+                for attempt in range(1, 4):
+                    try:
+                        page.goto(url, wait_until="commit", timeout=20000)
+                        print(f"  {label} commit on attempt {attempt}: {page.url}", file=sys.stderr)
+                        page.wait_for_timeout(2000)
+                        break
+                    except Exception as e:
+                        if attempt == 3:
+                            print(f"  Chrome warm warning (non-fatal): {e}", file=sys.stderr)
+                        else:
+                            print(f"  Attempt {attempt} failed, retrying...", file=sys.stderr)
+                            time.sleep(5)
         finally:
             browser.close()
             print("Chrome closed — cache warm.", file=sys.stderr)

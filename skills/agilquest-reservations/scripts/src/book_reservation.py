@@ -351,8 +351,8 @@ def book_with_fallbacks(
             print("Authenticating via app launcher...", file=sys.stderr)
             for attempt in range(1, 6):
                 try:
-                    page.goto(APP_LAUNCHER, wait_until="domcontentloaded", timeout=30000)
-                    page.wait_for_load_state("networkidle", timeout=30000)
+                    page.goto(APP_LAUNCHER, wait_until="commit", timeout=45000)
+                    page.wait_for_load_state("networkidle", timeout=45000)
                     break
                 except Exception as e:
                     if attempt == 5:

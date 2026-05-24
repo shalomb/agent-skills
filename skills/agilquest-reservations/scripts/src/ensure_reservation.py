@@ -247,8 +247,8 @@ def run_checks(headless: bool = True) -> dict:
             last_exc = None
             for attempt in range(1, AUTH_RETRIES + 1):
                 try:
-                    page.goto(APP_LAUNCHER, wait_until="commit", timeout=30000)
-                    page.wait_for_load_state("networkidle", timeout=30000)
+                    page.goto(APP_LAUNCHER, wait_until="commit", timeout=45000)
+                    page.wait_for_load_state("networkidle", timeout=45000)
                     last_exc = None
                     break
                 except Exception as e:
