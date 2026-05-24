@@ -166,6 +166,12 @@ def book(page, target: datetime) -> dict:
     when_value = page.locator("#resv_form_when").get_attribute("value") or ""
     print(f"Time window set: {when_value}", file=sys.stderr)
 
+    # Ensure reservation is not private (checkbox is checked by default)
+    private_cb = page.locator("#res-private")
+    if private_cb.is_checked():
+        print("Unchecking Private...", file=sys.stderr)
+        private_cb.uncheck()
+
     page.locator('button[type="submit"]').filter(has_text="SUBMIT").click()
     page.wait_for_load_state("networkidle", timeout=30000)
     page.wait_for_timeout(2000)
@@ -220,6 +226,10 @@ def interactive_reauth(user_data_dir: Path, chrome_path: str) -> bool:
     return False
 
 
+AUTH_RETRIES = 5
+AUTH_RETRY_DELAY = 20  # seconds
+
+
 def run_checks(headless: bool = True) -> dict:
     user_data_dir = get_user_data_dir()
     chrome_path = get_chrome_path()
@@ -232,8 +242,23 @@ def run_checks(headless: bool = True) -> dict:
             page = browser.new_page()
 
             print("Checking auth via app launcher...", file=sys.stderr)
-            page.goto(APP_LAUNCHER, wait_until="domcontentloaded", timeout=30000)
-            page.wait_for_load_state("networkidle", timeout=30000)
+            last_exc = None
+            for attempt in range(1, AUTH_RETRIES + 1):
+                try:
+                    page.goto(APP_LAUNCHER, wait_until="commit", timeout=30000)
+                    page.wait_for_load_state("networkidle", timeout=30000)
+                    last_exc = None
+                    break
+                except Exception as e:
+                    last_exc = e
+                    print(
+                        f"Auth navigation attempt {attempt}/{AUTH_RETRIES} failed: {e}",
+                        file=sys.stderr,
+                    )
+                    if attempt < AUTH_RETRIES:
+                        time.sleep(AUTH_RETRY_DELAY)
+            if last_exc:
+                raise RuntimeError(f"App launcher unreachable after {AUTH_RETRIES} attempts: {last_exc}")
 
             if not is_auth_ok(page):
                 return {"status": "auth_required", "url": page.url}
