@@ -180,23 +180,24 @@ def book(page, target: datetime) -> dict:
 
 def interactive_reauth(user_data_dir: Path, chrome_path: str) -> bool:
     """
-    Open the app launcher in a real Chrome window via `open -a` so the user
-    can complete Entra SSO interactively. Works from cron because `open -a`
-    routes through the macOS window server (Aqua session), unlike launching
-    Chrome directly with headless=False which has no display from cron.
+    Launch setup_auth.py in a Terminal window via osascript so the user can
+    complete Entra SSO using the correct Playwright Chrome profile.
 
-    Polls the session every 10s for up to 5 minutes waiting for auth to complete.
+    osascript routes through the macOS Aqua session and works from cron.
+    setup_auth.py clears any stale SingletonLock and opens a headed Playwright
+    Chrome window pointed at the correct user_data_dir.
+
+    Polls headlessly every 10s for up to 5 minutes until session is valid.
     """
-    print("\nSession has lapsed. Opening Chrome for interactive re-auth...", file=sys.stderr)
-    print(f"Complete the Entra SSO login in the Chrome window that opens.", file=sys.stderr)
-    print(f"URL: {APP_LAUNCHER}", file=sys.stderr)
+    scripts_dir = Path(__file__).parent.parent
+    print("\nSession has lapsed — opening Terminal to run setup_auth.py...", file=sys.stderr)
+    subprocess.Popen([
+        "/usr/bin/osascript", "-e",
+        f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/setup_auth.py"'
+    ])
+    print("Terminal opened. Waiting up to 5 minutes for SSO to complete...", file=sys.stderr)
 
-    # Open app launcher in the user's real Chrome (not headless Playwright Chrome)
-    # `open -a` works from cron and opens a visible window in the Aqua session
-    subprocess.Popen(["open", "-a", "Google Chrome", APP_LAUNCHER])
-    print("Chrome opened. Waiting up to 5 minutes for you to complete login...", file=sys.stderr)
-
-    # Poll headlessly until the session cookie is valid
+    # Poll headlessly until setup_auth has saved a valid session
     deadline = time.time() + 300
     while time.time() < deadline:
         time.sleep(10)
@@ -207,13 +208,13 @@ def interactive_reauth(user_data_dir: Path, chrome_path: str) -> bool:
                     page = browser.new_page()
                     page.goto(APP_LAUNCHER, wait_until="commit", timeout=15000)
                     time.sleep(3)
-                    if "login.agilquest.com" in page.url or "microsoftonline" not in page.url:
+                    if "login.agilquest.com" in page.url:
                         print("Session restored — auth complete.", file=sys.stderr)
                         return True
                 finally:
                     browser.close()
         except Exception:
-            pass  # lock contention or network — keep polling
+            pass  # lock contention while setup_auth is running — keep polling
 
     print("Re-auth timed out after 5 minutes.", file=sys.stderr)
     return False
