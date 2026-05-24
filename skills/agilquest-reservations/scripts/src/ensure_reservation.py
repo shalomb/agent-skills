@@ -166,11 +166,13 @@ def book(page, target: datetime) -> dict:
     when_value = page.locator("#resv_form_when").get_attribute("value") or ""
     print(f"Time window set: {when_value}", file=sys.stderr)
 
-    # Ensure reservation is not private (checkbox is checked by default)
+    # Ensure reservation is not private (checkbox is checked by default).
+    # Use JS dispatch to avoid viewport constraints in headless mode.
     private_cb = page.locator("#res-private")
     if private_cb.is_checked():
         print("Unchecking Private...", file=sys.stderr)
-        private_cb.uncheck()
+        page.evaluate("document.querySelector('#res-private').click()")
+        page.wait_for_timeout(300)
 
     page.locator('button[type="submit"]').filter(has_text="SUBMIT").click()
     page.wait_for_load_state("networkidle", timeout=30000)
