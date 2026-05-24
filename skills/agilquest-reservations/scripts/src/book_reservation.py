@@ -206,6 +206,13 @@ def stage(page, asset_id: str, target: datetime, start_time: str, end_time: str)
             f"booking_window_closed: {target_str} is not yet bookable — "
             f"when input shows: '{when_value}'"
         )
+
+    # Ensure reservation is not private (checkbox is checked by default)
+    private_cb = page.locator("#res-private")
+    if private_cb.is_checked():
+        print("Unchecking Private...", file=sys.stderr)
+        private_cb.uncheck()
+
     return when_value
 
 
