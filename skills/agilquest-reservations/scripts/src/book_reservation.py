@@ -207,11 +207,13 @@ def stage(page, asset_id: str, target: datetime, start_time: str, end_time: str)
             f"when input shows: '{when_value}'"
         )
 
-    # Ensure reservation is not private (checkbox is checked by default)
+    # Ensure reservation is not private (checkbox is checked by default).
+    # Use JS dispatch to avoid viewport constraints in headless mode.
     private_cb = page.locator("#res-private")
     if private_cb.is_checked():
         print("Unchecking Private...", file=sys.stderr)
-        private_cb.uncheck()
+        page.evaluate("document.querySelector('#res-private').click()")
+        page.wait_for_timeout(300)
 
     return when_value
 
