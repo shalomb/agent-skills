@@ -352,12 +352,16 @@ def book_with_fallbacks(
                     time.sleep(20)
 
             if "microsoftonline" in page.url or "login.microsoft" in page.url:
-                # Session has lapsed — open a real Chrome window via open -a so
-                # the user can complete Entra SSO interactively (works from cron
-                # because open -a routes through the macOS Aqua session)
-                print("Session lapsed — opening Chrome for interactive SSO...", file=sys.stderr)
-                subprocess.Popen(["open", "-a", "Google Chrome", APP_LAUNCHER])
-                raise RuntimeError("Not authenticated — complete SSO in the Chrome window that just opened, then ensure_reservation.py at 14:00 will rebook")
+                # Session has lapsed — launch setup_auth.py in a Terminal window
+                # via osascript so the user can complete Entra SSO interactively.
+                # osascript routes through the macOS Aqua session and works from cron.
+                scripts_dir = Path(__file__).parent.parent
+                print("Session lapsed — opening Terminal to run setup_auth.py...", file=sys.stderr)
+                subprocess.Popen([
+                    "/usr/bin/osascript", "-e",
+                    f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/setup_auth.py"'
+                ])
+                raise RuntimeError("Not authenticated — complete SSO in the Terminal window that just opened, then ensure_reservation.py at 14:00 will rebook")
 
             tried = []
             for asset_id in assets:

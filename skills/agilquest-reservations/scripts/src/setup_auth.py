@@ -34,6 +34,26 @@ def get_chrome_path() -> str:
         return "chrome"
 
 
+def clear_singleton_lock(user_data_dir: Path):
+    """Remove stale Chrome SingletonLock so setup_auth can open the profile."""
+    lock = user_data_dir / "SingletonLock"
+    if lock.is_symlink() or lock.exists():
+        import subprocess
+        target = lock.resolve() if lock.is_symlink() else None
+        pid = None
+        if target:
+            try:
+                pid = int(str(target).rsplit("-", 1)[-1])
+            except ValueError:
+                pass
+        if pid and subprocess.run(["kill", "-0", str(pid)], capture_output=True).returncode == 0:
+            print(f"Killing Chrome process {pid} holding SingletonLock...", file=sys.stderr)
+            subprocess.run(["kill", str(pid)], capture_output=True)
+            import time; time.sleep(2)
+        lock.unlink(missing_ok=True)
+        print("SingletonLock cleared.", file=sys.stderr)
+
+
 def setup_auth():
     """Establish browser session by logging in via Microsoft app launcher then Agilquest."""
     user_data_dir = get_user_data_dir()
@@ -43,6 +63,8 @@ def setup_auth():
     print(f"Chrome path: {chrome_path}")
     print(f"Session storage: {user_data_dir}")
     print()
+
+    clear_singleton_lock(user_data_dir)
 
     with sync_playwright() as p:
         # Launch in headed mode so user can log in
