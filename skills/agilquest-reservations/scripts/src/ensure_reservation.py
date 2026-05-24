@@ -11,6 +11,8 @@ the reservation check automatically once auth is restored.
 import sys
 import json
 import os
+import time
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -177,30 +179,44 @@ def book(page, target: datetime) -> dict:
 
 
 def interactive_reauth(user_data_dir: Path, chrome_path: str) -> bool:
-    """Launch headed browser, wait for user to complete Entra SSO, return True on success."""
-    print("\nSession has lapsed. Opening browser for interactive re-auth...", file=sys.stderr)
-    print("Complete the Entra SSO login in the browser window that opens.", file=sys.stderr)
+    """
+    Open the app launcher in a real Chrome window via `open -a` so the user
+    can complete Entra SSO interactively. Works from cron because `open -a`
+    routes through the macOS window server (Aqua session), unlike launching
+    Chrome directly with headless=False which has no display from cron.
 
-    with sync_playwright() as p:
-        browser = launch_browser(p, headless=False, user_data_dir=user_data_dir, chrome_path=chrome_path)
+    Polls the session every 10s for up to 5 minutes waiting for auth to complete.
+    """
+    print("\nSession has lapsed. Opening Chrome for interactive re-auth...", file=sys.stderr)
+    print(f"Complete the Entra SSO login in the Chrome window that opens.", file=sys.stderr)
+    print(f"URL: {APP_LAUNCHER}", file=sys.stderr)
+
+    # Open app launcher in the user's real Chrome (not headless Playwright Chrome)
+    # `open -a` works from cron and opens a visible window in the Aqua session
+    subprocess.Popen(["open", "-a", "Google Chrome", APP_LAUNCHER])
+    print("Chrome opened. Waiting up to 5 minutes for you to complete login...", file=sys.stderr)
+
+    # Poll headlessly until the session cookie is valid
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        time.sleep(10)
         try:
-            page = browser.new_page()
-            page.goto(APP_LAUNCHER, wait_until="domcontentloaded", timeout=30000)
-            page.wait_for_load_state("networkidle", timeout=30000)
+            with sync_playwright() as p:
+                browser = launch_browser(p, headless=True, user_data_dir=user_data_dir, chrome_path=chrome_path)
+                try:
+                    page = browser.new_page()
+                    page.goto(APP_LAUNCHER, wait_until="commit", timeout=15000)
+                    time.sleep(3)
+                    if "login.agilquest.com" in page.url or "microsoftonline" not in page.url:
+                        print("Session restored — auth complete.", file=sys.stderr)
+                        return True
+                finally:
+                    browser.close()
+        except Exception:
+            pass  # lock contention or network — keep polling
 
-            if "login.agilquest.com" in page.url:
-                print("Already authenticated — session was fine after all.", file=sys.stderr)
-                return True
-
-            print("Waiting up to 5 minutes for you to complete login...", file=sys.stderr)
-            page.wait_for_url("**/login.agilquest.com/**", timeout=300_000)
-            print("Login detected. Session saved.", file=sys.stderr)
-            return True
-        except Exception as e:
-            print(f"Re-auth failed or timed out: {e}", file=sys.stderr)
-            return False
-        finally:
-            browser.close()
+    print("Re-auth timed out after 5 minutes.", file=sys.stderr)
+    return False
 
 
 def run_checks(headless: bool = True) -> dict:
