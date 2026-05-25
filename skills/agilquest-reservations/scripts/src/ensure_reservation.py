@@ -254,13 +254,13 @@ def run_checks(headless: bool = True) -> dict:
                 except Exception as e:
                     last_exc = e
                     print(
-                        f"Auth navigation attempt {attempt}/{AUTH_RETRIES} failed: {e}",
+                        f"Auth navigation attempt {attempt}/{AUTH_RETRIES} failed: {str(e).splitlines()[0]}",
                         file=sys.stderr,
                     )
                     if attempt < AUTH_RETRIES:
                         time.sleep(AUTH_RETRY_DELAY)
             if last_exc:
-                raise RuntimeError(f"App launcher unreachable after {AUTH_RETRIES} attempts: {last_exc}")
+                raise RuntimeError(f"App launcher unreachable after {AUTH_RETRIES} attempts: {str(last_exc).splitlines()[0]}")
 
             if not is_auth_ok(page):
                 return {"status": "auth_required", "url": page.url}
@@ -292,6 +292,15 @@ def run_checks(headless: bool = True) -> dict:
             browser.close()
 
 
+def _log_result(result: dict):
+    status = result.get("status", "unknown")
+    msg = result.get("message", "")
+    summary = f"RESULT: {status}"
+    if status not in ("ok",) and msg:
+        summary += f" — {msg.splitlines()[0]}"
+    print(summary, file=sys.stderr)
+
+
 def main():
     user_data_dir = get_user_data_dir()
     chrome_path = get_chrome_path()
@@ -302,15 +311,28 @@ def main():
         # Session lapsed — prompt interactive re-auth then re-run checks
         reauthed = interactive_reauth(user_data_dir, chrome_path)
         if not reauthed:
-            print(json.dumps({"status": "error", "message": "Re-auth failed or timed out"}))
+            result = {"status": "error", "message": "Re-auth failed or timed out"}
+            print(json.dumps(result, indent=2))
+            _log_result(result)
             sys.exit(1)
         result = run_checks(headless=True)
 
     print(json.dumps(result, indent=2))
 
-    if result["status"] != "ok" or not result.get("reservation"):
-        print("\nWARNING: No confirmed reservation for target date.", file=sys.stderr)
+    reservation = result.get("reservation")
+    if result["status"] != "ok" or not reservation:
+        _log_result({**result, "message": result.get("message", "No confirmed reservation for target date")})
         sys.exit(1)
+
+    target_date = result.get("target_date", "")
+    asset_id = (reservation.get("asset_href", "") or "").split("/asset/")[-1] or reservation.get("asset", "")
+    resv_id = reservation.get("id", "")
+    booked = result.get("booking_attempted")
+    action = "booked" if booked else "already_exists"
+    print(
+        f"RESULT: {action} asset={asset_id} date={target_date} id={resv_id}",
+        file=sys.stderr,
+    )
 
 
 if __name__ == "__main__":

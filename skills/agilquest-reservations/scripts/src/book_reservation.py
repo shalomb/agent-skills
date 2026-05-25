@@ -357,7 +357,7 @@ def book_with_fallbacks(
                 except Exception as e:
                     if attempt == 5:
                         raise
-                    print(f"Auth attempt {attempt} failed ({e}), retrying in 20s...", file=sys.stderr)
+                    print(f"Auth attempt {attempt} failed ({str(e).splitlines()[0]}), retrying in 20s...", file=sys.stderr)
                     time.sleep(20)
 
             if "microsoftonline" in page.url or "login.microsoft" in page.url:
@@ -441,6 +441,26 @@ def book_with_fallbacks(
             browser.close()
 
 
+def _log_result(result: dict):
+    """Print JSON result then a single scannable RESULT line to stderr."""
+    print(json.dumps(result, indent=2))
+    status = result.get("status", "unknown")
+    asset = result.get("asset_id", "")
+    date = result.get("target_date", "")
+    resv_id = result.get("reservation_id", "")
+    msg = result.get("message", "")
+    summary = f"RESULT: {status}"
+    if asset:
+        summary += f" asset={asset}"
+    if date:
+        summary += f" date={date}"
+    if resv_id:
+        summary += f" id={resv_id}"
+    if status not in ("success", "already_exists") and msg:
+        summary += f" — {msg.splitlines()[0]}"
+    print(summary, file=sys.stderr)
+
+
 def main():
     import argparse
 
@@ -477,16 +497,15 @@ def main():
             end_time=args.end,
             prestage=args.prestage,
         )
-        print(json.dumps(result, indent=2))
-        if result["status"] in ("error", "all_unavailable"):
-            sys.exit(1)
-        if result["status"] == "asset_unavailable":
+        _log_result(result)
+        if result["status"] in ("error", "all_unavailable", "asset_unavailable"):
             sys.exit(1)
     except Exception as e:
         msg = str(e)
         status = "booking_window_closed" if msg.startswith("booking_window_closed:") else "error"
-        print(json.dumps({"status": status, "message": msg}))
-        print(f"Error: {msg}", file=sys.stderr)
+        result = {"status": status, "message": msg.splitlines()[0]}
+        _log_result(result)
+        sys.exit(1)
         sys.exit(1 if status == "error" else 0)
 
 
