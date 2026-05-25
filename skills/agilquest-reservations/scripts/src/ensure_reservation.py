@@ -91,7 +91,7 @@ def get_active_reservations(page) -> list[dict]:
 
 
 def reservation_exists_for_target(reservations: list[dict], target: datetime) -> dict | None:
-    label = f"{target.strftime('%b')} {target.day}, {target.year}"
+    label = target.strftime("%B %-d, %Y")  # "June 1, 2026" — matches full month name in table
     for r in reservations:
         if f"/asset/{ASSET_ID}" in r.get("asset_href", "") and label in r.get("start", ""):
             return r
