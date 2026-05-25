@@ -82,7 +82,7 @@ def check_existing(page, asset_id: str, target: datetime) -> dict | None:
     page.wait_for_load_state("networkidle", timeout=30000)
     try:
         page.wait_for_selector("table tbody tr", timeout=8000)
-        label = target.strftime("%B %-d, %Y")  # "June 1, 2026" — matches full month name in table
+        label = target.strftime("%B %d, %Y")  # "June 01, 2026" — zero-padded, matches table
         for row in page.query_selector_all("table tbody tr"):
             asset_link = row.query_selector("td.asset-name-cell a")
             se_cell = row.query_selector("td.start-end-cell")
