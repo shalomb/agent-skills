@@ -41,19 +41,21 @@ def get_chrome_path() -> str:
 
 
 def launch_headless(p) -> BrowserContext:
-    """Launch a headless browser, loading saved auth state if present."""
+    """Launch a headless browser context, loading saved auth state if present.
+
+    Uses launch() + new_context() (not persistent context) so storage_state
+    can be passed directly — persistent context doesn't support that parameter.
+    """
     auth_path = get_auth_state_path()
-    kwargs = dict(
+    browser = p.chromium.launch(
         headless=True,
         executable_path=get_chrome_path(),
         args=["--disable-gpu", "--no-sandbox"],
     )
+    kwargs = {}
     if auth_path.exists():
         kwargs["storage_state"] = str(auth_path)
-    return p.chromium.launch_persistent_context(
-        user_data_dir=str(get_state_dir() / "user_data"),
-        **kwargs,
-    )
+    return browser.new_context(**kwargs)
 
 
 def launch_headed(p) -> BrowserContext:
