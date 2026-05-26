@@ -1,8 +1,15 @@
 #!/usr/bin/env python3
-"""One-time setup to establish Agilquest Entra SSO session."""
+"""
+One-time interactive SSO setup for Agilquest.
+
+Opens a headed Chrome window via Microsoft app launcher. After successful
+login, saves auth state to auth.json for use by all headless scripts.
+
+Usage:
+  uv run src/setup_auth.py
+"""
 
 import sys
-import os
 from pathlib import Path
 
 try:
@@ -11,111 +18,76 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-
-def get_user_data_dir() -> Path:
-    """Get XDG-compliant user data directory for browser session."""
-    xdg_state = os.getenv("XDG_STATE_HOME", Path.home() / ".local" / "state")
-    user_data = Path(xdg_state) / "agent-skills" / "agilquest-reservations" / "user_data"
-    user_data.mkdir(parents=True, exist_ok=True)
-    return user_data
+from lib.browser import (
+    APP_LAUNCHER, AGILQUEST_HOME, get_state_dir, get_auth_state_path,
+    get_chrome_path, save_auth,
+)
 
 
-def get_chrome_path() -> str:
-    """Get Chrome executable path from env or system defaults."""
-    env_path = os.getenv("CHROME_PATH")
-    if env_path:
-        return env_path
-
-    if sys.platform == "darwin":
-        return "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-    elif sys.platform == "linux":
-        return "/usr/bin/google-chrome"
-    else:
-        return "chrome"
-
-
-def clear_singleton_lock(user_data_dir: Path):
-    """Remove stale Chrome SingletonLock so setup_auth can open the profile."""
-    lock = user_data_dir / "SingletonLock"
+def clear_singleton_lock():
+    lock = get_state_dir() / "user_data" / "SingletonLock"
     if lock.is_symlink() or lock.exists():
-        import subprocess
-        target = lock.resolve() if lock.is_symlink() else None
+        import subprocess, time
         pid = None
-        if target:
+        if lock.is_symlink():
             try:
-                pid = int(str(target).rsplit("-", 1)[-1])
+                pid = int(str(lock.resolve()).rsplit("-", 1)[-1])
             except ValueError:
                 pass
         if pid and subprocess.run(["kill", "-0", str(pid)], capture_output=True).returncode == 0:
             print(f"Killing Chrome process {pid} holding SingletonLock...", file=sys.stderr)
             subprocess.run(["kill", str(pid)], capture_output=True)
-            import time; time.sleep(2)
+            time.sleep(2)
         lock.unlink(missing_ok=True)
         print("SingletonLock cleared.", file=sys.stderr)
 
 
-def setup_auth():
-    """Establish browser session by logging in via Microsoft app launcher then Agilquest."""
-    user_data_dir = get_user_data_dir()
+def main():
     chrome_path = get_chrome_path()
+    state_dir = get_state_dir()
 
-    print(f"Setting up Agilquest authentication...")
-    print(f"Chrome path: {chrome_path}")
-    print(f"Session storage: {user_data_dir}")
+    print(f"Chrome:  {chrome_path}")
+    print(f"Storage: {state_dir}")
     print()
 
-    clear_singleton_lock(user_data_dir)
+    clear_singleton_lock()
 
     with sync_playwright() as p:
-        # Launch in headed mode so user can log in
         browser = p.chromium.launch_persistent_context(
-            user_data_dir=str(user_data_dir),
-            headless=False,  # Show browser for manual login
+            user_data_dir=str(state_dir / "user_data"),
+            headless=False,
             executable_path=chrome_path,
-            args=["--disable-gpu"]
+            # Mock keychain so cookies are readable by headless Playwright Chrome
+            args=["--disable-gpu", "--use-mock-keychain", "--password-store=basic"],
         )
-
         try:
             page = browser.new_page()
 
-            # Step 1: Login via Microsoft app launcher
             print("Step 1: Authenticating via Microsoft app launcher...")
-            app_launcher_url = "https://launcher.myapps.microsoft.com/api/signin/cb15e862-80aa-4d9c-95af-4748246cecd7?tenantId=57fdf63b-7e22-45a3-83dc-d37003163aae"
-
             try:
-                page.goto(app_launcher_url, wait_until="load", timeout=30000)
+                page.goto(APP_LAUNCHER, wait_until="load", timeout=30000)
             except Exception as e:
                 print(f"Note: {e}", file=sys.stderr)
-
-            # Wait for page to actually have content (not just blank/loading)
             page.wait_for_load_state("networkidle", timeout=30000)
 
-            current_url = page.url
-            print(f"✓ Loaded page at: {current_url}")
-
-            # Check if we got redirected to Agilquest (already logged in via cached session)
-            if "login.agilquest.com" in current_url:
-                print("✓ Already authenticated! Cached session is valid.")
+            if "login.agilquest.com" in page.url:
+                print("✓ Already authenticated — cached session is valid.")
             else:
                 print("✓ Browser opened. Please complete Entra SSO login.")
-                print("✓ After login, you'll be redirected to Agilquest.")
-                print("✓ Waiting for redirect...\n")
-
-                # Wait for redirect to Agilquest after app launcher auth
+                print("  Waiting for redirect to Agilquest...")
                 page.wait_for_url("**/login.agilquest.com/**", timeout=300000)
-                print("✓ Redirected to Agilquest!")
+                print("✓ Redirected to Agilquest.")
 
-            # Step 2: Navigate to asset page to confirm access
-            print("\nStep 2: Navigating to Agilquest asset page...")
-            page.goto("https://login.agilquest.com/asset/343", wait_until="load", timeout=30000)
+            print("\nStep 2: Navigating to Agilquest home to confirm access...")
+            page.goto(f"{AGILQUEST_HOME}/home", wait_until="load", timeout=30000)
             page.wait_for_load_state("networkidle", timeout=30000)
 
-            # Verify we're actually on the asset page (not a login page)
-            if "asset" in page.url.lower() or "agilquest" in page.url.lower():
-                print("✓ Authentication successful! Session saved.")
-                print(f"✓ You can now run: uv run src/get_reservations.py\n")
-            else:
-                raise RuntimeError(f"Failed to reach asset page. Current URL: {page.url}")
+            if "agilquest.com" not in page.url:
+                raise RuntimeError(f"Failed to reach Agilquest. URL: {page.url}")
+
+            save_auth(browser)
+            print("✓ Authentication successful — auth.json saved.")
+            print("✓ Headless scripts (book_reservation.py etc.) are ready to run.")
 
         except Exception as e:
             print(f"✗ Setup failed: {e}", file=sys.stderr)
@@ -125,4 +97,4 @@ def setup_auth():
 
 
 if __name__ == "__main__":
-    setup_auth()
+    main()
