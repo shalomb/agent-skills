@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 """
-Daily 14:00 health-check: verify Entra SSO session, confirm the 7-days-ahead
-reservation exists (booking it if missing), and print active reservations.
+Daily 14:00 health-check: confirm the 7-days-ahead reservation exists,
+booking it if missing. Lists all active reservations.
 
-If the session has lapsed, launches a headed Chrome window so you can
-complete Entra SSO interactively while you're at your desk, then re-runs
-the reservation check automatically once auth is restored.
+On session failure, launches setup_auth.py in a Terminal via osascript
+and waits up to 5 minutes for the user to complete SSO, then retries.
+
+Usage:
+  uv run src/ensure_reservation.py
 """
 
 import sys
 import json
-import os
-import time
 import subprocess
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -22,263 +23,88 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-APP_LAUNCHER = "https://launcher.myapps.microsoft.com/api/signin/cb15e862-80aa-4d9c-95af-4748246cecd7?tenantId=57fdf63b-7e22-45a3-83dc-d37003163aae"
-ASSET_ID = "343"
-ASSET_URL = f"https://login.agilquest.com/asset/{ASSET_ID}"
-RESERVATIONS_URL = "https://login.agilquest.com/myreservations/active?viewMode=table"
-START_TIME = "09:00 AM"
-END_TIME = "06:00 PM"
+from lib.browser import (
+    APP_LAUNCHER, launch_headless, launch_headed, save_auth, verify_auth,
+    get_state_dir, get_chrome_path,
+)
+from lib.agilquest import (
+    RESERVATIONS_URL, get_reservations, find_existing, stage, submit_with_retries,
+)
+from lib.logging import log_result
+
+PRIMARY_ASSET = "343"
+DEFAULT_START = "08:30 AM"
+DEFAULT_END = "04:00 PM"
 
 
-def get_user_data_dir() -> Path:
-    xdg_state = os.getenv("XDG_STATE_HOME", Path.home() / ".local" / "state")
-    user_data = Path(xdg_state) / "agent-skills" / "agilquest-reservations" / "user_data"
-    user_data.mkdir(parents=True, exist_ok=True)
-    return user_data
-
-
-def get_chrome_path() -> str:
-    if env := os.getenv("CHROME_PATH"):
-        return env
-    return (
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-        if sys.platform == "darwin"
-        else "/usr/bin/google-chrome"
-    )
-
-
-def launch_browser(p, headless: bool, user_data_dir: Path, chrome_path: str):
-    return p.chromium.launch_persistent_context(
-        user_data_dir=str(user_data_dir),
-        headless=headless,
-        executable_path=chrome_path,
-        args=["--disable-gpu"] + (["--no-sandbox"] if headless else []),
-    )
-
-
-def is_auth_ok(page) -> bool:
-    return "microsoftonline" not in page.url and "login.microsoft" not in page.url
-
-
-def get_active_reservations(page) -> list[dict]:
-    page.goto(RESERVATIONS_URL, wait_until="domcontentloaded", timeout=30000)
-    page.wait_for_load_state("networkidle", timeout=30000)
-    reservations = []
-    try:
-        page.wait_for_selector("table tbody tr", timeout=8000)
-        for row in page.query_selector_all("table tbody tr"):
-            resv_link = row.query_selector("td.resv-name-cell a")
-            asset_link = row.query_selector("td.asset-name-cell a")
-            se_cell = row.query_selector("td.start-end-cell")
-            status_cell = row.query_selector("td.status-cell")
-
-            asset_href = asset_link.get_attribute("href") if asset_link else ""
-            spans = se_cell.query_selector_all("span") if se_cell else []
-            resv_href = resv_link.get_attribute("href") if resv_link else ""
-            id_parts = [x for x in resv_href.split("/") if x.isdigit()]
-
-            reservations.append({
-                "id": id_parts[0] if id_parts else "",
-                "asset": asset_link.text_content().strip() if asset_link else "",
-                "asset_href": asset_href,
-                "start": spans[0].text_content().strip() if len(spans) > 0 else "",
-                "end": spans[1].text_content().strip() if len(spans) > 1 else "",
-                "status": status_cell.text_content().strip() if status_cell else "",
-            })
-    except Exception:
-        pass
-    return reservations
-
-
-def reservation_exists_for_target(reservations: list[dict], target: datetime) -> dict | None:
-    label = target.strftime("%B %d, %Y")  # "June 01, 2026" — zero-padded, matches table
-    for r in reservations:
-        if f"/asset/{ASSET_ID}" in r.get("asset_href", "") and label in r.get("start", ""):
-            return r
-    return None
-
-
-def book(page, target: datetime) -> dict:
-    target_day = str(target.day)
-    target_month_idx = str(target.month - 1)
-    target_year = str(target.year)
-    target_str = target.strftime("%Y-%m-%d")
-
-    print(f"Booking asset {ASSET_ID} for {target_str}...", file=sys.stderr)
-    page.goto(ASSET_URL, wait_until="domcontentloaded", timeout=30000)
-    page.wait_for_load_state("networkidle", timeout=30000)
-
-    if f"/asset/{ASSET_ID}" not in page.url:
-        raise RuntimeError(f"Unexpected URL: {page.url}")
-
-    page.locator("#resv_form_when").click()
-    page.wait_for_selector(".when-popup", timeout=10000)
-    page.wait_for_timeout(500)
-
-    def nav_to_month(panel_index: int):
-        expected = target.strftime("%B %Y")
-        for _ in range(3):
-            label = page.locator(".rdt.date-picker .rdtSwitch").nth(panel_index).text_content() or ""
-            if expected in label:
-                return
-            page.locator(".rdt.date-picker .rdtNext").nth(panel_index).click()
-            page.wait_for_timeout(300)
-        label = page.locator(".rdt.date-picker .rdtSwitch").nth(panel_index).text_content() or ""
-        if expected not in label:
-            raise RuntimeError(f"Could not navigate panel {panel_index} to {expected}")
-
-    def click_day(panel_index: int):
-        sel = f'td.rdtDay[data-value="{target_day}"][data-month="{target_month_idx}"][data-year="{target_year}"]'
-        cells = page.locator(sel)
-        if cells.count() == 0:
-            raise RuntimeError(f"Day cell not found for {target_str}")
-        cell = cells.nth(panel_index if panel_index < cells.count() else 0)
-        if "rdtDisabled" in (cell.get_attribute("class") or ""):
-            raise RuntimeError(f"Date {target_str} is disabled — outside booking window")
-        cell.click()
-        page.wait_for_timeout(500)
-
-    nav_to_month(0)
-    click_day(0)
-
-    time_selectors = page.locator(".when-popup .time-selector")
-    start_opt = time_selectors.nth(0).locator(".time-selector-option").filter(has_text=START_TIME).first
-    start_opt.scroll_into_view_if_needed()
-    start_opt.click()
-    page.wait_for_timeout(500)
-
-    nav_to_month(1)
-    click_day(1)
-
-    end_opts = time_selectors.nth(1).locator(".time-selector-option")
-    for i in range(end_opts.count()):
-        opt = end_opts.nth(i)
-        if opt.text_content().strip().startswith(END_TIME):
-            opt.scroll_into_view_if_needed()
-            opt.click()
-            break
-    page.wait_for_timeout(300)
-
-    page.locator(".when-popup .save-button").click()
-    page.wait_for_selector(".when-popup", state="hidden", timeout=10000)
-    page.wait_for_timeout(500)
-
-    when_value = page.locator("#resv_form_when").get_attribute("value") or ""
-    print(f"Time window set: {when_value}", file=sys.stderr)
-
-    # Ensure reservation is not private (checkbox is checked by default).
-    # Use JS dispatch to avoid viewport constraints in headless mode.
-    private_cb = page.locator("#res-private")
-    if private_cb.is_checked():
-        print("Unchecking Private...", file=sys.stderr)
-        page.evaluate("document.querySelector('#res-private').click()")
-        page.wait_for_timeout(300)
-
-    page.locator('button[type="submit"]').filter(has_text="SUBMIT").click()
-    page.wait_for_load_state("networkidle", timeout=30000)
-    page.wait_for_timeout(2000)
-
-    success = page.url.rstrip("/").endswith("/home") or "myreservations" in page.url
-    return {
-        "status": "booked" if success else "submitted",
-        "target_date": target_str,
-        "when_value": when_value,
-    }
-
-
-def interactive_reauth(user_data_dir: Path, chrome_path: str) -> bool:
-    """
-    Launch setup_auth.py in a Terminal window via osascript so the user can
-    complete Entra SSO using the correct Playwright Chrome profile.
-
-    osascript routes through the macOS Aqua session and works from cron.
-    setup_auth.py clears any stale SingletonLock and opens a headed Playwright
-    Chrome window pointed at the correct user_data_dir.
-
-    Polls headlessly every 10s for up to 5 minutes until session is valid.
-    """
+def trigger_reauth_and_wait() -> bool:
+    """Launch setup_auth.py in a Terminal window, then poll headlessly for up to 5 minutes."""
     scripts_dir = Path(__file__).parent.parent
-    print("\nSession has lapsed — opening Terminal to run setup_auth.py...", file=sys.stderr)
+    print("\nSession invalid — opening Terminal to run setup_auth.py...", file=sys.stderr)
     subprocess.Popen([
         "/usr/bin/osascript", "-e",
-        f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/setup_auth.py"'
+        f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/setup_auth.py"',
     ])
-    print("Terminal opened. Waiting up to 5 minutes for SSO to complete...", file=sys.stderr)
+    print("Waiting up to 5 minutes for SSO to complete...", file=sys.stderr)
 
-    # Poll headlessly until setup_auth has saved a valid session
     deadline = time.time() + 300
     while time.time() < deadline:
         time.sleep(10)
         try:
             with sync_playwright() as p:
-                browser = launch_browser(p, headless=True, user_data_dir=user_data_dir, chrome_path=chrome_path)
+                browser = launch_headless(p)
                 try:
                     page = browser.new_page()
-                    page.goto(APP_LAUNCHER, wait_until="commit", timeout=15000)
+                    page.goto(RESERVATIONS_URL, wait_until="commit", timeout=15000)
                     time.sleep(3)
-                    if "login.agilquest.com" in page.url:
-                        print("Session restored — auth complete.", file=sys.stderr)
+                    if "login.agilquest.com" in page.url and "microsoftonline" not in page.url:
+                        print("Session restored.", file=sys.stderr)
                         return True
                 finally:
                     browser.close()
         except Exception:
-            pass  # lock contention while setup_auth is running — keep polling
+            pass  # profile locked by setup_auth — keep polling
 
     print("Re-auth timed out after 5 minutes.", file=sys.stderr)
     return False
 
 
-AUTH_RETRIES = 5
-AUTH_RETRY_DELAY = 20  # seconds
+def book_primary(page, target: datetime) -> dict:
+    """Book PRIMARY_ASSET for target date using the shared stage/submit logic."""
+    target_str = target.strftime("%Y-%m-%d")
+    when_value = stage(page, PRIMARY_ASSET, target, DEFAULT_START, DEFAULT_END)
+    return submit_with_retries(
+        page, PRIMARY_ASSET, target_str, when_value, DEFAULT_START, DEFAULT_END
+    )
 
 
-def run_checks(headless: bool = True) -> dict:
-    user_data_dir = get_user_data_dir()
-    chrome_path = get_chrome_path()
+def run_checks() -> dict:
     target = datetime.now() + timedelta(days=7)
     target_str = target.strftime("%Y-%m-%d")
 
     with sync_playwright() as p:
-        browser = launch_browser(p, headless=headless, user_data_dir=user_data_dir, chrome_path=chrome_path)
+        browser = launch_headless(p)
         try:
             page = browser.new_page()
 
-            print("Checking auth via app launcher...", file=sys.stderr)
-            last_exc = None
-            for attempt in range(1, AUTH_RETRIES + 1):
-                try:
-                    page.goto(APP_LAUNCHER, wait_until="commit", timeout=45000)
-                    page.wait_for_load_state("networkidle", timeout=45000)
-                    last_exc = None
-                    break
-                except Exception as e:
-                    last_exc = e
-                    print(
-                        f"Auth navigation attempt {attempt}/{AUTH_RETRIES} failed: {str(e).splitlines()[0]}",
-                        file=sys.stderr,
-                    )
-                    if attempt < AUTH_RETRIES:
-                        time.sleep(AUTH_RETRY_DELAY)
-            if last_exc:
-                raise RuntimeError(f"App launcher unreachable after {AUTH_RETRIES} attempts: {str(last_exc).splitlines()[0]}")
+            print("Checking auth...", file=sys.stderr)
+            if not verify_auth(page):
+                return {"status": "auth_required"}
 
-            if not is_auth_ok(page):
-                return {"status": "auth_required", "url": page.url}
-
-            # Check whether target reservation already exists
-            print(f"Checking reservations for {target_str}...", file=sys.stderr)
-            reservations = get_active_reservations(page)
-            existing = reservation_exists_for_target(reservations, target)
+            print(f"Fetching reservations for {target_str}...", file=sys.stderr)
+            reservations = get_reservations(page)
+            existing = find_existing(reservations, PRIMARY_ASSET, target)
 
             booking_result = None
             if existing:
                 print(f"Reservation {existing['id']} already exists for {target_str}.", file=sys.stderr)
             else:
-                print(f"No reservation found for {target_str} — booking now...", file=sys.stderr)
-                booking_result = book(page, target)
-                # Refresh reservation list after booking
-                reservations = get_active_reservations(page)
-                existing = reservation_exists_for_target(reservations, target)
+                print(f"No reservation for {target_str} — booking now...", file=sys.stderr)
+                booking_result = book_primary(page, target)
+                if booking_result["status"] in ("success",):
+                    save_auth(browser)
+                    reservations = get_reservations(page)
+                    existing = find_existing(reservations, PRIMARY_ASSET, target)
 
             return {
                 "status": "ok",
@@ -287,50 +113,32 @@ def run_checks(headless: bool = True) -> dict:
                 "booking_attempted": booking_result,
                 "active_reservations": reservations,
             }
-
         finally:
             browser.close()
 
 
-def _log_result(result: dict):
-    status = result.get("status", "unknown")
-    msg = result.get("message", "")
-    summary = f"RESULT: {status}"
-    if status not in ("ok",) and msg:
-        summary += f" — {msg.splitlines()[0]}"
-    print(summary, file=sys.stderr)
-
-
 def main():
-    user_data_dir = get_user_data_dir()
-    chrome_path = get_chrome_path()
-
-    result = run_checks(headless=True)
+    result = run_checks()
 
     if result["status"] == "auth_required":
-        # Session lapsed — prompt interactive re-auth then re-run checks
-        reauthed = interactive_reauth(user_data_dir, chrome_path)
+        reauthed = trigger_reauth_and_wait()
         if not reauthed:
-            result = {"status": "error", "message": "Re-auth failed or timed out"}
-            print(json.dumps(result, indent=2))
-            _log_result(result)
+            r = {"status": "error", "message": "Re-auth failed or timed out"}
+            log_result(r)
             sys.exit(1)
-        result = run_checks(headless=True)
+        result = run_checks()
 
     print(json.dumps(result, indent=2))
 
     reservation = result.get("reservation")
     if result["status"] != "ok" or not reservation:
-        _log_result({**result, "message": result.get("message", "No confirmed reservation for target date")})
+        log_result({**result, "message": result.get("message", "No confirmed reservation for target date")})
         sys.exit(1)
 
-    target_date = result.get("target_date", "")
     asset_id = (reservation.get("asset_href", "") or "").split("/asset/")[-1] or reservation.get("asset", "")
-    resv_id = reservation.get("id", "")
-    booked = result.get("booking_attempted")
-    action = "booked" if booked else "already_exists"
+    action = "booked" if result.get("booking_attempted") else "already_exists"
     print(
-        f"RESULT: {action} asset={asset_id} date={target_date} id={resv_id}",
+        f"RESULT: {action} asset={asset_id} date={result['target_date']} id={reservation.get('id', '')}",
         file=sys.stderr,
     )
 
