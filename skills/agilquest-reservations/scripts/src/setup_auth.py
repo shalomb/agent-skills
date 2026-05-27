@@ -2,8 +2,12 @@
 """
 One-time interactive SSO setup for Agilquest.
 
-Opens a headed Chrome window via Microsoft app launcher. After successful
-login, saves auth state to auth.json for use by all headless scripts.
+Opens a headed Chrome window and navigates through the Microsoft app
+launcher. After successful SSO, MS tokens are saved in the persistent
+Chrome profile (user_data_dir) and reused by all headless scripts.
+
+Run this again whenever the headless scripts report MS SSO requires
+interactive login.
 
 Usage:
   uv run src/setup_auth.py
@@ -18,10 +22,7 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-from lib.browser import (
-    APP_LAUNCHER, AGILQUEST_HOME, get_state_dir, get_auth_state_path,
-    get_chrome_path, save_auth,
-)
+from lib.browser import APP_LAUNCHER, AGILQUEST_HOME, get_state_dir, get_chrome_path, launch_headed
 
 
 def clear_singleton_lock():
@@ -53,41 +54,33 @@ def main():
     clear_singleton_lock()
 
     with sync_playwright() as p:
-        browser = p.chromium.launch_persistent_context(
-            user_data_dir=str(state_dir / "user_data"),
-            headless=False,
-            executable_path=chrome_path,
-            # Mock keychain so cookies are readable by headless Playwright Chrome
-            args=["--disable-gpu", "--use-mock-keychain", "--password-store=basic"],
-        )
+        browser = launch_headed(p)
         try:
             page = browser.new_page()
 
             print("Step 1: Authenticating via Microsoft app launcher...")
             try:
-                page.goto(APP_LAUNCHER, wait_until="load", timeout=30000)
+                page.goto(APP_LAUNCHER, wait_until="domcontentloaded", timeout=45000)
             except Exception as e:
                 print(f"Note: {e}", file=sys.stderr)
-            page.wait_for_load_state("networkidle", timeout=30000)
 
-            if "login.agilquest.com" in page.url:
-                print("✓ Already authenticated — cached session is valid.")
+            if "login.agilquest.com" in page.url and "microsoftonline" not in page.url:
+                print("✓ MS SSO completed automatically — session valid.")
             else:
                 print("✓ Browser opened. Please complete Entra SSO login.")
                 print("  Waiting for redirect to Agilquest...")
                 page.wait_for_url("**/login.agilquest.com/**", timeout=300000)
                 print("✓ Redirected to Agilquest.")
 
-            print("\nStep 2: Navigating to Agilquest home to confirm access...")
-            page.goto(f"{AGILQUEST_HOME}/home", wait_until="load", timeout=30000)
-            page.wait_for_load_state("networkidle", timeout=30000)
+            print("\nStep 2: Confirming Agilquest access...")
+            page.goto(f"{AGILQUEST_HOME}/home", wait_until="domcontentloaded", timeout=30000)
+            import time; time.sleep(2)
 
             if "agilquest.com" not in page.url:
-                raise RuntimeError(f"Failed to reach Agilquest. URL: {page.url}")
+                raise RuntimeError(f"Failed to reach Agilquest home. URL: {page.url}")
 
-            save_auth(browser)
-            print("✓ Authentication successful — auth.json saved.")
-            print("✓ Headless scripts (book_reservation.py etc.) are ready to run.")
+            print("✓ MS tokens saved in persistent Chrome profile.")
+            print("✓ Headless scripts are ready — they will go through the launcher each run.")
 
         except Exception as e:
             print(f"✗ Setup failed: {e}", file=sys.stderr)

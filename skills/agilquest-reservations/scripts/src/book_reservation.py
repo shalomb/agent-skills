@@ -35,7 +35,7 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-from lib.browser import launch_headless, save_auth, verify_auth
+from lib.browser import launch_headless, verify_auth
 from lib.agilquest import (
     RESERVATIONS_URL, get_reservations, find_existing, stage, submit_with_retries,
 )
@@ -152,7 +152,6 @@ def book_with_fallbacks(
                 tried.append(result)
 
                 if result["status"] in ("success", "already_exists"):
-                    save_auth(browser)
                     return result
 
                 if result["status"] == "asset_unavailable":

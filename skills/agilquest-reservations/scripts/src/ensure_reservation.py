@@ -24,7 +24,7 @@ except ImportError:
     sys.exit(1)
 
 from lib.browser import (
-    APP_LAUNCHER, launch_headless, launch_headed, save_auth, verify_auth,
+    APP_LAUNCHER, launch_headless, launch_headed, verify_auth,
     get_state_dir, get_chrome_path,
 )
 from lib.agilquest import (
@@ -102,7 +102,6 @@ def run_checks() -> dict:
                 print(f"No reservation for {target_str} — booking now...", file=sys.stderr)
                 booking_result = book_primary(page, target)
                 if booking_result["status"] in ("success",):
-                    save_auth(browser)
                     reservations = get_reservations(page)
                     existing = find_existing(reservations, PRIMARY_ASSET, target)
 
