@@ -75,7 +75,7 @@ def is_on_agilquest(page) -> bool:
     )
 
 
-def establish_session(page, retries: int = 3, delay: int = 10) -> bool:
+def establish_session(page, retries: int = 2, delay: int = 5) -> bool:
     """Go through APP_LAUNCHER to get a fresh Agilquest session.
 
     The launcher does a SAML exchange that lands on /samlsuccess?authToken=...
@@ -90,7 +90,7 @@ def establish_session(page, retries: int = 3, delay: int = 10) -> bool:
     last_exc = None
     for attempt in range(1, retries + 1):
         try:
-            page.goto(APP_LAUNCHER, wait_until="domcontentloaded", timeout=45000)
+            page.goto(APP_LAUNCHER, wait_until="domcontentloaded", timeout=30000)
             last_exc = None
             break
         except Exception as e:
