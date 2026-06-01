@@ -17,7 +17,7 @@ Options:
 
 Cron:
   23:51  run_prewarm.sh
-  23:57  run_booking.sh  (--prestage)
+  00:01  run_booking.sh
   14:00  run_ensure.sh
   07:24  run_prewarm.sh
 """

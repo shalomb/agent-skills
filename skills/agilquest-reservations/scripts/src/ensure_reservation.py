@@ -79,7 +79,7 @@ def book_primary(page, target: datetime) -> dict:
 
 
 def run_checks() -> dict:
-    target = datetime.now() + timedelta(days=7)
+    target = datetime.now() + timedelta(days=8)
     target_str = target.strftime("%Y-%m-%d")
 
     with sync_playwright() as p:
