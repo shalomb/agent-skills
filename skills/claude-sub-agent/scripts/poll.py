@@ -28,7 +28,7 @@ from datetime import datetime
 def read_pane(target: str) -> str:
     """Read tmux pane content."""
     tmux_read = (
-        f"{__import__('pathlib').Path.home()}/.pi/agent/skills/tmux/scripts/tmux-read.sh"
+        str(pathlib.Path(__file__).resolve().parent.parent.parent / "tmux-remote-control" / "scripts" / "tmux-read.sh")
     )
     try:
         result = subprocess.run(

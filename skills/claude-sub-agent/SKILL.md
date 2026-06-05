@@ -88,7 +88,7 @@ EOF
 ### 2. Identify a free tmux pane
 
 ```bash
-bash ~/.pi/agent/skills/tmux/scripts/tmux-list.sh
+bash {SKILLS_DIR}/tmux-remote-control/scripts/tmux-list.sh
 ```
 
 ### 3. Launch claude + monitor in the pane
@@ -100,13 +100,13 @@ tmux send-keys -t "$TARGET" \
   "cd /path/to/repo && claude --print --output-format stream-json --dangerously-skip-permissions --no-session-persistence -p @/tmp/task-prompt.md > /tmp/claude-output.jsonl 2>&1 &" Enter
 sleep 5
 tmux send-keys -t "$TARGET" \
-  "python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py /tmp/claude-output.jsonl" Enter
+  "python3 {SKILLS_DIR}/claude-sub-agent/scripts/monitor.py /tmp/claude-output.jsonl" Enter
 ```
 
 ### 4. Poll for completion
 
 ```bash
-python3 ~/.pi/agent/skills/claude-sub-agent/scripts/poll.py "$TARGET" --interval 30
+python3 {SKILLS_DIR}/claude-sub-agent/scripts/poll.py "$TARGET" --interval 30
 ```
 
 ### 5. Verify results
@@ -130,9 +130,9 @@ tmux send-keys -t "$TARGET" \
   "cd /path/to/repo && claude --print --output-format stream-json --dangerously-skip-permissions --no-session-persistence -p @/tmp/task-prompt.md > /tmp/claude-output.jsonl 2>&1 &" Enter
 sleep 5
 tmux send-keys -t "$TARGET" \
-  "python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py /tmp/claude-output.jsonl" Enter
+  "python3 {SKILLS_DIR}/claude-sub-agent/scripts/monitor.py /tmp/claude-output.jsonl" Enter
 
-python3 ~/.pi/agent/skills/claude-sub-agent/scripts/poll.py "$TARGET" --interval 30
+python3 {SKILLS_DIR}/claude-sub-agent/scripts/poll.py "$TARGET" --interval 30
 
 tmux send-keys -t "$TARGET" C-c
 git log --oneline -5

@@ -145,7 +145,7 @@ gathering, then apply the adversarial checklist, post inline comments, and decid
 ### 1. Gather PR evidence
 
 ```bash
-SKILL_DIR=~/.pi/agent/skills/pr-review
+SKILL_DIR={SKILLS_DIR}/pr-review
 
 # Diff
 gh pr diff <N>

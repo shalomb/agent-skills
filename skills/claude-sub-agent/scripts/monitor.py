@@ -397,7 +397,7 @@ def completion_summary(data: dict, path: str) -> None:
             task_id = "-".join(parts[i + 1:]).upper() if i + 1 < len(parts) else None
             break
 
-    DISPATCH = "~/.pi/agent/skills/agent-mux/scripts/dispatch.py"
+    DISPATCH = str(pathlib.Path(__file__).resolve().parent.parent.parent / "agent-mux" / "scripts" / "dispatch.py")
 
     print()
     if is_error:

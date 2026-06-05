@@ -51,7 +51,7 @@ After editing skills in `~/shalomb/agent-skills/skills/`:
 
 ```bash
 # Confirm pi picks up the change
-diff <(cat ~/.pi/agent/skills/{skill}/SKILL.md) \
+diff <(cat {SKILLS_DIR}/{skill}/SKILL.md) \
      <(cat ~/shalomb/agent-skills/skills/{skill}/SKILL.md)
 # Should show no diff (symlinked)
 ```
@@ -60,6 +60,6 @@ After promoting a project skill:
 
 ```bash
 # Confirm symlink exists and resolves
-readlink -f ~/.pi/agent/skills/{skill}/SKILL.md
+readlink -f {SKILLS_DIR}/{skill}/SKILL.md
 # Should point to ~/shalomb/agent-skills/skills/{skill}/SKILL.md
 ```

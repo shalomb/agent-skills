@@ -26,7 +26,7 @@ def read_pane(target: str) -> str:
     """Read the tmux pane content via tmux-read.sh."""
     # Try the skill's tmux-read.sh first, fall back to direct tmux capture
     for script in [
-        f"{__import__('pathlib').Path.home()}/.pi/agent/skills/tmux/scripts/tmux-read.sh",
+        str(pathlib.Path(__file__).resolve().parent.parent.parent / "tmux-remote-control" / "scripts" / "tmux-read.sh"),
     ]:
         try:
             result = subprocess.run(
