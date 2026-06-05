@@ -13,6 +13,13 @@ description: |
 Convert URLs and local files to Markdown for analysis, quoting, or processing.
 Optionally summarize long documents before deeper work.
 
+## When to use
+
+Use this skill when you need to:
+- pull down a web page as a document-like Markdown representation
+- convert binary docs (PDF/DOCX/PPTX) into Markdown for analysis
+- quickly produce a short summary of a long document before deeper work
+
 ## Quick Usage
 
 ### Convert a URL or file
@@ -39,10 +46,10 @@ node scripts/to-markdown.mjs <url-or-path> --out notes.md
 
 The summarizer:
 1. Converts to Markdown via `markitdown`
-2. Saves full Markdown to a temp file (prints path as hint)
+2. Saves full Markdown to a temp file (prints path as hint so you can inspect the full content)
 3. Runs `pi --model claude-haiku-4-5` to summarize with your prompt
 
-**Always provide context** — summaries without a focus prompt are generic and unhelpful.
+**Always provide context** — summaries are only useful when you provide **what you want extracted** and the **audience/purpose**. Without a focus prompt, summaries become generic and unhelpful.
 
 ### Batch processing (shell function)
 
