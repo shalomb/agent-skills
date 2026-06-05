@@ -1,15 +1,26 @@
 ---
-name: farley-index
-description: Use this skill to evaluate the quality of an automated test suite using the Farley Index — Dave Farley's Properties of Good Tests (Fast, Maintainable, Repeatable, Atomic, Necessary, Understandable). Produces a scored diagnostic (0–10) and recommendations.
+name: farley-tdd
+description: Guide on applying Dave Farley's Properties of Good Tests (TDD). Use this skill to write robust unit tests, practice strict Red-Green-Refactor, or evaluate a test suite using the Farley Index. Triggers on 'farley', 'tdd', 'test driven development', 'unit tests', 'test quality'.
 metadata:
-  version: 1.0.0
+  version: 2.0.0
 ---
 
-# Farley Index Evaluator
+# Farley Test-Driven Development (TDD)
 
-A quantitative diagnostic skill that scores an automated test suite against
-Dave Farley's six Properties of Good Tests. It shifts the question from
-**"Do we have tests?"** to **"Can we trust our tests?"**
+This skill provides comprehensive guidance on practicing Test-Driven Development (TDD) and evaluating test quality using Dave Farley's *Properties of Good Tests*.
+
+## Practicing Strict TDD
+
+When writing new features or fixing bugs, follow the Red-Green-Refactor cycle:
+1. **Red**: Write a failing test that defines the required behavior.
+2. **Green**: Write the minimal production code necessary to pass the test.
+3. **Refactor**: Improve the code structure without altering behavior.
+
+All tests written must embody Farley's properties: **Fast, Maintainable, Repeatable, Atomic, Necessary, Understandable**.
+
+## The Farley Index Evaluator
+
+A quantitative diagnostic tool that scores an automated test suite against these six Properties of Good Tests. It shifts the question from **"Do we have tests?"** to **"Can we trust our tests?"**
 
 ## When to Use This Skill
 
@@ -37,6 +48,10 @@ Dave Farley's six Properties of Good Tests. It shifts the question from
 
 ## Triggers
 
+- "farley"
+- "tdd"
+- "test driven development"
+- "write unit tests"
 - "farley index"
 - "farley-index"
 - "test quality"
