@@ -1,6 +1,6 @@
 ---
 name: codemap-hub-safety
-description: Safety protocol for editing hub files — files imported by 3 or more others. Use when codemap identifies a hub in the pre-edit hook, when about to modify a widely-imported file, or when the prompt-submit hook surfaces hub-safety as a matched skill.
+description: Strict safety protocol for modifying hub files. Trigger this skill immediately when you discover a file is imported by 3 or more other files, when the codemap hook surfaces 'hub-safety', or when making structural changes to core architecture files.
 ---
 
 # Hub Safety Protocol

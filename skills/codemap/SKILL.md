@@ -1,6 +1,6 @@
 ---
 name: codemap
-description: Analyze codebase structure, dependencies, changes, and cross-agent handoffs using codemap. Use when asked about project structure, where code is located, how files connect, what changed, how to hand off between agents, or before starting any coding task. Also triggers when codemap output looks noisy and config needs tuning.
+description: Analyze codebase structure, dependencies, changes, and multi-agent handoffs using codemap. Use this skill as the primary entry point when a task requires understanding project architecture, mapping dependencies, tracing logic, or generating cross-agent handoff artifacts. Always trigger this first when exploring unfamiliar code or when codemap output indicates noisy configurations.
 ---
 
 # Codemap
@@ -49,7 +49,7 @@ The `prompt-submit` hook fires on every message and emits:
 ```
 <!-- codemap:intent {"category":"refactor","risk":"high",...} -->
 <!-- codemap:skills [{"name":"hub-safety","score":5},...] -->
-Skills matched: hub-safety, refactor — run `codemap skill show <name>` for guidance
+Skills matched: hub-safety, explore — run `codemap skill show <name>` for guidance
 ```
 
 Skills are pull-based — names are surfaced automatically, full body loaded only when needed.
@@ -60,8 +60,6 @@ Skills are pull-based — names are surfaced automatically, full body loaded onl
 |---|---|
 | `config-setup` | Config missing, boilerplate, or output noisy |
 | `hub-safety` | Editing a file with 3+ importers |
-| `refactor` | Restructuring, renaming, moving code |
-| `test-first` | TDD workflows, writing tests |
 | `explore` | Understanding how code works |
 | `handoff` | Switching between agents |
 
