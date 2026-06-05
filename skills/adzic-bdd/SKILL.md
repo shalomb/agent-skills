@@ -18,6 +18,11 @@ When authoring new `.feature` files or acceptance criteria, always adhere to the
 - **Focused**: One scenario tests one specific business rule.
 - **Living Documentation**: Ensure the scenario acts as the definitive source of truth.
 
+**Crucial Pitfall (via Kent Beck's Canon TDD):** 
+Do not mix implementation design decisions into your scenario list. The Test List is *behavioral analysis*. There will be plenty of time to decide how the internals look later.
+
+> **Note**: For tactical guidance on keeping test abstractions clean and avoiding brittle dependencies, use the **`test-design-review`** skill.
+
 ## The Adzic Index Evaluator
 
 A quantitative diagnostic tool that scores BDD `.feature` files against these principles. The companion to the Farley Index — together they cover the complete quality picture.
