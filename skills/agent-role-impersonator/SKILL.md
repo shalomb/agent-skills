@@ -1,6 +1,7 @@
 ---
 name: agent-role-impersonator
-description: Find and assume roles from agent definitions in .github/agents/*.md files. Load agent context to guide specialized development workflows. Use when you need to discover and adopt specialized agent roles or personas. Triggers on: 'act as', 'persona', 'assume the role of', 'impersonate', 'who are the agents'.
+description: >
+  Find and assume roles from agent definitions in .github/agents/*.md files. Load agent context to guide specialized development workflows. Use when you need to discover and adopt specialized agent roles or personas. Triggers on: 'act as', 'persona', 'assume the role of', 'impersonate', 'who are the agents'.
 ---
 
 # Agent Impersonation Skill

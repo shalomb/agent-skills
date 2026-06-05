@@ -1,6 +1,7 @@
 ---
 name: iteration-planner
-description: Orchestrate the transition between GitHub Project iterations (e.g., ORG/PROJECT_NUMBER). Perform a "Sprint Stocktake" of open work and coordinate with the user to schedule the next 2-week iteration. Triggers on: 'sprint planning', 'iteration', 'sprint stocktake', 'plan the next sprint'.
+description: >
+  Orchestrate the transition between GitHub Project iterations (e.g., ORG/PROJECT_NUMBER). Perform a "Sprint Stocktake" of open work and coordinate with the user to schedule the next 2-week iteration. Triggers on: 'sprint planning', 'iteration', 'sprint stocktake', 'plan the next sprint'.
 ---
 
 # Iteration Planner Skill
