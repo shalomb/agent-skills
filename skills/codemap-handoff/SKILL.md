@@ -1,6 +1,6 @@
 ---
 name: codemap-handoff
-description: Build and consume cross-agent handoff artifacts with codemap. Use when switching between AI agents (Claude, Codex, Cursor, pi), resuming work after a break, or when context window is getting full and work needs to continue in a fresh session.
+description: Create and read cross-agent handoff artifacts. Trigger this skill when the conversation context window is full and you need to resume work in a new session, or when you are asked to pass your current progress to another autonomous agent (e.g., Claude, Cursor, Pi).
 ---
 
 # Multi-Agent Handoff

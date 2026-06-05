@@ -36,3 +36,23 @@ Detailed recipes for specific scenarios are available in the references:
 *   **Never skip the Macro step:** If you are asked to change a "core" or "utils" file, use Codemap to check its fan-out first.
 *   **Never use `sed` for code:** If you need to rename a parameter across 20 files, use AST Grep or LSP Rename. Text replacement destroys comments and strings.
 *   **Don't read massive files:** If a file is 2,000 lines long, use `lsp outline` to see its structure before blindly jumping in.
+
+## Safe Refactoring Checklist
+
+Before executing any structural refactor (safe rename or move):
+- [ ] `codemap --deps .` — understand the full dependency graph
+- [ ] Identify hub files in scope — they need extra care
+- [ ] `codemap --diff` — see what's already changed on this branch
+- [ ] All tests pass before starting
+
+### Safe rename pattern
+1. Add the new name alongside the old (alias or wrapper)
+2. Update all callers to use the new name
+3. Remove the old name
+4. Full test suite
+
+### Safe move pattern
+1. Create new file with the same public API
+2. Re-export from old location temporarily
+3. Update all importers to use the new path
+4. Remove old file and re-export

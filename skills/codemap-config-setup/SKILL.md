@@ -1,6 +1,6 @@
 ---
 name: codemap-config-setup
-description: Set up or tune .codemap/config.json so Codemap focuses on code-relevant parts of the repo. Use when config is missing, boilerplate, noisy, or mismatched to the stack.
+description: Configure and tune .codemap/config.json. Trigger this skill ONLY when codemap CLI output is overwhelmed by irrelevant files (like assets, generated code, or vendor folders), or when the prompt-submit hook explicitly suggests config-setup.
 ---
 
 # Codemap Config Setup

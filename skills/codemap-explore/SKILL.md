@@ -1,6 +1,6 @@
 ---
 name: codemap-explore
-description: Systematic codebase exploration using codemap. Use when asked how something works, tracing dependencies, understanding a subsystem, or onboarding to an unfamiliar area of the codebase.
+description: Systematic codebase exploration. Trigger this skill when you need to understand how a specific subsystem works, trace the downstream impact of a feature, find where a function is defined, or onboard to an entirely new area of the codebase.
 ---
 
 # Systematic Codebase Exploration
