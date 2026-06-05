@@ -34,21 +34,53 @@ from pathlib import Path
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
+# Runner: "claude", "gemini", or "kiro"
+# Set via --runner flag or AGENT_MUX_RUNNER env var (default: claude)
+DEFAULT_RUNNER = "claude"
+
 # Per-agent model and flag defaults (mirrors Springfield's config.toml)
 AGENT_CONFIG = {
     "ralph": {
-        "model": "sonnet",
-        "persona": None,              # No persona appended — ralph is the default claude mode
-        "jsonl": "/tmp/claude-ralph-{id}.jsonl",
-        "monitor": "~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py",
+        "claude": {
+            "model": "sonnet",
+            "persona": None,
+            "jsonl": "/tmp/claude-ralph-{id}.jsonl",
+            "monitor": "~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py",
+        },
+        "kiro": {
+            "model": None,  # uses kiro default
+            "logfile": "/tmp/kiro-ralph-{id}.log",
+        },
+        "gemini": {
+            "model": "gemini-2.5-flash",
+            "jsonl": "/tmp/gemini-ralph-{id}.jsonl",
+            "monitor": "~/.pi/agent/skills/gemini-sub-agent/scripts/monitor.py",
+        },
     },
     "bart": {
-        "model": "sonnet",
-        "persona": "~/.pi/agents/bart.md",
-        "jsonl": "/tmp/claude-bart-{id}.jsonl",
-        "monitor": "~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py",
+        "claude": {
+            "model": "sonnet",
+            "persona": "~/.pi/agents/bart.md",
+            "jsonl": "/tmp/claude-bart-{id}.jsonl",
+            "monitor": "~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py",
+        },
+        "kiro": {
+            "model": None,
+            "logfile": "/tmp/kiro-bart-{id}.log",
+        },
+        "gemini": {
+            "model": "gemini-2.5-flash",
+            "jsonl": "/tmp/gemini-bart-{id}.jsonl",
+            "monitor": "~/.pi/agent/skills/gemini-sub-agent/scripts/monitor.py",
+        },
     },
 }
+
+
+def get_runner() -> str:
+    """Get the active runner from env or default."""
+    import os
+    return os.environ.get("AGENT_MUX_RUNNER", DEFAULT_RUNNER)
 
 # ── State machine ──────────────────────────────────────────────────────────────
 
@@ -73,8 +105,20 @@ def find_todo_md(repo: Path) -> Path:
     raise FileNotFoundError(f"TODO.md not found in {repo}")
 
 
+def find_plan_md(repo: Path) -> Path | None:
+    """Find PLAN.md for epic-level tasks."""
+    candidates = [
+        repo / ".worktrees" / "planning" / "PLAN.md",
+        repo / "PLAN.md",
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    return None
+
+
 def extract_task(todo_path: Path, task_id: str) -> dict:
-    """Extract task detail section from TODO.md by ID."""
+    """Extract task detail section from TODO.md or PLAN.md by ID."""
     text = todo_path.read_text()
 
     # Find one-liner from matrix table
@@ -83,12 +127,22 @@ def extract_task(todo_path: Path, task_id: str) -> dict:
     matrix_match = re.search(matrix_pattern, text, re.MULTILINE)
     one_liner = matrix_match.group(1).strip() if matrix_match else task_id
 
-    # Find detail section: ### B1 — ... up to next ### or ---
-    detail_pattern = rf"^###\s+{re.escape(task_id)}\b.*?(?=^###\s|\Z)"
+    # Find detail section: ### B1 — ... or ## EPIC-001 — ... up to next heading of same level or ---
+    detail_pattern = rf"^##\s+{re.escape(task_id)}\b.*?(?=^##\s[^#]|\Z)"
     detail_match = re.search(detail_pattern, text, re.MULTILINE | re.DOTALL)
+    if not detail_match:
+        # Try ### level (TODO.md style)
+        detail_pattern = rf"^###\s+{re.escape(task_id)}\b.*?(?=^###\s|\Z)"
+        detail_match = re.search(detail_pattern, text, re.MULTILINE | re.DOTALL)
+
     detail = detail_match.group(0).strip() if detail_match else ""
 
     if not detail:
+        # Try PLAN.md if we were searching TODO.md
+        repo = todo_path.parent
+        plan = find_plan_md(repo)
+        if plan and plan != todo_path:
+            return extract_task(plan, task_id)
         raise ValueError(f"No detail section found for task {task_id} in {todo_path}")
 
     return {
@@ -103,16 +157,21 @@ def list_todo_items(todo_path: Path) -> list[dict]:
     text = todo_path.read_text()
     items = []
     for line in text.splitlines():
+        # Match: | ID | description | ... (flexible — any table row with a task ID)
         m = re.match(
-            r"^\|\s*([A-Z][0-9]+|\d+[\w.]*)\s*\|\s*(\[.*?\].*?)\s*\|"
-            r".*\|\s*(TODO|✅|🔄.*)\s*\|",
+            r"^\|\s*([A-Z]+\d+[\w.]*)\s*\|\s*(.+?)\s*\|",
             line,
         )
         if m:
+            task_id = m.group(1)
+            description = m.group(2).strip().strip("`")
+            # Check for explicit status column (TODO, ✅, 🔄)
+            status_match = re.search(r"\|\s*(TODO|✅[^|]*|🔄[^|]*)\s*\|", line)
+            status = status_match.group(1).strip() if status_match else "TODO"
             items.append({
-                "id": m.group(1),
-                "description": m.group(2).strip(),
-                "status": m.group(3).strip(),
+                "id": task_id,
+                "description": description,
+                "status": status,
             })
     return items
 
@@ -162,10 +221,45 @@ def transition(repo: Path, task_id: str, signal: str) -> str:
 
 # ── Worktree management ────────────────────────────────────────────────────────
 
-def ensure_worktree(repo: Path, task_id: str, branch_prefix: str = "fix") -> Path:
+def branch_prefix_for(task_id: str) -> str:
+    """Derive conventional branch prefix from task ID."""
+    prefixes = {
+        "B": "fix",
+        "C": "fix",
+        "F": "feat",
+        "AX": "feat",
+        "A": "refactor",
+        "D": "docs",
+        "EPIC": "feat",
+    }
+    # Check longest prefix first (EPIC before E, AX before A)
+    for key in sorted(prefixes, key=len, reverse=True):
+        if task_id.startswith(key):
+            return prefixes[key]
+    return "fix"
+
+
+def slugify(text: str, max_len: int = 50) -> str:
+    """Convert a description into a branch-safe slug."""
+    slug = text.lower()
+    slug = re.sub(r"[^a-z0-9]+", "-", slug)
+    slug = slug.strip("-")
+    return slug[:max_len].rstrip("-")
+
+
+def ensure_worktree(repo: Path, task_id: str, one_liner: str = "",
+                    branch_prefix: str | None = None) -> Path:
     """Create worktree for task if it doesn't exist; return path."""
-    slug = task_id.lower().replace(".", "-")
-    branch = f"{branch_prefix}/{slug}"
+    prefix = branch_prefix or branch_prefix_for(task_id)
+
+    # Build a descriptive slug: "f4-workspace-notifications" or "b12-truncation"
+    desc_slug = slugify(one_liner) if one_liner else task_id.lower().replace(".", "-")
+    slug = f"{task_id.lower()}-{desc_slug}" if one_liner else task_id.lower().replace(".", "-")
+    # Avoid redundancy if one_liner already starts with the ID
+    if desc_slug.startswith(task_id.lower()):
+        slug = desc_slug
+
+    branch = f"{prefix}/{slug}"
     wt_path = repo / ".worktrees" / slug
 
     if wt_path.exists():
@@ -337,6 +431,27 @@ echo "PID: $!"
 python3 {monitor} {jsonl}
 """
 
+KIRO_LAUNCH_TEMPLATE = """\
+#!/bin/bash
+cd {worktree}
+echo "KIRO_START: $(date -Iseconds)" | tee {logfile}
+echo "─── {prompt} ───"
+kiro-cli chat --trust-all-tools --no-interactive --agent yolo{model_flag} "$(cat {prompt})" 2>&1 | tee -a {logfile}
+echo "KIRO_EXIT: ${{PIPESTATUS[0]}}" | tee -a {logfile}
+echo "KIRO_END: $(date -Iseconds)" | tee -a {logfile}
+"""
+
+GEMINI_LAUNCH_TEMPLATE = """\
+#!/bin/bash
+cd {worktree}
+> {jsonl}
+gemini -y --output-format stream-json --model {model} \\
+  -p @{prompt} \\
+  >> {jsonl} 2>&1 &
+echo "PID: $!"
+python3 {monitor} {jsonl}
+"""
+
 
 def write_prompt(agent: str, task: dict, worktree: Path, repo: Path,
                  pr: int | None = None, preexisting: str = "none") -> Path:
@@ -383,24 +498,46 @@ def write_prompt(agent: str, task: dict, worktree: Path, repo: Path,
     return prompt_path
 
 
-def write_launch_script(agent: str, task: dict, worktree: Path, prompt: Path) -> Path:
+def write_launch_script(agent: str, task: dict, worktree: Path, prompt: Path,
+                        runner: str | None = None) -> Path:
     """Generate and write the launch script; return path."""
-    cfg = AGENT_CONFIG[agent]
-    jsonl = cfg["jsonl"].format(id=task["id"].lower())
-    monitor = cfg["monitor"]
-    persona = cfg.get("persona")
-    persona_line = f"  --append-system-prompt @{persona} \\\n" if persona else ""
+    runner = runner or get_runner()
+    cfg = AGENT_CONFIG[agent][runner]
+    task_slug = task["id"].lower()
 
-    content = LAUNCH_TEMPLATE.format(
-        worktree=worktree,
-        jsonl=jsonl,
-        model=cfg["model"],
-        persona_line=persona_line,
-        prompt=prompt,
-        monitor=monitor,
-    )
+    if runner == "kiro":
+        logfile = cfg["logfile"].format(id=task_slug)
+        model_flag = f" --model {cfg['model']}" if cfg.get("model") else ""
+        content = KIRO_LAUNCH_TEMPLATE.format(
+            worktree=worktree,
+            logfile=logfile,
+            model_flag=model_flag,
+            prompt=prompt,
+        )
+    elif runner == "gemini":
+        jsonl = cfg["jsonl"].format(id=task_slug)
+        content = GEMINI_LAUNCH_TEMPLATE.format(
+            worktree=worktree,
+            jsonl=jsonl,
+            model=cfg["model"],
+            prompt=prompt,
+            monitor=cfg["monitor"],
+        )
+    else:  # claude (default)
+        jsonl = cfg["jsonl"].format(id=task_slug)
+        monitor = cfg["monitor"]
+        persona = cfg.get("persona")
+        persona_line = f"  --append-system-prompt @{persona} \\\n" if persona else ""
+        content = LAUNCH_TEMPLATE.format(
+            worktree=worktree,
+            jsonl=jsonl,
+            model=cfg["model"],
+            persona_line=persona_line,
+            prompt=prompt,
+            monitor=monitor,
+        )
 
-    script_path = Path(f"/tmp/launch-{agent}-{task['id'].lower()}.sh")
+    script_path = Path(f"/tmp/launch-{agent}-{task_slug}.sh")
     script_path.write_text(content)
     script_path.chmod(0o755)
     print(f"  Script: {script_path}")
@@ -408,6 +545,74 @@ def write_launch_script(agent: str, task: dict, worktree: Path, prompt: Path) ->
 
 
 # ── tmux dispatch ──────────────────────────────────────────────────────────────
+
+AGENT_SESSION = None  # Use current tmux session by default
+
+
+def current_tmux_session() -> str | None:
+    """Get the current tmux session name (from $TMUX_PANE or fallback)."""
+    import os
+    pane = os.environ.get("TMUX_PANE")
+    if pane:
+        result = subprocess.run(
+            ["tmux", "display-message", "-p", "#{session_name}"],
+            capture_output=True, text=True,
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    # Fallback: pick the attached session
+    result = subprocess.run(
+        ["tmux", "list-sessions", "-F", "#{session_name} #{session_attached}"],
+        capture_output=True, text=True,
+    )
+    for line in result.stdout.strip().splitlines():
+        name, attached = line.rsplit(" ", 1)
+        if attached == "1":
+            return name
+    return None
+
+
+def ensure_agent_panes(num_panes: int = 2, session: str | None = None) -> list[str]:
+    """Ensure N bash windows exist in the target session for agent work.
+    Creates new windows in the current session by default. Returns pane targets."""
+    session = session or current_tmux_session()
+    if not session:
+        # No tmux at all — create a detached session
+        session = "agents"
+        subprocess.run(
+            ["tmux", "new-session", "-d", "-s", session, "-n", "agent-0"],
+            check=True,
+        )
+
+    # Find existing free bash panes in this session
+    result = subprocess.run(
+        ["tmux", "list-panes", "-s", "-t", session,
+         "-F", "#{session_name}:#{window_index}.#{pane_index} #{pane_current_command}"],
+        capture_output=True, text=True,
+    )
+    free_panes = []
+    for line in result.stdout.strip().splitlines():
+        target, cmd = line.split(" ", 1)
+        if cmd == "bash":
+            free_panes.append(target)
+
+    # Create additional windows if we don't have enough
+    while len(free_panes) < num_panes:
+        idx = len(free_panes)
+        subprocess.run(
+            ["tmux", "new-window", "-t", session, "-n", f"agent-{idx}"],
+            check=True,
+        )
+        # Get the new pane target
+        new_pane = subprocess.check_output(
+            ["tmux", "display-message", "-t", f"{session}:agent-{idx}",
+             "-p", "#{session_name}:#{window_index}.#{pane_index}"],
+            text=True,
+        ).strip()
+        free_panes.append(new_pane)
+
+    return free_panes[:num_panes]
+
 
 def find_free_pane(prefer: str | None = None) -> str | None:
     """Find a free bash pane; return tmux target or None."""
@@ -440,13 +645,12 @@ def dispatch_to_pane(pane: str, script: Path) -> None:
 def cmd_ralph(args, repo: Path) -> None:
     todo = find_todo_md(repo)
     task = extract_task(todo, args.task_id)
-    print(f"\n▶ Ralph: {args.task_id} — {task['one_liner']}")
+    runner = args.runner or get_runner()
+    print(f"\n▶ Ralph ({runner}): {args.task_id} — {task['one_liner']}")
 
-    wt = ensure_worktree(repo, args.task_id,
-                         branch_prefix=args.branch_prefix or "fix")
+    wt = ensure_worktree(repo, args.task_id, one_liner=task["one_liner"],
+                         branch_prefix=args.branch_prefix)
     print(f"  Worktree: {wt}")
-
-    # Refuse to proceed on a red baseline unless explicitly skipped
     if not getattr(args, "skip_baseline", False):
         ok = baseline_check(wt)
         if not ok:
@@ -456,17 +660,23 @@ def cmd_ralph(args, repo: Path) -> None:
             sys.exit(1)
 
     prompt = write_prompt("ralph", task, wt, repo)
-    script = write_launch_script("ralph", task, wt, prompt)
+    script = write_launch_script("ralph", task, wt, prompt, runner=runner)
 
     pane = args.pane or find_free_pane()
     if not pane:
-        print("ERROR: No free tmux pane found. Specify --pane.")
-        sys.exit(1)
+        panes = ensure_agent_panes(num_panes=2)
+        pane = panes[0]
+        print(f"  Provisioned agent panes in current session: {len(panes)} panes")
 
     transition(repo, args.task_id, "ralph_start")
     dispatch_to_pane(pane, script)
     print("\n  State: todo → in_progress")
-    print(f"  Monitor JSONL: {AGENT_CONFIG['ralph']['jsonl'].format(id=args.task_id.lower())}")
+
+    cfg = AGENT_CONFIG["ralph"][runner]
+    if runner == "kiro":
+        print(f"  Log: {cfg['logfile'].format(id=args.task_id.lower())}")
+    else:
+        print(f"  Monitor JSONL: {cfg['jsonl'].format(id=args.task_id.lower())}")
 
 
 def cmd_wave(args, repo: Path) -> None:
@@ -476,11 +686,17 @@ def cmd_wave(args, repo: Path) -> None:
     tasks = [extract_task(todo, tid) for tid in task_ids]
     wave_id = "-".join(t["id"].lower() for t in tasks)
     one_liner = ", ".join(t["id"] for t in tasks)
+    runner = args.runner or get_runner()
 
-    print(f"\n▶ Wave Ralph: [{one_liner}]")
+    print(f"\n▶ Wave Ralph ({runner}): [{one_liner}]")
 
-    wt = ensure_worktree(repo, wave_id,
-                         branch_prefix=args.branch_prefix or "fix")
+    # For waves, derive prefix from first task and build a combined slug
+    prefix = args.branch_prefix or branch_prefix_for(task_ids[0])
+    # Use first task's description as the slug base
+    wave_slug = slugify(tasks[0]["one_liner"], max_len=40)
+    wave_branch_id = f"{wave_id}-{wave_slug}" if wave_slug else wave_id
+    wt = ensure_worktree(repo, wave_id, one_liner=tasks[0]["one_liner"],
+                         branch_prefix=prefix)
     print(f"  Worktree: {wt}")
 
     if not getattr(args, "skip_baseline", False):
@@ -502,18 +718,40 @@ def cmd_wave(args, repo: Path) -> None:
     prompt_path.write_text(content)
     print(f"  Prompt: {prompt_path}")
 
-    # Build launch script using first task's AGENT_CONFIG
-    cfg = AGENT_CONFIG["ralph"]
-    jsonl = f"/tmp/claude-ralph-wave-{wave_id}.jsonl"
-    persona_line = f"  --append-system-prompt @{cfg['persona']} \\\n" if cfg.get("persona") else ""
-    script_content = LAUNCH_TEMPLATE.format(
-        worktree=wt,
-        jsonl=jsonl,
-        model=cfg["model"],
-        persona_line=persona_line,
-        prompt=prompt_path,
-        monitor=cfg["monitor"],
-    )
+    # Build launch script
+    cfg = AGENT_CONFIG["ralph"][runner]
+    wave_task = {"id": f"wave-{wave_id}", "one_liner": one_liner}
+
+    if runner == "kiro":
+        logfile = f"/tmp/kiro-ralph-wave-{wave_id}.log"
+        model_flag = f" --model {cfg['model']}" if cfg.get("model") else ""
+        script_content = KIRO_LAUNCH_TEMPLATE.format(
+            worktree=wt,
+            logfile=logfile,
+            model_flag=model_flag,
+            prompt=prompt_path,
+        )
+    elif runner == "gemini":
+        jsonl = f"/tmp/gemini-ralph-wave-{wave_id}.jsonl"
+        script_content = GEMINI_LAUNCH_TEMPLATE.format(
+            worktree=wt,
+            jsonl=jsonl,
+            model=cfg["model"],
+            prompt=prompt_path,
+            monitor=cfg["monitor"],
+        )
+    else:  # claude
+        jsonl = f"/tmp/claude-ralph-wave-{wave_id}.jsonl"
+        persona_line = f"  --append-system-prompt @{cfg['persona']} \\\n" if cfg.get("persona") else ""
+        script_content = LAUNCH_TEMPLATE.format(
+            worktree=wt,
+            jsonl=jsonl,
+            model=cfg["model"],
+            persona_line=persona_line,
+            prompt=prompt_path,
+            monitor=cfg["monitor"],
+        )
+
     script_path = Path(f"/tmp/launch-ralph-wave-{wave_id}.sh")
     script_path.write_text(script_content)
     script_path.chmod(0o755)
@@ -521,8 +759,9 @@ def cmd_wave(args, repo: Path) -> None:
 
     pane = args.pane or find_free_pane()
     if not pane:
-        print("ERROR: No free tmux pane found.")
-        sys.exit(1)
+        panes = ensure_agent_panes(num_panes=2)
+        pane = panes[0]
+        print(f"  Provisioned agent panes in current session: {len(panes)} panes")
 
     for tid in task_ids:
         try:
@@ -532,7 +771,10 @@ def cmd_wave(args, repo: Path) -> None:
 
     dispatch_to_pane(pane, script_path)
     print(f"\n  Dispatched wave [{one_liner}] to pane: {pane}")
-    print(f"  Monitor JSONL: {jsonl}")
+    if runner == "kiro":
+        print(f"  Log: /tmp/kiro-ralph-wave-{wave_id}.log")
+    else:
+        print(f"  Monitor JSONL: /tmp/{runner}-ralph-wave-{wave_id}.jsonl")
 
 
 def cmd_pr(args, repo: Path) -> None:
@@ -617,7 +859,8 @@ def cmd_triage(args, repo: Path) -> None:
 def cmd_bart(args, repo: Path) -> None:
     todo = find_todo_md(repo)
     task = extract_task(todo, args.task_id)
-    print(f"\n▶ Bart: reviewing PR #{args.pr} for {args.task_id} — {task['one_liner']}")
+    runner = args.runner or get_runner()
+    print(f"\n▶ Bart ({runner}): reviewing PR #{args.pr} for {args.task_id} — {task['one_liner']}")
 
     # Worktree: explicit override, or default fix/<id> convention, or create from branch
     if getattr(args, "worktree", None):
@@ -644,10 +887,15 @@ def cmd_bart(args, repo: Path) -> None:
             )
             if already_checked_out:
                 # Find the existing worktree path for this branch
+                # Porcelain format: "worktree /path\nHEAD abc\nbranch refs/heads/..."
                 lines = existing.splitlines()
                 for i, line in enumerate(lines):
-                    if f"refs/heads/{pr_branch}" in line and i > 0:
-                        wt = Path(lines[i - 1].replace("worktree ", ""))
+                    if f"refs/heads/{pr_branch}" in line:
+                        # Walk backwards to find the "worktree" line
+                        for j in range(i - 1, -1, -1):
+                            if lines[j].startswith("worktree "):
+                                wt = Path(lines[j].removeprefix("worktree "))
+                                break
                         print(f"  Using existing worktree: {wt}")
                         break
             else:
@@ -665,15 +913,20 @@ def cmd_bart(args, repo: Path) -> None:
 
     prompt = write_prompt("bart", task, wt, repo,
                           pr=args.pr, preexisting=args.preexisting or "none")
-    script = write_launch_script("bart", task, wt, prompt)
+    script = write_launch_script("bart", task, wt, prompt, runner=runner)
 
     pane = args.pane or find_free_pane()
     if not pane:
-        print("ERROR: No free tmux pane found. Specify --pane.")
-        sys.exit(1)
+        panes = ensure_agent_panes(num_panes=2)
+        pane = panes[0]
+        print(f"  Provisioned agent panes in current session: {len(panes)} panes")
 
     dispatch_to_pane(pane, script)
-    print(f"\n  Monitor JSONL: {AGENT_CONFIG['bart']['jsonl'].format(id=args.task_id.lower())}")
+    cfg = AGENT_CONFIG["bart"][runner]
+    if runner == "kiro":
+        print(f"\n  Log: {cfg['logfile'].format(id=args.task_id.lower())}")
+    else:
+        print(f"\n  Monitor JSONL: {cfg['jsonl'].format(id=args.task_id.lower())}")
     print(f"  Verdict will be written to: /tmp/bart-verdict-{args.task_id.lower()}.md")
 
 
@@ -712,13 +965,15 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     parser.add_argument("--repo", default=".", help="Repo root (default: .)")
+    parser.add_argument("--runner", choices=["claude", "kiro", "gemini"],
+                        default=None, help="Agent runner (default: $AGENT_MUX_RUNNER or claude)")
     sub = parser.add_subparsers(dest="command", required=True)
 
     # ralph
     p_ralph = sub.add_parser("ralph", help="Dispatch Ralph to implement a TODO item")
     p_ralph.add_argument("task_id", help="TODO item ID (e.g. B2, D1)")
     p_ralph.add_argument("--pane", help="Tmux pane target (e.g. terrapyne:2.0)")
-    p_ralph.add_argument("--branch-prefix", default="fix", help="Branch prefix (default: fix)")
+    p_ralph.add_argument("--branch-prefix", default=None, help="Branch prefix (default: auto from task type)")
     p_ralph.add_argument(
         "--skip-baseline", action="store_true",
         help="Skip baseline check (for known pre-existing failures)",
@@ -731,7 +986,7 @@ def main():
     )
     p_wave.add_argument("task_ids", nargs="+", help="TODO item IDs to group (e.g. D2 D3 D4)")
     p_wave.add_argument("--pane", help="Tmux pane target")
-    p_wave.add_argument("--branch-prefix", default="fix", help="Branch prefix (default: fix)")
+    p_wave.add_argument("--branch-prefix", default=None, help="Branch prefix (default: auto from task type)")
     p_wave.add_argument("--skip-baseline", action="store_true", help="Skip baseline check")
 
     # bart
