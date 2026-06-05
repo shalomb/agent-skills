@@ -51,6 +51,14 @@ Key gotchas:
 ```
 ## Workspace Discovery
 
+**Prefer terrapyne:**
+```bash
+tfc workspace list                            # list all workspaces
+tfc workspace show                            # show current workspace (auto-detected)
+tfc project find <pattern>                    # find projects by name fragment
+```
+
+**Script/curl fallback (when terrapyne unavailable or lacks feature):**
 ```bash
 # Search by name pattern (fuzzy)
 BASE="https://app.terraform.io/api/v2"
@@ -80,6 +88,18 @@ curl -s -H "Authorization: Bearer $TFC_TOKEN" \
 
 ## Run Management
 
+**Prefer terrapyne:**
+```bash
+tfc run list -w <workspace-name>
+tfc run trigger <workspace-name> -m "message" --wait
+tfc run watch <run-id>
+tfc run apply <run-id> -m "Approving"
+tfc run logs <run-id> --stage plan
+tfc run logs <run-id> --stage apply
+tfc run discard <run-id> -m "reason"
+```
+
+**Script fallback (when terrapyne unavailable or lacks feature):**
 ```bash
 # List recent runs
 ./scripts/list-runs.sh {ORGANIZATION} <workspace-name>
@@ -96,8 +116,14 @@ curl -s -H "Authorization: Bearer $TFC_TOKEN" \
 
 ### Unlocking a workspace blocked by old runs
 
-Workspaces lock on `cost_estimated` or `pending` runs. To unblock:
+**Prefer terrapyne where possible:**
+```bash
+tfc run discard <run-id> -m "Discarding to re-plan"
+# Note: run cancel (for pending/planning runs) is not yet in terrapyne (tracked as F14)
+# Use curl fallback below for cancel
+```
 
+**Curl fallback:**
 ```bash
 TFC_TOKEN=$(jq -r '.credentials."app.terraform.io".token' ~/.terraform.d/credentials.tfrc.json)
 BASE="https://app.terraform.io/api/v2"
@@ -126,6 +152,8 @@ curl -s -H "Authorization: Bearer $TFC_TOKEN" \
 
 ### Switching VCS branch for speculative plans
 
+> **Note**: terrapyne does not yet have a `workspace set-branch` command (tracked as F13). Use the script fallback:
+
 ```bash
 ./scripts/set-workspace-branch.sh {ORGANIZATION} <workspace-name> <branch>
 ```
@@ -136,6 +164,13 @@ reset the branch after validation.
 
 ## Workspace State Inspection
 
+**Prefer terrapyne:**
+```bash
+tfc run logs <run-id> --stage plan
+tfc run logs <run-id> --stage apply
+```
+
+**Script fallback:**
 ```bash
 # Get plan/apply logs
 ./scripts/get-plan.sh <run-id>
