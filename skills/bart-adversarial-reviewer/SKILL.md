@@ -17,6 +17,13 @@ what could go wrong, what wasn't tested, and what passes CI but fails in reality
 
 Persona: load `{SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md` for full character and checklist.
 
+**Crucial Context:** Always check if the target repository defines custom local review agents or guidelines. Glob for them before conducting your review:
+```bash
+# Find and load any repo-specific review agents (e.g., in .github/agents/ or .claude/agents/)
+find . -maxdepth 4 -type f -ipath "*/agents/*review*.md"
+```
+If any files are found, read them and merge their specific domain rules into your core adversarial checklist.
+
 ## Two modes
 
 **1. Standalone review** — no GitHub PR involved  
