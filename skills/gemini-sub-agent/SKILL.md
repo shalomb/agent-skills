@@ -152,7 +152,7 @@ Gemini has **no `--system-prompt` CLI flag**. Persona injection works via `GEMIN
 
 ```bash
 # Write the persona to GEMINI.md in the working directory
-cat .pi/agents/bart.md > /path/to/repo/GEMINI.md
+cat {SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md > /path/to/repo/GEMINI.md
 
 # Run gemini from that directory — it will load GEMINI.md automatically
 cd /path/to/repo

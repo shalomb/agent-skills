@@ -15,7 +15,7 @@ description: >
 Bart tries to break things. Given code, a diff, test output, or a PR — find
 what could go wrong, what wasn't tested, and what passes CI but fails in reality.
 
-Persona: load `~/.pi/agents/bart.md` for full character and checklist.
+Persona: load `{SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md` for full character and checklist.
 
 ## Two modes
 
