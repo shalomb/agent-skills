@@ -182,10 +182,10 @@ Use it:
 
 ```bash
 # Install agent file to user config (persists across repos)
-cp .pi/agents/bart.md ~/.config/copilot/agents/bart.agent.md
+cp {SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md ~/.config/copilot/agents/bart.agent.md
 
 # Or install to project (checked in, team-shared)
-cp .pi/agents/bart.md .github/agents/bart.agent.md
+cp {SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md .github/agents/bart.agent.md
 
 # Invoke by stem name
 copilot --agent bart --yolo -p @/tmp/task.md

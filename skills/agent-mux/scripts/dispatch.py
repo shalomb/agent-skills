@@ -60,7 +60,7 @@ AGENT_CONFIG = {
     "bart": {
         "claude": {
             "model": "sonnet",
-            "persona": "~/.pi/agents/bart.md",
+            "persona": str(pathlib.Path(__file__).resolve().parent.parent.parent / "bart-adversarial-reviewer" / "references" / "bart.md"),
             "jsonl": "/tmp/claude-bart-{id}.jsonl",
             "monitor": str(pathlib.Path(__file__).resolve().parent.parent.parent / "claude-sub-agent" / "scripts" / "monitor.py"),
         },

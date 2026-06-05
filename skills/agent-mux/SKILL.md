@@ -238,7 +238,7 @@ claude --print --output-format stream-json \
   --dangerously-skip-permissions \
   --no-session-persistence \
   --model sonnet \
-  --append-system-prompt @~/.pi/agents/bart.md \
+  --append-system-prompt @{SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md \
   -p @/tmp/bart-<feature>.md \
   >> /tmp/claude-bart-<feature>.jsonl 2>&1 &
 echo "PID: $!"

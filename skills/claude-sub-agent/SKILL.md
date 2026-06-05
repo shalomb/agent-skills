@@ -144,7 +144,7 @@ git log --oneline -5
 # Append a persona on top of claude's default system prompt
 claude --print --output-format stream-json \
   --dangerously-skip-permissions --no-session-persistence \
-  --append-system-prompt @.pi/agents/bart.md \
+  --append-system-prompt @{SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md \
   -p @/tmp/task.md \
   > /tmp/claude-output.jsonl 2>&1 &
 ```
@@ -152,7 +152,7 @@ claude --print --output-format stream-json \
 In tmux:
 ```bash
 tmux send-keys -t "$TARGET" \
-  "cd /repo && claude --print --output-format stream-json --dangerously-skip-permissions --no-session-persistence --append-system-prompt @.pi/agents/bart.md -p @/tmp/task.md > /tmp/claude-output.jsonl 2>&1 &" Enter
+  "cd /repo && claude --print --output-format stream-json --dangerously-skip-permissions --no-session-persistence --append-system-prompt @{SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md -p @/tmp/task.md > /tmp/claude-output.jsonl 2>&1 &" Enter
 ```
 
 Unlike Gemini (which uses `GEMINI.md`), Claude supports `--system-prompt` and `--append-system-prompt` flags directly — no CWD file needed.

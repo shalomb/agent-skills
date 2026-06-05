@@ -182,13 +182,13 @@ Pi resolves `@file` syntax in `--append-system-prompt`, so you can load persona 
 ```bash
 # Append a persona on top of pi's default coding assistant prompt
 pi --no-session --mode json \
-   --append-system-prompt @.pi/agents/bart.md \
+   --append-system-prompt @{SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md \
    -p @/tmp/task-prompt.md \
    > /tmp/pi-output.jsonl 2>&1
 
 # Or replace the system prompt entirely
 pi --no-session --mode json \
-   --system-prompt @.pi/agents/bart.md \
+   --system-prompt @{SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md \
    -p @/tmp/task-prompt.md \
    > /tmp/pi-output.jsonl 2>&1
 ```
@@ -198,7 +198,7 @@ The `@path` is resolved relative to cwd. Both absolute and relative paths work.
 In tmux:
 ```bash
 tmux send-keys -t "$TARGET" \
-  "cd /path/to/repo && pi --no-session --mode json --append-system-prompt @.pi/agents/bart.md -p @/tmp/task.md > /tmp/pi-output.jsonl 2>&1 &" Enter
+  "cd /path/to/repo && pi --no-session --mode json --append-system-prompt @{SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md -p @/tmp/task.md > /tmp/pi-output.jsonl 2>&1 &" Enter
 ```
 
 ## Troubleshooting
