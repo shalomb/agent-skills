@@ -30,7 +30,7 @@ Simple, reliable tmux orchestration.  Defaults to the **current session** the ag
 
 All scripts live in the `scripts/` directory **alongside this SKILL.md file**.
 The canonical source is `~/shalomb/agent-skills/skills/tmux/scripts/`, hardlinked
-into each agent's skill directory (e.g. `~/.pi/agent/skills/tmux/scripts/`,
+into each agent's skill directory (e.g. `{SKILLS_DIR}/tmux-remote-control/scripts/`,
 `~/.claude/skills/tmux/scripts/`).
 
 The skill file's own location tells you where the scripts are. When this skill is
@@ -38,8 +38,8 @@ loaded, note the path it was read from and derive the script directory from it:
 ```
 <skill-file-path>  →  $(dirname <skill-file-path>)/scripts/
 ```
-For example, if this file was read from `/home/unop/.pi/agent/skills/tmux/SKILL.md`,
-the scripts are at `/home/unop/.pi/agent/skills/tmux/scripts/`.
+For example, if this file was read from `{SKILLS_DIR}/tmux-remote-control/SKILL.md`,
+the scripts are at `{SKILLS_DIR}/tmux-remote-control/scripts/`.
 
 **Never use `./scripts/`** — that resolves against the agent's current working
 directory (the project repo), not the skill directory.

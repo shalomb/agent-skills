@@ -45,7 +45,7 @@ AGENT_CONFIG = {
             "model": "sonnet",
             "persona": None,
             "jsonl": "/tmp/claude-ralph-{id}.jsonl",
-            "monitor": "~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py",
+            "monitor": str(pathlib.Path(__file__).resolve().parent.parent.parent / "claude-sub-agent" / "scripts" / "monitor.py"),
         },
         "kiro": {
             "model": None,  # uses kiro default
@@ -54,7 +54,7 @@ AGENT_CONFIG = {
         "gemini": {
             "model": "gemini-2.5-flash",
             "jsonl": "/tmp/gemini-ralph-{id}.jsonl",
-            "monitor": "~/.pi/agent/skills/gemini-sub-agent/scripts/monitor.py",
+            "monitor": str(pathlib.Path(__file__).resolve().parent.parent.parent / "gemini-sub-agent" / "scripts" / "monitor.py"),
         },
     },
     "bart": {
@@ -62,7 +62,7 @@ AGENT_CONFIG = {
             "model": "sonnet",
             "persona": "~/.pi/agents/bart.md",
             "jsonl": "/tmp/claude-bart-{id}.jsonl",
-            "monitor": "~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py",
+            "monitor": str(pathlib.Path(__file__).resolve().parent.parent.parent / "claude-sub-agent" / "scripts" / "monitor.py"),
         },
         "kiro": {
             "model": None,
@@ -71,7 +71,7 @@ AGENT_CONFIG = {
         "gemini": {
             "model": "gemini-2.5-flash",
             "jsonl": "/tmp/gemini-bart-{id}.jsonl",
-            "monitor": "~/.pi/agent/skills/gemini-sub-agent/scripts/monitor.py",
+            "monitor": str(pathlib.Path(__file__).resolve().parent.parent.parent / "gemini-sub-agent" / "scripts" / "monitor.py"),
         },
     },
 }

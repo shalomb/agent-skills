@@ -12,17 +12,17 @@ discovery, audit, and update workflows across all skill installation locations.
 
 Skills live at two levels:
 
-1. **Personal (L1)** — `~/.pi/agent/skills/` (canonical). Other agents symlink here:
-   - `~/.claude/skills → ~/.pi/agent/skills`
-   - `~/.gemini/skills → ~/.pi/agent/skills`
-   - `~/.kiro/skills → ~/.pi/agent/skills`
+1. **Personal (L1)** — `{SKILLS_DIR}/` (canonical). Other agents symlink here:
+   - `~/.claude/skills → {SKILLS_DIR}`
+   - `~/.gemini/skills → {SKILLS_DIR}`
+   - `~/.kiro/skills → {SKILLS_DIR}`
 
 2. **Project (L2)** — `.github/skills/` in each repo. Scoped to that project.
 
 Personal skills come from multiple sources via symlinks:
 - `~/shalomb/agent-skills/skills/` — personal, git-tracked (sharable)
 - `~/projects/obra/superpowers/skills/` — obra's superpowers (upstream)
-- Local dirs in `~/.pi/agent/skills/` — not symlinked (codemap, _common)
+- Local dirs in `{SKILLS_DIR}/` — not symlinked (codemap, _common)
 
 ## Workflows
 
@@ -31,11 +31,11 @@ Personal skills come from multiple sources via symlinks:
 ```bash
 # Count by source
 echo "=== Skill sources ==="
-find ~/.pi/agent/skills -maxdepth 1 -type l -exec readlink {} \; | \
+find {SKILLS_DIR} -maxdepth 1 -type l -exec readlink {} \; | \
   sed 's|/[^/]*$||' | sort | uniq -c | sort -rn
 
 # List local (untracked) skills
-find ~/.pi/agent/skills -maxdepth 1 -not -type l -type d | tail -n +2 | \
+find {SKILLS_DIR} -maxdepth 1 -not -type l -type d | tail -n +2 | \
   xargs -I{} basename {}
 
 # List project skills in current repo
@@ -48,15 +48,15 @@ Check for broken symlinks, missing SKILL.md, or skills not in git:
 
 ```bash
 # Broken symlinks
-find ~/.pi/agent/skills -maxdepth 1 -type l ! -exec test -e {} \; -print
+find {SKILLS_DIR} -maxdepth 1 -type l ! -exec test -e {} \; -print
 
 # Missing SKILL.md
-for d in ~/.pi/agent/skills/*/; do
+for d in {SKILLS_DIR}/*/; do
   [ -f "$d/SKILL.md" ] || echo "MISSING: $d"
 done
 
 # Local skills not in agent-skills repo
-for d in ~/.pi/agent/skills/*/; do
+for d in {SKILLS_DIR}/*/; do
   [ -L "$d" ] || echo "UNTRACKED: $(basename $d)"
 done
 ```
@@ -97,7 +97,7 @@ grep -rni "takeda\|oneTakeda\|apms\|your-org" "$TARGET/"
 #    e.g. ~/oneTakeda/repo → $REPO_ROOT or {REPO_PATH}
 
 # 4. Symlink from pi skills
-ln -sf "$TARGET" "$HOME/.pi/agent/skills/$SKILL"
+ln -sf "$TARGET" "$SKILLS_DIR/$SKILL"
 
 # 5. Commit to agent-skills repo
 cd ~/shalomb/agent-skills && git add "skills/$SKILL" && git commit -m "feat($SKILL): promote from project skills"
@@ -109,10 +109,10 @@ Delegate to `skill-creator`:
 
 ```bash
 # Read the skill-creator SKILL.md first for full guidance
-python3 ~/.pi/agent/skills/skill-creator/scripts/init_skill.py <name> --path ~/shalomb/agent-skills/skills
+python3 {SKILLS_DIR}/skill-creator/scripts/init_skill.py <name> --path ~/shalomb/agent-skills/skills
 ```
 
-Then symlink: `ln -sf ~/shalomb/agent-skills/skills/<name> ~/.pi/agent/skills/<name>`
+Then symlink: `ln -sf ~/shalomb/agent-skills/skills/<name> {SKILLS_DIR}/<name>`
 
 ## Decision: where does a skill live?
 

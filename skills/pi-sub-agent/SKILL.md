@@ -32,7 +32,7 @@ EOF
 
 Use the tmux skill to find a pane:
 ```bash
-bash ~/.pi/agent/skills/tmux/scripts/tmux-list.sh
+bash {SKILLS_DIR}/tmux-remote-control/scripts/tmux-list.sh
 ```
 
 Pick a pane in your current session with `cmd=bash` that isn't running anything.
@@ -119,10 +119,10 @@ tmux send-keys -t "$TARGET" \
   "cd /path/to/repo && pi --models 'github-copilot/claude-sonnet-4.6' --no-session --mode json --no-extensions --no-skills --no-prompt-templates --no-themes -p @/tmp/task-prompt.md > /tmp/task-output.jsonl 2>&1 &" Enter
 sleep 5
 tmux send-keys -t "$TARGET" \
-  "python3 ~/.pi/agent/skills/pi-sub-agent/scripts/pi-monitor.py /tmp/task-output.jsonl" Enter
+  "python3 {SKILLS_DIR}/pi-sub-agent/scripts/pi-monitor.py /tmp/task-output.jsonl" Enter
 
 # 4. Poll from your session (blocks until done or timeout)
-python3 ~/.pi/agent/skills/pi-sub-agent/scripts/pi-poll.py "$TARGET" --interval 30
+python3 {SKILLS_DIR}/pi-sub-agent/scripts/pi-poll.py "$TARGET" --interval 30
 
 # 5. Kill monitor and verify
 tmux send-keys -t "$TARGET" C-c

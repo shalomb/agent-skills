@@ -109,8 +109,8 @@ claude --print --output-format stream-json \
   -p @/tmp/ralph-<feature>.md \
   > /tmp/claude-<feature>.jsonl 2>&1 &
 ```
-Monitor: `python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py /tmp/claude-<feature>.jsonl`
-Poll:    `python3 ~/.pi/agent/skills/claude-sub-agent/scripts/poll.py "$TARGET" --interval 30`
+Monitor: `python3 {SKILLS_DIR}/claude-sub-agent/scripts/monitor.py /tmp/claude-<feature>.jsonl`
+Poll:    `python3 {SKILLS_DIR}/claude-sub-agent/scripts/poll.py "$TARGET" --interval 30`
 
 See `references/model-spread.md` for the rationale.
 
@@ -121,7 +121,7 @@ See `references/model-spread.md` for the rationale.
 **Use `dispatch.py` — do not write prompts or launch scripts by hand.**
 
 ```bash
-DISPATCH=~/.pi/agent/skills/agent-mux/scripts/dispatch.py
+DISPATCH={SKILLS_DIR}/agent-mux/scripts/dispatch.py
 
 # Ralph: implement a task
 python3 $DISPATCH --repo /path/to/repo ralph <TASK_ID> --pane <session:window.pane>
@@ -167,7 +167,7 @@ claude --print --output-format stream-json \
   -p @/tmp/ralph-<feature>.md \
   >> /tmp/claude-<feature>.jsonl 2>&1 &
 echo "PID: $!"
-python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py \
+python3 {SKILLS_DIR}/claude-sub-agent/scripts/monitor.py \
   /tmp/claude-<feature>.jsonl
 SCRIPT
 chmod +x /tmp/launch-<feature>.sh
@@ -185,7 +185,7 @@ gemini -y --output-format stream-json --model gemini-3-flash-preview \
   -p @/tmp/ralph-<feature>.md \
   >> /tmp/gemini-<feature>.jsonl 2>&1 &
 echo "PID: $!"
-python3 ~/.pi/agent/skills/gemini-sub-agent/scripts/monitor.py \
+python3 {SKILLS_DIR}/gemini-sub-agent/scripts/monitor.py \
   /tmp/gemini-<feature>.jsonl
 SCRIPT
 chmod +x /tmp/launch-<feature>.sh
@@ -242,7 +242,7 @@ claude --print --output-format stream-json \
   -p @/tmp/bart-<feature>.md \
   >> /tmp/claude-bart-<feature>.jsonl 2>&1 &
 echo "PID: $!"
-python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py \
+python3 {SKILLS_DIR}/claude-sub-agent/scripts/monitor.py \
   /tmp/claude-bart-<feature>.jsonl
 SCRIPT
 chmod +x /tmp/launch-bart-<feature>.sh
@@ -294,7 +294,7 @@ Never use `sleep N && check` loops. Use `references/supervisor-watch.py` instead
 
 ```bash
 # Edit AGENTS list at top of script to match current wave
-python3 ~/.pi/agent/skills/agent-mux/references/supervisor-watch.py
+python3 {SKILLS_DIR}/agent-mux/references/supervisor-watch.py
 ```
 
 Adaptive sleep principle:
@@ -356,7 +356,7 @@ Add to Bart prompt: `gh pr merge <N> --squash --repo <owner>/<repo>` (omit `--de
 `poll.py` reads tmux pane text for `✅ DONE`. After multiple monitor sessions in the
 same pane, old DONE boxes trigger false positives. Monitor the JSONL directly instead:
 ```bash
-python3 ~/.pi/agent/skills/claude-sub-agent/scripts/monitor.py /tmp/claude-bart-<id>.jsonl --no-clear
+python3 {SKILLS_DIR}/claude-sub-agent/scripts/monitor.py /tmp/claude-bart-<id>.jsonl --no-clear
 ```
 Or check the verdict file: `ls -lt /tmp/bart-verdict-*.md | head -1`
 

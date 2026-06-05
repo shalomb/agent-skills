@@ -109,7 +109,7 @@ EOF
 ### 2. Identify a free tmux pane
 
 ```bash
-bash ~/.pi/agent/skills/tmux/scripts/tmux-list.sh
+bash {SKILLS_DIR}/tmux-remote-control/scripts/tmux-list.sh
 ```
 
 ### 3. Launch copilot + monitor in the pane
@@ -121,13 +121,13 @@ tmux send-keys -t "$TARGET" \
   "cd /path/to/repo && copilot --yolo -p @/tmp/task-prompt.md > /tmp/copilot-output.jsonl 2>&1 &" Enter
 sleep 3
 tmux send-keys -t "$TARGET" \
-  "python3 ~/.pi/agent/skills/copilot-sub-agent/scripts/monitor.py /tmp/copilot-output.jsonl" Enter
+  "python3 {SKILLS_DIR}/copilot-sub-agent/scripts/monitor.py /tmp/copilot-output.jsonl" Enter
 ```
 
 ### 4. Poll for completion
 
 ```bash
-python3 ~/.pi/agent/skills/copilot-sub-agent/scripts/poll.py "$TARGET" --interval 30
+python3 {SKILLS_DIR}/copilot-sub-agent/scripts/poll.py "$TARGET" --interval 30
 ```
 
 ### 5. Verify results
@@ -150,9 +150,9 @@ tmux send-keys -t "$TARGET" \
   "cd /path/to/repo && COPILOT_API_URL=https://api.business.githubcopilot.com copilot --yolo --no-auto-update --disable-builtin-mcps --no-custom-instructions --no-ask-user -p @/tmp/task-prompt.md > /tmp/copilot-output.jsonl 2>&1 &" Enter
 sleep 3
 tmux send-keys -t "$TARGET" \
-  "python3 ~/.pi/agent/skills/copilot-sub-agent/scripts/monitor.py /tmp/copilot-output.jsonl" Enter
+  "python3 {SKILLS_DIR}/copilot-sub-agent/scripts/monitor.py /tmp/copilot-output.jsonl" Enter
 
-python3 ~/.pi/agent/skills/copilot-sub-agent/scripts/poll.py "$TARGET" --interval 30
+python3 {SKILLS_DIR}/copilot-sub-agent/scripts/poll.py "$TARGET" --interval 30
 
 tmux send-keys -t "$TARGET" C-c
 git log --oneline -5
