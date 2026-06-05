@@ -1,15 +1,26 @@
 ---
-name: adzic-index
-description: Use this skill to evaluate the quality of BDD feature files and Gherkin scenarios using the Adzic Index — based on Gojko Adzic's Specification by Example principles. Produces a scored diagnostic (0–10) across six dimensions.
+name: adzic-bdd
+description: Guide on applying Gojko Adzic's Specification by Example (BDD) principles. Use this skill to write new feature files, refine acceptance criteria, or evaluate existing Gherkin scenarios using the Adzic Index. Triggers on 'adzic', 'bdd', 'specification by example', 'gherkin', 'feature file'.
 metadata:
-  version: 1.0.0
+  version: 2.0.0
 ---
 
-# Adzic Index Evaluator
+# Adzic Specification by Example (BDD)
 
-A quantitative diagnostic skill that scores BDD `.feature` files against
-Gojko Adzic's Specification by Example principles. The companion to the
-Farley Index — together they cover the complete quality picture.
+This skill provides comprehensive guidance on writing, refining, and evaluating Behavior-Driven Development (BDD) specifications based on Gojko Adzic's *Specification by Example*.
+
+## Writing BDD Scenarios
+
+When authoring new `.feature` files or acceptance criteria, always adhere to these core principles:
+- **Business-Readable**: Speak the domain language, not developer jargon.
+- **Intention-Revealing**: Focus on *what* and *why*, not *how*.
+- **Declarative**: Describe state and business rules, avoid imperative UI clicks (e.g., no "click button A").
+- **Focused**: One scenario tests one specific business rule.
+- **Living Documentation**: Ensure the scenario acts as the definitive source of truth.
+
+## The Adzic Index Evaluator
+
+A quantitative diagnostic tool that scores BDD `.feature` files against these principles. The companion to the Farley Index — together they cover the complete quality picture.
 
 It shifts the question from **"Do our scenarios pass?"** to
 **"Do our scenarios communicate the right thing to the right people?"**
@@ -49,6 +60,10 @@ Target state: **Both ≥ 7.0.** This is "Clean Code that Works, clearly specifie
 
 ## Triggers
 
+- "adzic"
+- "bdd"
+- "specification by example"
+- "write a feature file"
 - "adzic index"
 - "adzic-index"
 - "BDD quality"
