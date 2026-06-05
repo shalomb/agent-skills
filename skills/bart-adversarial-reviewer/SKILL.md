@@ -19,8 +19,8 @@ Persona: load `{SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md` for fu
 
 **Crucial Context:** Always check if the target repository defines custom local review agents or guidelines. Glob for them before conducting your review:
 ```bash
-# Find and load any repo-specific review agents (e.g., in .github/agents/ or .claude/agents/)
-find . -maxdepth 4 -type f -ipath "*/agents/*review*.md"
+# Find and load any repo-specific review agents (e.g., in .agents/agents/, .github/agents/ or .claude/agents/)
+find . -maxdepth 4 -type f \( -ipath "*/.agents/agents/*review*.md" -o -ipath "*/agents/*review*.md" \)
 ```
 If any files are found, read them and merge their specific domain rules into your core adversarial checklist.
 
