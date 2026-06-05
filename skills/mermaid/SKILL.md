@@ -1,6 +1,6 @@
 ---
 name: mermaid
-description: "Must read guide on creating/editing mermaid charts with valiation tools"
+description: "Guide on creating and editing Mermaid charts safely. Use when asked to draw a diagram, flowchart, or architecture chart. Triggers on: 'mermaid', 'diagram', 'flowchart', 'visualize'."
 ---
 
 # Mermaid Skill

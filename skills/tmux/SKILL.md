@@ -1,6 +1,6 @@
 ---
 name: tmux
-description: "Remote control tmux sessions for interactive CLIs (python, gdb, etc.) by sending keystrokes and scraping pane output."
+description: "Remote control tmux sessions for interactive CLIs by sending keystrokes and scraping output. Use when you need to interact with a long-running process, REPL, or debugger. Triggers on: 'tmux', 'send keys', 'interact with pane', 'gdb', 'python repl'."
 ---
 
 # Tmux Skill
