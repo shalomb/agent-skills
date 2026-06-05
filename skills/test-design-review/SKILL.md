@@ -11,6 +11,10 @@ Important: use a SEPARATE AGENT which does not share your context.
 
 For each violation found, show the offending code and suggest a fix. Group by guideline.
 
+> **Related Skills:** 
+> - Use **`farley-tdd`** for guidance on the broader Red-Green-Refactor workflow and high-level test suite properties.
+> - Use **`adzic-bdd`** for evaluating high-level Gherkin/BDD feature specifications.
+
 ## Core Principle
 
 Tests are executable specifications. A specification answers: "In scenario X, what should happen?"

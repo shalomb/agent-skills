@@ -16,7 +16,14 @@ When writing new features or fixing bugs, follow the Red-Green-Refactor cycle:
 2. **Green**: Write the minimal production code necessary to pass the test.
 3. **Refactor**: Improve the code structure without altering behavior.
 
+**Canon TDD Pitfalls to Avoid (via Kent Beck):**
+- **Speculative Tests**: Do not write all tests upfront. Convert exactly one item from your test list into a concrete test, make it pass, then move to the next.
+- **Mixing Interface & Implementation**: The "Red" phase is for designing the interface. The "Refactor" phase is for designing the implementation. Do not mix them.
+- **Abstracting Too Soon**: In the "Refactor" phase, remember that duplication is a hint, not a command. Don't over-abstract prematurely.
+
 All tests written must embody Farley's properties: **Fast, Maintainable, Repeatable, Atomic, Necessary, Understandable**.
+
+> **Note**: For tactical guidance on writing good assertions and avoiding brittle setup patterns, use the **`test-design-review`** skill.
 
 ## The Farley Index Evaluator
 
