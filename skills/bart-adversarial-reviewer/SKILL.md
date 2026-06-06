@@ -63,6 +63,10 @@ git show HEAD
 
 # Test results
 uv run pytest tests/ -q --override-ini="addopts=" 2>&1
+
+# Codebase health (Optional but recommended)
+# Run forensics to see if the modified files are known "crime scenes" (high churn / bug hotspots)
+uv run {SKILLS_DIR}/git-forensics/scripts/forensics.py report
 ```
 
 ### 2. Apply adversarial checklist
@@ -101,7 +105,7 @@ and a concrete fix suggestion.
 ```
 VERDICT: APPROVED
 or
-VERDICT: REJECTED
+VERDICT: CHANGES_REQUESTED
 ```
 
 Then: summary, issues table, test evidence.
@@ -109,7 +113,7 @@ Then: summary, issues table, test evidence.
 #### Verdict format
 
 ```markdown
-VERDICT: APPROVED | REJECTED
+VERDICT: APPROVED | CHANGES_REQUESTED
 
 ## Summary
 One paragraph. What was reviewed, overall quality, key finding.
@@ -118,19 +122,19 @@ One paragraph. What was reviewed, overall quality, key finding.
 
 | Severity | Location | Issue | Suggested fix |
 |----------|----------|-------|---------------|
-| BLOCKER  | file.py:42 | ... | ... |
+| CRITICAL | file.py:42 | ... | ... |
 | MINOR    | file.py:87 | ... | ... |
 
 ## Test evidence
 Paste relevant test output lines.
 
 ## Decision rationale
-Why APPROVED (no blockers, all criteria met) or REJECTED (list blockers).
+Why APPROVED (no critical issues, all criteria met) or CHANGES_REQUESTED (list critical issues).
 ```
 
 **Severity definitions:**
-- `BLOCKER` — correctness bug, security hole, data loss risk, or test that doesn't
-  cover the stated fix. Blocks merge.
+- `CRITICAL` — correctness bug, security hole, data loss risk, or test that doesn't
+  cover the stated fix. Must be addressed before merge.
 - `MINOR` — missing edge case test, style inconsistency, improvement opportunity.
   Does not block merge.
 
@@ -144,36 +148,39 @@ gathering, then apply the adversarial checklist, post inline comments, and decid
 ```
 1. Gather PR evidence (diff, tests, CI)
 2. Apply adversarial checklist
-3. Post inline comments for each BLOCKER
+3. Post inline comments for each CRITICAL issue
 4. Write verdict file
-5. If APPROVED → merge; if REJECTED → leave open
+5. If APPROVED → merge; if CHANGES_REQUESTED → leave open
 ```
 
 ### 1. Gather PR evidence
 
 ```bash
-SKILL_DIR={SKILLS_DIR}/pr-review
-
 # Diff
 gh pr diff <N>
 
 # Run tests (auto-detects framework)
-python3 $SKILL_DIR/scripts/run_tests.py .
+python3 {SKILLS_DIR}/bart-adversarial-reviewer/scripts/run_tests.py .
 
 # CI status
-python3 $SKILL_DIR/scripts/analyze_github_actions.py <owner> <repo> <N> --repo-dir .
+python3 {SKILLS_DIR}/bart-adversarial-reviewer/scripts/analyze_github_actions.py <owner> <repo> <N> --repo-dir .
+
+# Codebase health (Optional but recommended)
+# Run forensics to see if the PR modifies known "crime scenes" (high churn / bug hotspots)
+uv run {SKILLS_DIR}/git-forensics/scripts/forensics.py report
 ```
 
 ### 2. Apply adversarial checklist
 
 Same as standalone — focus on the changed lines in the diff.
+**Critical:** Cross-reference the changed files from the diff against the `git-forensics` report. If the author is modifying a file listed in the "Bug Hotspots" or "High Churn" sections, increase your adversarial scrutiny 10x. These files are codebase landmines.
 
-### 3. Post inline comments (BLOCKERs only)
+### 3. Post inline comments (CRITICAL issues only)
 
 ```bash
-# Inline comment on a specific diff line
-gh pr review <N> \
-  --comment "BLOCKER: <what> — <why risk> — <suggested fix>" \
+# Inline comment on a specific diff line (requires gh pr-review extension)
+gh pr-review <owner>/<repo>#<N> \
+  --comment "CRITICAL: <what> — <why risk> — <suggested fix>" \
   --file path/to/file.py \
   --line 42
 ```
@@ -191,13 +198,13 @@ Same format as standalone. Write to `/tmp/bart-verdict-<feature>.md`.
 
 ### 5. Merge or reject
 
-**APPROVED — no BLOCKERs:**
+**APPROVED — no CRITICAL issues:**
 ```bash
 # Run from the worktree directory — do NOT cd elsewhere
 gh pr merge <N> --squash --delete-branch
 ```
 
-**REJECTED — one or more BLOCKERs:**
+**CHANGES_REQUESTED — one or more CRITICAL issues:**
 - Do NOT merge
 - Do NOT edit source files
 - Leave the verdict file for the orchestrator to triage
@@ -208,6 +215,6 @@ gh pr merge <N> --squash --delete-branch
 
 - You are a reviewer — **never edit source files**
 - All commands run from the worktree directory — **never cd elsewhere**
-- Be adversarial but constructive: every BLOCKER needs a suggested fix
+- Be rigorous but constructive: every CRITICAL issue needs a suggested fix
 - Do not nitpick style; only flag things that affect correctness, security, or robustness
 - If pre-existing failures are listed — ignore them, do not flag as new issues
