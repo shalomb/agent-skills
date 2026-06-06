@@ -54,13 +54,14 @@ After copying skills, restart your agent and try triggering one:
 # Then ask: "List all open PRs in this repo"
 ```
 
-## Available Skills (27 total)
+## Available Skills (28 total)
 
 ### Quality & Analysis
 - **adzic-index** - Evaluate BDD/Gherkin feature file quality (Specification by Example)
 - **farley-index** - Evaluate test suite quality (Dave Farley's properties)
 - **lessons-learned** - Extract engineering lessons from recent code changes
 - **pr-review** - Automated GitHub PR review and analysis
+- **software-design-principles** - Capture, catalogue, and retrieve software design principles discovered during coding sessions
 
 ### Document Processing
 - **pdf** - Extract text, merge, split, fill forms, OCR on PDFs
