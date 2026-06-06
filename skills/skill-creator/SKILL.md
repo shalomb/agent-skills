@@ -208,7 +208,7 @@ Skill creation involves these steps:
 2. Plan reusable skill contents (scripts, references, assets)
 3. Initialize the skill (run init_skill.py)
 4. Edit the skill (implement resources and write SKILL.md)
-5. Package the skill (run package_skill.py)
+5. Commit the skill (run quick_validate.py and git commit)
 6. Iterate based on real usage
 
 Follow these steps in order, skipping only if there is a clear reason why they are not applicable.
@@ -265,12 +265,12 @@ When creating a new skill from scratch, always run the `init_skill.py` script. T
 Usage:
 
 ```bash
-scripts/init_skill.py <skill-name> --path <output-directory>
+scripts/init_skill.py <skill-name>
 ```
 
 The script:
 
-- Creates the skill directory at the specified path
+- Creates the skill directory in the agent's skills directory (`~/.gemini/skills/`) by default, or at a specified `--path`.
 - Generates a SKILL.md template with proper frontmatter and TODO placeholders
 - Creates example resource directories: `scripts/`, `references/`, and `assets/`
 - Adds example files in each directory that can be customized or deleted
@@ -318,32 +318,32 @@ Do not include any other fields in YAML frontmatter.
 
 Write instructions for using the skill and its bundled resources.
 
-### Step 5: Packaging a Skill
+### Step 5: Committing the Skill
 
-Once development of the skill is complete, it must be packaged into a distributable .skill file that gets shared with the user. The packaging process automatically validates the skill first to ensure it meets all requirements:
+Once development of the skill is complete, validate and commit it to the agent's skills repository.
 
-```bash
-scripts/package_skill.py <path/to/skill-folder>
-```
-
-Optional output directory specification:
+First, validate the skill to ensure it meets all requirements:
 
 ```bash
-scripts/package_skill.py <path/to/skill-folder> ./dist
+scripts/quick_validate.py <path/to/skill-folder>
 ```
 
-The packaging script will:
+The validator checks:
 
-1. **Validate** the skill automatically, checking:
+- YAML frontmatter format and required fields
+- Skill naming conventions and directory structure
+- Description completeness and quality
+- File organization and resource references
 
-   - YAML frontmatter format and required fields
-   - Skill naming conventions and directory structure
-   - Description completeness and quality
-   - File organization and resource references
+Once validation passes, commit the changes directly in the skills directory:
 
-2. **Package** the skill if validation passes, creating a .skill file named after the skill (e.g., `my-skill.skill`) that includes all files and maintains the proper directory structure for distribution. The .skill file is a zip file with a .skill extension.
+```bash
+cd ~/.gemini/skills
+git add <skill-name>/
+git commit -m "feat(skills): add <skill-name> skill"
+```
 
-If validation fails, the script will report the errors and exit without creating a package. Fix any validation errors and run the packaging command again.
+This immediately makes the skill available to all future agent sessions.
 
 ### Step 6: Iterate
 
