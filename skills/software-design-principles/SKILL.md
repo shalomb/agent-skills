@@ -14,9 +14,10 @@ This skill allows you to capture and retrieve software design principles discove
 When the user asks to capture or remember a newly discovered design principle:
 1. Formulate an **Abstract Problem** and **Abstract Solution** that are entirely domain-agnostic (no specific languages or frameworks).
 2. Document the exact context where it was discovered under **Concrete Examples**.
-3. Create a new markdown file in `references/<principle-name>.md` using the standard format.
-4. Add an entry to the **Principles Index** below in this `SKILL.md` file with a 1-sentence summary and a link to the new file.
-5. Commit the changes to the `~/.gemini/skills` git repository.
+3. Identify relevant **Tags** (e.g., UX, Architecture, Refactoring) and **Related Principles** for cross-referencing.
+4. Create a new markdown file in `references/<principle-name>.md` using the standard format.
+5. Add an entry to the **Principles Index** below in this `SKILL.md` file with a 1-sentence summary and a link to the new file.
+6. Commit the changes to the `~/.gemini/skills` git repository.
 
 ### 2. Retrieving and Applying Principles
 When you are about to make an architectural decision, or the user asks what principles we have:
