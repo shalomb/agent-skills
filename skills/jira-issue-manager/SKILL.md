@@ -192,9 +192,97 @@ To use Jira, you need one of:
 | Transition with required fields (project validators) | **Yes** — `references/workflow-transition.md` — CLI shows success but may silently roll back |
 | JQL search | **Yes** — for complex queries |
 | Link issues | **Yes** — MCP limitation, need script |
+| Post rich comment (ADF with hyperlinks) | **Yes** — CLI strips links; use REST API v3 + ADF JSON via `~/.netrc` |
+| Read a Jira board (kanban/scrum) | **Yes** — board UI URLs are not readable; use Agile REST API |
+| Bulk close multiple epics | **Yes** — comment + transition pattern; see below |
 
 References:
 - CLI patterns + gotchas: `references/commands.md`
 - MCP patterns: `references/mcp.md`
 - PI epic template: `references/epic-template.md`
 - Jira Cloud ADF (description rendering, hyperlinks): `references/jira-cloud-adf.md`
+
+---
+
+## REST API Fallback (when CLI is insufficient)
+
+Use the Jira REST API v3 directly for operations the CLI cannot handle well.
+Credentials from `~/.netrc` (machine `<your-jira-host>`):
+
+```python
+import netrc, base64, urllib.request, json
+
+n = netrc.netrc()
+login, _, password = n.authenticators('<your-jira-host>')
+creds = base64.b64encode(f'{login}:{password}'.encode()).decode()
+headers = {'Authorization': f'Basic {creds}', 'Content-Type': 'application/json', 'Accept': 'application/json'}
+```
+
+### Post ADF comment with hyperlinks
+
+```python
+body = {
+  'body': {
+    'type': 'doc', 'version': 1,
+    'content': [
+      {'type': 'paragraph', 'content': [
+        {'type': 'text', 'text': 'See ', 'marks': []},
+        {'type': 'text', 'text': 'issue #42', 'marks': [{'type': 'link', 'attrs': {'href': 'https://github.com/org/repo/issues/42'}}]},
+      ]}
+    ]
+  }
+}
+# POST to /rest/api/3/issue/PROJ-123/comment
+```
+
+### Transition an issue
+
+```python
+# 1. Get available transitions
+GET /rest/api/3/issue/PROJ-123/transitions
+
+# 2. Apply by ID
+POST /rest/api/3/issue/PROJ-123/transitions
+{"transition": {"id": "61"}}
+```
+
+### Link issues
+
+```python
+# Get link types first
+GET /rest/api/3/issueLinkType
+
+# Create link
+POST /rest/api/3/issueLink
+{
+  "type": {"id": "10003"},           # "Relates" — check your instance for IDs
+  "inwardIssue": {"key": "PROJ-1"},
+  "outwardIssue": {"key": "PROJ-2"}
+}
+```
+
+### Read a Jira board
+
+Board UI URLs (`/jira/software/c/projects/X/boards/Y`) are not readable by web fetch.
+Use the Agile REST API instead:
+
+```python
+GET /rest/agile/1.0/board/{board-id}/issue?maxResults=50
+```
+
+Returns issues on the board with `key`, `status`, `summary`, `assignee`.
+Paginate with `startAt=N`.
+
+---
+
+## Bulk Epic Closure Pattern
+
+When closing multiple epics at end of a PI:
+
+1. **Draft a closure comment** for each — include carry-forward destination, GitHub issue links, and continuation epic references
+2. **Post comment** via REST API (ADF for hyperlinks) or CLI for plain text
+3. **Fetch available transitions**: `GET /rest/api/3/issue/KEY/transitions` — confirm "Done" transition ID
+4. **Transition to Done**: `POST /rest/api/3/issue/KEY/transitions` with the transition ID
+5. **Verify** with `jira issue view KEY` — check status is Done
+
+Do all four steps per epic before moving to the next. Do not batch transitions without confirming each comment posted first.
