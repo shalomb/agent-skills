@@ -87,3 +87,69 @@ tpcli plan --team "My Team" --release "PI-X/YY"
 ```
 
 IDs are also visible in the TP web UI URL: `.../TeamPIObjective/12345`.
+
+---
+
+## Linking Features to TeamPIObjectives (Join Entity Pattern)
+
+TargetProcess uses join entities to associate Features with PI Objectives.
+The join entity type is `TeamPIObjectiveFeatures`.
+
+```python
+# Create a Feature→Objective link
+POST /api/v1/TeamPIObjectiveFeatures?access_token=TOKEN
+Content-Type: application/json
+
+{
+  "Feature": {"Id": <feature-id>},
+  "TeamPIObjective": {"Id": <objective-id>}
+}
+```
+
+This is a **create** (POST to the collection), not an update to either entity.
+One Feature can be linked to multiple objectives by posting multiple join records.
+
+---
+
+## Creating Features — Required Fields Gotcha
+
+When creating a Feature via the API, `Project` is **required** even though the
+TP UI makes it appear optional. Omitting it returns `400 Bad Request`.
+
+```python
+POST /api/v1/Features?access_token=TOKEN
+Content-Type: application/json
+
+{
+  "Name": "Feature name",
+  "Project": {"Id": <project-id>},   # REQUIRED — 400 without this
+  "Release": {"Id": <release-id>},
+  "Team": {"Id": <team-id>}
+}
+```
+
+`Release` and `Team` may require a follow-up POST to the created entity's URL
+to persist correctly — the tpcli `Create` method handles this automatically
+by detecting `Team`/`Release` in the payload and issuing a second POST.
+
+---
+
+## tpcli Source — Auth Method
+
+tpcli authenticates via `access_token` **query parameter** (not a header).
+The token is stored in `~/.config/tpcli/config.yaml` as a base64-encoded string.
+
+```python
+# Reading token from tpcli config in Python
+import yaml
+cfg = yaml.safe_load(open('~/.config/tpcli/config.yaml'))
+token = cfg['token']  # already base64-encoded for Basic-style use, OR plain token
+base_url = cfg['url']
+
+# Use as query param
+url = f"{base_url}/api/v1/Features?access_token={token}"
+```
+
+If direct Python/curl calls fail with 401, check the tpcli source at
+`~/shalomb/tpcli/pkg/tpclient/client.go` — the `doRequest` method shows
+exactly how auth is applied.
