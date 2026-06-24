@@ -545,6 +545,14 @@ client.create_feature(name="IaCRE", parent_epic_id=0,
   Workaround: fetch all then filter client-side
 - `tpcli list TeamPIObjectives` sorts oldest-first — new items at bottom
   Workaround: use `--skip 200` or `tpcli get TeamPIObjective <id>` directly
+- **Shared/co-owned objectives are invisible to team filters**: The TP REST API v1 only
+  exposes a single `Team` field per objective. `ResponsibleTeam` is a `TeamAssignment`
+  scheduling record pointing back to the primary team — it is not a co-owner field.
+  Multi-team sharing shown in the TP UI is stored in a join table not reachable via
+  standard REST v1 list responses.
+  Workaround: pass `additional_ids=[<id>, ...]` to `get_team_pi_objectives()` in the
+  Python client to include shared objectives by ID. Known shared objective for CED PI-2/26:
+  `2358465` (primary team: APS&WoW).
 
 ### Jira integration
 
