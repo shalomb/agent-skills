@@ -105,6 +105,62 @@ gh api repos/{owner}/{repo}/issues \
 - `--input file` — Use a file as the request body
 - `--cache duration` — Cache the response (e.g., `3600s`, `60m`, `1h`)
 
+### ⚠️ Critical rule: multiline body payloads need /tmp files
+
+The problem is **shell interpolation at the point the content is written**,
+not the destination. `--input /dev/stdin` is fine; the danger is what feeds
+stdin. Specifically:
+
+| Pattern | Safe? | Why |
+|---------|-------|-----|
+| `cat > /tmp/body.md << 'NOEXPAND'` | ✅ | Single-quoted heredoc — no interpolation |
+| `echo "line with \`backticks\`" > /tmp/body.md` | ❌ | Shell expands backticks before writing |
+| `echo "line with \`backticks\`" \| gh ... --input /dev/stdin` | ❌ | Same — echo expands first, destination irrelevant |
+| `--field body="$(cat /tmp/body.md)"` | ⚠️ | Safe only if /tmp file was written without interpolation |
+| write tool → `/tmp/body.md` → `--field body="$(cat ...)"` | ✅ | write tool never interpolates |
+
+**The actual rule:** write body content using either a **single-quoted heredoc**
+(`<< 'EOF'`) or the **`write` tool**. Never construct body content with
+double-quoted strings, `echo "..."`, `printf "..."`, or unquoted variable
+expansion when the content contains backticks, `$`, or other shell-special
+characters.
+
+Using `/tmp` files (rather than piping directly to `--input /dev/stdin`) is
+preferred for a different reason: it keeps the body inspectable and
+reproducible, not because `/dev/stdin` is inherently unsafe.
+
+```bash
+# CORRECT — single-quoted heredoc prevents all interpolation
+cat > /tmp/gh-body.md << 'NOEXPAND'
+This body safely contains `backticks`, $VARIABLES, and **markdown**.
+NOEXPAND
+
+# Then either:
+gh api repos/ORG/REPO/issues/123/comments \
+  --method POST \
+  --field body="$(cat /tmp/gh-body.md)"
+
+# Or pipe directly (also fine — the write step was safe):
+gh api repos/ORG/REPO/issues/123/comments \
+  --method POST \
+  --input /dev/stdin < /tmp/gh-body.md   # but this sends raw JSON; see below
+
+# For gh issue/pr comment, --body-file is cleanest:
+gh issue comment 123 --body-file /tmp/gh-body.md
+
+# WRONG — shell expands backticks before the content reaches gh
+echo "See `whoami` for details" | gh api ... --input /dev/stdin
+echo "See `whoami` for details" > /tmp/body.md   # same problem, different dest
+
+# ALSO WRONG — double-quoted heredoc interpolates
+cat > /tmp/body.md << EOF
+Ran by `whoami` on $(date)   # these ARE expanded
+EOF
+```
+
+For body content generated programmatically in scripts, use the `write` tool
+to create the `/tmp` file directly — it never interpolates.
+
 ### REST API Examples
 
 ```bash
@@ -141,31 +197,16 @@ To convert a pull request to draft status (or from draft to ready), use the REST
 
 ```bash
 # Mark an existing PR as draft
+# echo with a single-quoted JSON literal is safe — no interpolation risk
+echo '{"draft": true}' > /tmp/gh-draft.json
 gh api repos/{owner}/{repo}/pulls/{pr_number} \
-  --input /dev/stdin \
-  --method PATCH << 'EOF'
-{
-  "draft": true
-}
-EOF
+  --input /tmp/gh-draft.json \
+  --method PATCH
 
-# Example in practice:
-gh api repos/YOUR_ORG/YOUR_REPO/pulls/123 \
+# Or inline via /dev/stdin — also fine for simple JSON with no special chars
+echo '{"draft": false}' | gh api repos/{owner}/{repo}/pulls/{pr_number} \
   --input /dev/stdin \
-  --method PATCH << 'EOF'
-{
-  "draft": true
-}
-EOF
-
-# Mark a PR as ready for review (draft=false)
-gh api repos/{owner}/{repo}/pulls/{pr_number} \
-  --input /dev/stdin \
-  --method PATCH << 'EOF'
-{
-  "draft": false
-}
-EOF
+  --method PATCH
 ```
 
 ### Adding Comments to Pull Requests
@@ -259,10 +300,10 @@ gh api graphql -f query='mutation {
 
 PR_NUMBER=80
 REPO="YOUR_ORG/YOUR_REPO"
-COMMENT_FILE="pr_comment.md"
 
-# Create comment file
-cat > "$COMMENT_FILE" << 'COMMENT_EOF'
+# Write comment body to /tmp — never use heredoc directly into gh field/stdin
+# (shell may interpolate backticks, $vars, and special chars inside the body)
+cat > /tmp/pr-comment.md << 'NOEXPAND'
 Converting to draft — this PR requires PR #101 (adr-improvements) to be merged first.
 
 **Rationale:**
@@ -274,23 +315,18 @@ Converting to draft — this PR requires PR #101 (adr-improvements) to be merged
 1. Merge PR #101
 2. Rebase this PR onto updated main
 3. Move back to ready for review
-COMMENT_EOF
+NOEXPAND
 
-# Mark PR as draft
+# Mark PR as draft — write JSON to /tmp, never pipe via --input /dev/stdin
+echo '{"draft": true}' > /tmp/gh-draft.json
 gh api repos/$REPO/pulls/$PR_NUMBER \
-  --input /dev/stdin \
-  --method PATCH << 'EOF'
-{
-  "draft": true
-}
-EOF
+  --input /tmp/gh-draft.json \
+  --method PATCH
 
 # Add comment
-gh pr comment $PR_NUMBER --body-file "$COMMENT_FILE"
+gh pr comment $PR_NUMBER --body-file /tmp/pr-comment.md
 
-# Verify status
 echo "PR #$PR_NUMBER is now in draft status with explanatory comment"
-rm "$COMMENT_FILE"
 ```
 
 ## GraphQL API Operations (`gh api graphql`)
