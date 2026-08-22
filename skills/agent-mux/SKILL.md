@@ -1,11 +1,14 @@
 ---
 name: agent-mux
 description: >
-  Use this skill to orchestrate multiple parallel sub-agents (Ralph/Bart) across
-  isolated git worktrees to burn down a TODO.md backlog. Trigger this when asked to
-  implement multiple independent features simultaneously, dispatch a "wave of agents",
-  or perform "multi-agent orchestration". This handles complex dependency analysis,
-  model spread, and feedback accumulation, which standard dispatch skills cannot.
+  Use when a TODO.md backlog must be burned down by multiple agents working
+  concurrently in isolated git worktrees. Requires both an existing TODO.md and
+  worktree isolation — without those, use `dispatching-parallel-agents` for
+  in-session parallel tasks, or a `*-sub-agent` skill to delegate a single task.
+  This is the top-level orchestrator: it composes those skills into waves,
+  handling cross-task dependency analysis, model spread across Ralph/Bart, and
+  feedback accumulation between waves. Triggers on: 'agent-mux', 'wave of
+  agents', 'multi-agent orchestration', 'burn down the backlog in parallel'.
 ---
 
 # agent-mux — Multi-Agent Orchestrator

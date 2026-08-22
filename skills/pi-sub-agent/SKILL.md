@@ -1,6 +1,6 @@
 ---
 name: pi-sub-agent
-description: Launch a pi coding agent as a sub-process in a tmux pane, monitor its progress via JSONL streaming, and report results. Use when you need to delegate a well-defined task (bug fix, feature, refactor) to a separate agent instance with live observability. Triggers include "launch agent", "delegate to sub-agent", "run this in another agent", "Ralph loop", "TDD in a sub-agent", or any request to run pi in a tmux pane and monitor it.
+description: Launch a pi coding agent as a sub-process in a tmux pane, monitor its progress via JSONL streaming, and report results. Use when delegating a well-defined task (bug fix, feature, refactor) specifically to pi, with live observability. For another CLI use the matching skill (claude-sub-agent, gemini-sub-agent, copilot-sub-agent, kiro-sub-agent); for a whole TODO.md backlog across worktrees use agent-mux. Triggers include "run pi agent", "delegate to pi", "pi sub-agent", "Ralph loop in pi", or any request to run pi in a tmux pane and monitor it.
 ---
 
 # Pi Sub-Agent Skill
