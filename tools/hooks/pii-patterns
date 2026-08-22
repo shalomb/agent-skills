@@ -1,0 +1,26 @@
+# Patterns the pre-commit hook blocks. Format:  label|extended-regex
+#
+# This file is TRACKED and PUBLIC — do not put secrets or a real employer name
+# here. Keep patterns structural (shape of the thing) rather than literal.
+# Site-specific literals belong in an untracked local override:
+#   $XDG_CONFIG_HOME/agent-skills/pii-patterns-local
+
+# --- Credentials and tokens -------------------------------------------------
+aws-access-key|\bAKIA[0-9A-Z]{16}\b
+github-token|\bgh[pousr]_[A-Za-z0-9]{36,}\b
+slack-token|\bxox[abprs]-[0-9A-Za-z-]{10,}\b
+openai-key|\bsk-[A-Za-z0-9]{32,}\b
+anthropic-key|\bsk-ant-[A-Za-z0-9_-]{20,}\b
+jira-pat|\bATATT[A-Za-z0-9_-]{20,}\b
+private-key|-----BEGIN (RSA |EC |OPENSSH |PGP )?PRIVATE KEY-----
+generic-secret|(password|passwd|secret|api[_-]?key|token)[[:space:]]*[:=][[:space:]]*['\"][^'\"[:space:]]{12,}['\"]
+
+# --- Corporate identifiers --------------------------------------------------
+# Real Atlassian/TargetProcess tenants. Placeholders your-org / example / company
+# are explicitly allowed.
+corp-atlassian|\b(?!your-org|example|company|acme)[a-z0-9-]{3,}\.atlassian\.net\b
+corp-tpondemand|\b(?!your-org|example|company|acme)[a-z0-9-]{3,}\.tpondemand\.com\b
+
+# --- Personal data ----------------------------------------------------------
+# Corporate-looking email addresses. Generic example domains are allowed.
+corp-email|[A-Za-z0-9._%+-]+@(?!example\.(com|org|net)|test\.|localhost)[A-Za-z0-9.-]+\.(com|net|org|io|co\.[a-z]{2})
