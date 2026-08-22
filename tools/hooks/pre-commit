@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# pre-commit — block company identifiers and PII from entering this public repo.
+#
+# Enable (once per clone):
+#   git config core.hooksPath tools/hooks
+#
+# Bypass for a single commit (use sparingly, and know why):
+#   git commit --no-verify
+#
+# Patterns live in tools/hooks/pii-patterns. Add site-specific terms there;
+# it is tracked, so keep entries generic enough to be publishable themselves.
+
+set -uo pipefail
+
+PATTERNS_FILE="$(dirname "$0")/pii-patterns"
+[[ -f "$PATTERNS_FILE" ]] || exit 0
+
+# Site-specific literals live outside the repo so they are never published.
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+LOCAL_PATTERNS="$XDG_CONFIG_HOME/agent-skills/pii-patterns-local"
+
+# Known-safe placeholders — matches containing these are not violations.
+ALLOWLIST='your-org|\{ORGANIZATION\}|\{REPO\}|example\.(com|org|net)|acme|localhost|test\.|jane\.doe|your-instance|company\.(com|tpondemand)|user@|foo@|<[A-Za-z_-]+>|YOUR_|xxx|XXX|NNNNNN|git@github\.com|git@gitlab\.com|email@domain|@domain\.com|noreply@|no-reply@'
+
+# Only scan what is staged, and only text files.
+mapfile -t FILES < <(git diff --cached --name-only --diff-filter=ACMR)
+[[ ${#FILES[@]} -eq 0 ]] && exit 0
+
+violations=0
+report() {
+  if [[ $violations -eq 0 ]]; then
+    echo
+    echo "✖ pre-commit: blocked — staged changes contain company identifiers or PII"
+    echo
+  fi
+  violations=$((violations + 1))
+  printf '  %s\n' "$1"
+}
+
+while IFS= read -r raw; do
+  line="${raw%%#*}"
+  line="${line#"${line%%[![:space:]]*}"}"
+  line="${line%"${line##*[![:space:]]}"}"
+  [[ -z "$line" ]] && continue
+
+  label="${line%%|*}"
+  pattern="${line#*|}"
+
+  for f in "${FILES[@]}"; do
+    [[ -f "$f" ]] || continue
+    # Skip the patterns file itself and this hook.
+    case "$f" in tools/hooks/*) continue ;; esac
+    # Binary check
+    grep -Iq . "$f" 2>/dev/null || continue
+
+    # Match only added lines in the staged diff.
+    hits=$(git diff --cached -U0 -- "$f" \
+      | grep '^+' | grep -v '^+++' \
+      | grep -inP "$pattern" 2>/dev/null \
+      | grep -vP "$ALLOWLIST" 2>/dev/null | head -3)
+
+    if [[ -n "$hits" ]]; then
+      while IFS= read -r h; do
+        report "$f: [$label] ${h:0:120}"
+      done <<< "$hits"
+    fi
+  done
+done < <(cat "$PATTERNS_FILE" ${LOCAL_PATTERNS:+$([[ -f "$LOCAL_PATTERNS" ]] && echo "$LOCAL_PATTERNS")})
+
+if [[ $violations -gt 0 ]]; then
+  echo
+  echo "  This repository is PUBLIC. Replace real identifiers with placeholders:"
+  echo "    {ORGANIZATION}, your-org.atlassian.net, jane.doe@example.com, NNNNNN"
+  echo
+  echo "  See AGENTS.md. To bypass deliberately: git commit --no-verify"
+  echo
+  exit 1
+fi
+
+exit 0

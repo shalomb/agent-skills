@@ -80,6 +80,15 @@ The primary goal of this repository is to provide high-quality, reusable skills 
 
 ### 1. Strip Sensitive Information
 
+> **Enable the pre-commit hook** (once per clone) to have this enforced
+> automatically: `git config core.hooksPath tools/hooks`
+>
+> It blocks staged changes containing credentials, corporate hostnames, or
+> real email addresses. Patterns are in `tools/hooks/pii-patterns`; add
+> site-specific literals to `$XDG_CONFIG_HOME/agent-skills/pii-patterns-local`
+> (untracked, so they are never published). Bypass with `--no-verify` only
+> when you know the match is a false positive.
+
 Before committing changes or new skills, ensure they are free of:
 - **Hardcoded Credentials**: Tokens, passwords, API keys, secrets
 - **Organization-Specific IDs**: AWS account numbers, internal project codes, resource IDs
