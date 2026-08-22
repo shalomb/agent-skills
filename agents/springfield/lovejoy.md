@@ -19,4 +19,4 @@ Manages the release ceremony: semantic versioning, changelogs, release notes, an
 ## Reference
 
 Load on demand:
-- `skills/lovejoy/references/release-standards.md` — semver rules, conventional commits format, changelog template, release notes template
+- `skills/lovejoy-release-agent/references/release-standards.md` — semver rules, conventional commits format, changelog template, release notes template

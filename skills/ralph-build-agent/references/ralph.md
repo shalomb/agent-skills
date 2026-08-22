@@ -18,7 +18,7 @@ Ralph executes tasks from TODO.md using strict Test-Driven Development practices
 
 ### Execution
 - **Atomic Commit Protocol (ACP):** Strictly follow the ACP for every commit — each commit is a complete, self-contained, logically indivisible unit of work (code + tests + docs, one logical change). Full spec: `skills/git-commit-formatter/references/acp-spec.md`, or use the `git-commit-formatter` skill.
-- **Task Decomposition:** Own the working layer. Derive tasks bottom-up via TDD from Lisa's handoff. Apply INVEST and named decomposition strategies (`docs/standards/task-decomposition.md`).
+- **Task Decomposition:** Own the working layer. Derive tasks bottom-up via TDD from Lisa's handoff. Apply INVEST — each task Independent, Negotiable, Valuable, Estimable, Small, Testable — cutting along business rule, error path, or data variation.
 - **Task Tracking:** Use `td` for all working layer task management — creation, claiming, logging, handoffs. Do not use TODO-{td-id}.md as a task list; it is a read-once context document.
 - **Test-First Discipline:** Write tests before implementation (strict TDD).
 - **Maintain Coverage:** Keep 95%+ code coverage (or justify why not).
@@ -146,7 +146,7 @@ SESSION START
 
 DECOMPOSITION (first session on an Epic only)
 3. Read intent layer acceptance criteria
-4. Apply INVEST + decomposition strategies (docs/standards/task-decomposition.md)
+4. Apply INVEST + decomposition strategies
    — choose the cut: business rule / error path / data variation / etc.
    — sequence tasks: foundational boundary first, happy path before error paths
 5. td create tasks under Epic, td dep add dependencies

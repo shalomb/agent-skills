@@ -13,7 +13,7 @@ Validates GitHub issues for quality and Definition of Ready before handing to th
 ## Workflow
 
 1. Read new issue
-2. Validate quality — load `skills/github-cli/skills/github-cli/references/issue-triage-standards.md`
+2. Validate quality — load `skills/github-cli/references/issue-triage-standards.md`
 3. Search for duplicates
 4. Investigate ecosystem (related modules, existing patterns)
 5. Run DoR checklist
@@ -25,4 +25,4 @@ Validates GitHub issues for quality and Definition of Ready before handing to th
 
 ## References (load on demand)
 
-- `skills/github-cli/skills/github-cli/references/issue-triage-standards.md` — quality checklist, DoR, label taxonomy, priority matrix, comment templates
+- `skills/github-cli/references/issue-triage-standards.md` — quality checklist, DoR, label taxonomy, priority matrix, comment templates

@@ -8,7 +8,7 @@
 
 Learn the recommended folder layout and file organization patterns that make skills maintainable and portable.
 
-*This guide is being written. See [Create your first skill](./create-first-skill.md) for the basics in the meantime.*
+*This guide is being written. See [Create your first skill](./quickstart.md) for the basics in the meantime.*
 
 ## Key Topics
 - Folder naming conventions
@@ -39,4 +39,4 @@ skill-name/
 
 **Status**: 🔄 In Progress - Complete version coming soon
 
-**Related**: [Write effective instructions](./write-instructions.md) | [Reference: Skill anatomy](../reference/skill-anatomy.md)
+**Related**: Write effective instructions | [Reference: Skill anatomy](../reference/skill-anatomy.md)

@@ -6,7 +6,7 @@ This guide helps AI assistants (Claude Code, Pi, etc.) understand how to work wi
 
 **Starting with skills?** → Read [docs/explanation/core-principles.md](docs/explanation/core-principles.md)
 
-**Building a new skill?** → Start with [docs/how-to/create-first-skill.md](docs/how-to/create-first-skill.md)
+**Building a new skill?** → Start with [docs/how-to/quickstart.md](docs/how-to/quickstart.md)
 
 **Need reference details?** → Check [docs/reference/frontmatter.md](docs/reference/frontmatter.md)
 
@@ -52,9 +52,9 @@ This repository follows the **Diataxis framework** with four sections:
 
 #### [docs/how-to/](docs/how-to/) — Task-Oriented Guides
 Start here when you have a concrete goal:
-- [create-first-skill.md](docs/how-to/create-first-skill.md) — 15-30 minute walkthrough
+- [quickstart.md](docs/how-to/quickstart.md) — 15-30 minute walkthrough
 - [structure-skill.md](docs/how-to/structure-skill.md) — Organizing SKILL.md and supporting files
-- [add-supporting-files.md](docs/how-to/add-supporting-files.md) — Using scripts/, references/, assets/
+- [using-scripts.md](docs/how-to/using-scripts.md) — Bundling scripts and supporting files
 - [best-practices.md](docs/how-to/best-practices.md) — Writing effective instructions and descriptions
 - [implement-skills-support.md](docs/how-to/implement-skills-support.md) — Adding skills to agent platforms
 
@@ -72,7 +72,7 @@ Read when you want to understand *why*:
 
 #### [docs/troubleshooting/](docs/troubleshooting/) — Problem Solutions
 Check when something doesn't work:
-- [common-issues.md](docs/troubleshooting/common-issues.md) — Typical problems and fixes
+- [troubleshooting/](docs/troubleshooting/) — Problem/fix guides
 
 ## Core Principle: Universal Applicability
 

@@ -46,9 +46,11 @@ repeats automatically until every task is done.
    as immutable context (intent, approach, constraints). Do not modify it.
 3. Read the agent definition at `.github/agents/ralph.md` for the full
    persona, TDD rules, Farley checklist, and execution flow.
-4. Read `docs/standards/task-decomposition.md` for INVEST properties,
-   decomposition strategies, sequencing heuristics, and the continuity
-   convention for td handoffs.
+4. Decompose to INVEST tasks — each Independent, Negotiable, Valuable,
+   Estimable, Small, Testable. Cut along business rule, error path, or data
+   variation; sequence the foundational boundary first, then happy path, then
+   error paths. Log the strategy chosen in the td handoff so the next session
+   inherits the decomposition intent.
 5. Execute the TDD loop: derive tasks from acceptance criteria, create them
    in td, claim atomically with `td start`, commit per ACP, log decisions.
 6. At session end, run `td handoff` with `--decision` capturing the
@@ -70,8 +72,9 @@ For each task in TODO.md:
 
 ## Key Standards (read these)
 - `.github/agents/ralph.md` — persona, TDD rules, Farley checklist
-- `docs/standards/task-decomposition.md` — INVEST, decomposition strategies,
-  td continuity convention *(not present in this repo)*
+- **Task decomposition** — INVEST properties; cut by business rule, error path,
+  or data variation; foundational boundary first. Record the strategy in each
+  td handoff.
 - **ACP — Atomic Commit Protocol**: one task = one atomic commit. Full spec:
   `skills/git-commit-formatter/references/acp-spec.md`, or use the
   `git-commit-formatter` skill.

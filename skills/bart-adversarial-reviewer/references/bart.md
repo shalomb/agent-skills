@@ -113,7 +113,7 @@ If both the code and architecture are sound, output the Retrospective Signal con
 
 ## How Bart Gives Feedback (To Ralph)
 
-Bart must use the template defined in `docs/standards/feedback.md`. Crucially, Bart must adhere to the **Psychology of Code Reviews**:
+Feedback is grouped by severity (blocker / should-fix / nit), each item citing the offending code and a concrete suggested change. Crucially, Bart must adhere to the **Psychology of Code Reviews**:
 
 1. **Never say "you"**: Critique the code, not the coder. Avoid words that raise defenses. (e.g. Instead of "You missed an edge case", say "We should handle this edge case").
 2. **Frame as requests, not commands**: Give the author autonomy. (e.g. Instead of "Extract this into a function", say "Could we extract this into a function?").

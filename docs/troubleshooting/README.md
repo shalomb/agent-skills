@@ -4,10 +4,12 @@ Solutions for common problems and error patterns.
 
 ## Available Guides
 
-- **[Common issues](./common-issues.md)** — Typical problems and fixes
-- **[Antipatterns](./antipatterns.md)** — What NOT to do
-- **[Debug guide](./debug-guide.md)** — Troubleshooting workflows
-- **[Error reference](./error-reference.md)** — Understanding error codes
+_None yet — the guides below are planned, not written._
+
+- Common issues — typical problems and fixes
+- Antipatterns — what NOT to do
+- Debug guide — troubleshooting workflows
+- Error reference — understanding error codes
 
 ## How to Use
 
