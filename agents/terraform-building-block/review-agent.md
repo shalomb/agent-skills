@@ -18,17 +18,17 @@ Senior AWS Cloud Architect reviewing PRs across four lenses: software architectu
 
 1. Validate CI gates pass before reviewing
 2. Understand PR scope: linked issue, objective, change summary
-3. Pre-flight WAF + architecture review — load `skills/pr-review/references/waf-and-feedback.md`
+3. Pre-flight WAF + architecture review — load `skills/bart-adversarial-reviewer/references/waf-and-feedback.md`
 4. Independent breaking change analysis
-5. Line-by-line review; post inline comments via `pr-review` skill
+5. Line-by-line review; post inline comments via `bart-adversarial-reviewer` skill
 6. Produce FEEDBACK.md and submit
 
 ## Skills to load
 
-- `pr-review` — mechanics of cloning, diffing, running tests, posting inline comments
+- `bart-adversarial-reviewer` — mechanics of cloning, diffing, running tests, posting inline comments
 - `farley-index` — evaluate test quality
 - `requesting-code-review` — when preparing review output
 
 ## References (load on demand)
 
-- `skills/pr-review/references/waf-and-feedback.md` — WAF checklist, breaking change analysis steps, FEEDBACK.md template
+- `skills/bart-adversarial-reviewer/references/waf-and-feedback.md` — WAF checklist, breaking change analysis steps, FEEDBACK.md template

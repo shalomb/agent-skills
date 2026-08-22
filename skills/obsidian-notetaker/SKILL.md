@@ -6,9 +6,10 @@ description: >
   items), commits changes with git, and syncs the vault. Use when the user asks
   to: take a note, capture an idea, update _todo.md, check off a task, find a
   note, add to Incoming.md, review TODOs, commit vault changes, or sync the
-  obsidian vault. Triggers on keywords like "note", "obsidian", "vault", "todo",
-  "_todo", "capture", "jot down", "add to inbox", "ob ", "sync vault", or "commit
-  notes".
+  obsidian vault. Personal notes only — for a code TODO.md backlog use
+  `ralph-build-agent`; for formatting a code commit use `git-commit-formatter`.
+  Triggers on: 'obsidian', 'vault', 'take a note', 'capture an idea', 'jot
+  down', 'add to inbox', '_todo', 'my todo list', 'sync vault', 'commit vault'.
 ---
 
 # Obsidian Notetaker

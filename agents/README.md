@@ -50,7 +50,7 @@ Agent reference content is stored in `skills/*/references/` so it's reusable acr
 | TDD red-green-refactor discipline | `skills/test-driven-development/` |
 | TODO.md template (feature work) | `skills/ralph-build-agent/references/todo-template.md` |
 | ADR format + Y-Statement + design rules | `skills/architecture-decision-records/adr-template.md` |
-| WAF review checklist + FEEDBACK.md template | `skills/pr-review/references/waf-and-feedback.md` |
+| WAF review checklist + FEEDBACK.md template | `skills/bart-adversarial-reviewer/references/waf-and-feedback.md` |
 | Issue triage: DoR, labels, priority matrix | `skills/github-cli/references/issue-triage-standards.md` |
 
 ## Agent format by harness

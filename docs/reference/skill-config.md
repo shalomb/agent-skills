@@ -110,7 +110,7 @@ TFC_WORKSPACE="my workspace name"
 
 | Key | Used by | Description |
 |-----|---------|-------------|
-| `GH_ORG` | github-cli, pr-review, tfc-api | Default GitHub organisation |
+| `GH_ORG` | github-cli, bart-adversarial-reviewer, tfc-api | Default GitHub organisation |
 | `TFC_ORG` | tfc-api, terraform-dev | Terraform Cloud organisation name |
 | `JIRA_PROJECT` | jira, meeting-notes | Default Jira project key |
 | `SLACK_WORKSPACE` | meeting-notes | Slack workspace name |
