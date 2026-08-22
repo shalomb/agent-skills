@@ -1,0 +1,81 @@
+/* Deck mode. Layered on top of theme.css — reuses the same custom properties. */
+html,body{height:100%}
+body{overflow:hidden}
+.deck{height:100dvh; overflow-y:auto; scroll-snap-type:y mandatory; scroll-behavior:smooth}
+.slide{
+  scroll-snap-align:start; scroll-snap-stop:always;
+  min-height:100dvh; display:flex; flex-direction:column;
+  padding:clamp(28px,5vh,64px) clamp(24px,6vw,96px) 64px;
+  border-bottom:1px solid var(--rule-soft);
+}
+.slide-inner{
+  width:100%; max-width:1080px; margin:0 auto;
+  flex:1; min-height:0; overflow-y:auto; overscroll-behavior:contain;
+  padding-right:6px;
+}
+.slide-inner::-webkit-scrollbar{width:7px}
+.slide-inner::-webkit-scrollbar-thumb{background:var(--rule); border-radius:4px}
+
+/* ---------- title slide ---------- */
+.slide-title{justify-content:center}
+.slide-title .slide-inner{flex:0 1 auto; overflow:visible}
+.slide-title h1{
+  font-family:var(--serif); font-weight:600; font-size:clamp(2.1rem,5.4vw,3.6rem);
+  line-height:1.08; letter-spacing:-.022em; margin:0 0 20px; max-width:24ch; text-wrap:balance;
+}
+.slide-title .eyebrow{
+  font-family:var(--sans); font-size:11px; font-weight:600; letter-spacing:.14em;
+  text-transform:uppercase; color:var(--accent); margin:0 0 18px;
+}
+.slide-title .built{font-family:var(--sans); font-size:12.5px; color:var(--mute); margin:22px 0 0}
+.slide-title .meta{margin-top:26px; max-width:820px}
+
+/* ---------- slide headings ---------- */
+.slide > .slide-head{
+  width:100%; max-width:1080px; margin:0 auto 22px;
+  padding-bottom:14px; border-bottom:2px solid var(--ink); flex:0 0 auto;
+}
+.slide-head .num{
+  font-family:var(--sans); font-size:11px; font-weight:700; letter-spacing:.14em;
+  color:var(--accent); display:block; margin-bottom:8px;
+}
+.slide-head h2{
+  font-family:var(--serif); font-weight:600; font-size:clamp(1.35rem,2.9vw,2.05rem);
+  line-height:1.16; letter-spacing:-.014em; margin:0; display:block; text-wrap:balance;
+  border:0; padding:0; grid-template-columns:none;
+}
+.slide h3{margin-top:22px}
+.slide p{margin:13px 0}
+.slide ul,.slide ol{gap:7px}
+.slide blockquote{margin:18px 0; font-size:1.02rem}
+.slide .tw{margin:18px 0}
+
+/* Dense slides shrink rather than scroll, where they can. */
+.slide[data-dense="1"] .slide-inner{font-size:.93em}
+.slide[data-dense="2"] .slide-inner{font-size:.86em}
+
+/* ---------- chrome ---------- */
+.progress{
+  position:fixed; top:0; left:0; height:2px; background:var(--accent);
+  width:0; z-index:50; transition:width .18s ease-out;
+}
+.counter{
+  position:fixed; right:16px; bottom:12px; z-index:50;
+  font-family:var(--sans); font-size:11px; font-weight:600; letter-spacing:.08em;
+  color:var(--mute); background:var(--paper); border:1px solid var(--rule-soft);
+  border-radius:99px; padding:4px 11px; font-variant-numeric:tabular-nums;
+}
+.hint{
+  position:fixed; left:16px; bottom:12px; z-index:50;
+  font-family:var(--sans); font-size:11px; color:var(--mute);
+  opacity:1; transition:opacity .5s ease 2.5s;
+}
+.hint.gone{opacity:0}
+
+@media print{
+  body{overflow:visible}
+  .deck{height:auto; overflow:visible; scroll-snap-type:none}
+  .slide{min-height:auto; page-break-after:always; break-after:page; border-bottom:0; padding:0 0 24pt}
+  .slide-inner{overflow:visible}
+  .progress,.counter,.hint{display:none}
+}
