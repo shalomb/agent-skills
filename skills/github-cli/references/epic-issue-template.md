@@ -64,7 +64,7 @@ Always apply:
 | Jira Epic | [PROJ-XXXX](https://your-org.atlassian.net/browse/PROJ-XXXX) |
 | TP Objective | [XXXXXXX](https://your-org.tpondemand.com/entity/XXXXXXX) |
 | TP Feature | [XXXXXXX](https://your-org.tpondemand.com/entity/XXXXXXX) |
-| Epic file | [DAD-XXXX-*.md](https://github.com/oneTakeda/gmsgq-dad-10345-fusion-platform-control-tower/blob/main/program-increments/PI-1-26/DAD-XXXX-*.md) |
+| Epic file | [DAD-XXXX-*.md](https://github.com/{ORGANIZATION}/{REPO}/blob/main/program-increments/PI-1-26/DAD-XXXX-*.md) |
 | Carry-over from | <!-- PROJ-XXXX if applicable --> |
 ```
 

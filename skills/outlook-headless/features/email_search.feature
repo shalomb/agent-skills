@@ -5,7 +5,7 @@ Feature: Outlook Email Search and Extraction
 
   Scenario: Basic search by query
     Given I am authenticated with Outlook Web
-    When I search for "GMSGQ EHS"
+    When I search for "Project Alpha"
     Then I should receive a list of matching emails
     And each email should contain a subject, sender, and body
 

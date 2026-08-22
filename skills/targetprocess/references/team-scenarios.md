@@ -11,7 +11,7 @@ High-level view of current and upcoming program increments for an entire Agile R
 - Reviewing ART-wide objectives and commitments
 - Identifying participation levels across 20+ teams
 
-### PI Planning Workflow (DAD/GMSGQ)
+### PI Planning Workflow
 ```bash
 # 1. Create Feature linked to an objective atomically (Python client)
 python -c "

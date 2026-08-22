@@ -499,12 +499,12 @@ tpcli discover --verbose
 
 ---
 
-## DAD/GMSGQ Platform Conventions
+## Platform Conventions
 
 ### Required fields for entity creation
 
 All DAD entities (TeamPIObjective, Feature) require:
-- `Project: {"Id": 223264}` (GMSGQ) — omitting returns cryptic "Project should be specified" error
+- `Project: {"Id": NNNNNN}` (your platform project) — omitting returns cryptic "Project should be specified" error
 
 ### Correct team name
 

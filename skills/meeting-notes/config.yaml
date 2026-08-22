@@ -24,7 +24,7 @@ auto_group_topics: true
 integrations:
   github:
     enabled: true
-    org: oneTakeda
+    org: {ORGANIZATION}
     auto_link_issues: true  # Suggest linking to existing issues
   
   jira:
@@ -35,7 +35,7 @@ integrations:
   
   slack:
     enabled: true
-    workspace: takeda
+    workspace: {ORGANIZATION}
     workspace_id: T12345
     default_channel: architecture
     thread_replies: true  # Post actions/decisions as thread replies
