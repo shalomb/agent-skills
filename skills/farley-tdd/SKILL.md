@@ -1,6 +1,13 @@
 ---
 name: farley-tdd
-description: Guide on applying Dave Farley's Properties of Good Tests (TDD). Use this skill to write robust unit tests, practice strict Red-Green-Refactor, or evaluate a test suite using the Farley Index. Triggers on 'farley', 'tdd', 'test driven development', 'unit tests', 'test quality'.
+description: >
+  Audit and score an existing test suite against Dave Farley's Properties of
+  Good Tests using the Farley Index. Use when tests already exist and the
+  question is whether they can be trusted — flaky runs, slow CI, brittle tests,
+  or validating that TDD was actually practised. For writing new code test-first
+  use `test-driven-development`; for reviewing specific tests or a diff use
+  `test-design-review`. Triggers on: 'farley', 'farley index', 'test quality',
+  'test suite audit', 'flaky tests', 'am I really doing TDD'.
 metadata:
   version: 2.0.0
 ---
@@ -9,14 +16,23 @@ metadata:
 
 This skill provides comprehensive guidance on practicing Test-Driven Development (TDD) and evaluating test quality using Dave Farley's *Properties of Good Tests*.
 
-## Practicing Strict TDD
+## What Good TDD Looks Like
 
-When writing new features or fixing bugs, follow the Red-Green-Refactor cycle:
+Reference criteria for judging whether TDD was actually practised. To *do* TDD
+on new code, use `test-driven-development` — this section is the yardstick, not
+the workflow.
+
+The Red-Green-Refactor cycle:
 1. **Red**: Write a failing test that defines the required behavior.
 2. **Green**: Write the minimal production code necessary to pass the test.
 3. **Refactor**: Improve the code structure without altering behavior.
 
-**Canon TDD Pitfalls to Avoid (via Kent Beck):**
+A suite where **Refactor** was routinely skipped shows up as duplication across
+test setup and production code that no test ever forced out. Score it under
+*Maintainable* and *Understandable*.
+
+**Canon TDD Pitfalls (via Kent Beck)** — evidence of these in the history or the
+suite means the cycle was not followed:
 - **Speculative Tests**: Do not write all tests upfront. Convert exactly one item from your test list into a concrete test, make it pass, then move to the next.
 - **Mixing Interface & Implementation**: The "Red" phase is for designing the interface. The "Refactor" phase is for designing the implementation. Do not mix them.
 - **Abstracting Too Soon**: In the "Refactor" phase, remember that duplication is a hint, not a command. Don't over-abstract prematurely.
@@ -56,9 +72,6 @@ A quantitative diagnostic tool that scores an automated test suite against these
 ## Triggers
 
 - "farley"
-- "tdd"
-- "test driven development"
-- "write unit tests"
 - "farley index"
 - "farley-index"
 - "test quality"
@@ -71,3 +84,12 @@ A quantitative diagnostic tool that scores an automated test suite against these
 - "TDD validation"
 - "test coupling"
 - "am I really doing TDD"
+
+### Not this skill
+
+| If the user wants to… | Use |
+| :-------------------- | :-- |
+| Write new code test-first | `test-driven-development` |
+| Review specific tests or a diff | `test-design-review` |
+| Burn down a TODO.md backlog | `ralph-build-agent` |
+| Evaluate Gherkin/BDD specs | `adzic-bdd` |
