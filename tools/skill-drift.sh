@@ -6,20 +6,40 @@
 #   ./tools/skill-drift.sh                        # check all skills
 #   ./tools/skill-drift.sh --summary              # one-line-per-skill drift summary
 #   ./tools/skill-drift.sh --diff SKILL COPY_PATH # show unified diff for a skill copy
+#
+# Deployment roots (where to look for deployed copies) are site-specific:
+#   SKILL_DRIFT_ROOTS=/path/a:/path/b ./tools/skill-drift.sh   # env override
+#   $XDG_CONFIG_HOME/agent-skills/drift-roots                  # one path per line
+#   (neither present)                                          # auto-discover under $HOME
 
 set -euo pipefail
 
 CANONICAL_ROOT="$(cd "$(dirname "$0")/.." && pwd)/skills"
 
-# All locations where skills may be deployed
+# All locations where skills may be deployed.
 # Symlinked farms (.pi/agent/skills, .gemini/skills) are excluded — they
 # point back to canonical and are always in sync by definition.
-SEARCH_ROOTS=(
-  "$HOME/oneTakeda/gmsgq-dad-clouddevsecops-iac-reveng-solution/.github/skills"
-  "$HOME/oneTakeda/gmsgq-dad-cloud-engineering-context/.github/skills"
-  "$HOME/oneTakeda/gmsgq-dad-10345-fusion-platform-control-tower/.github/skills"
-  "$HOME/oneTakeda/terraform-BuildingBlock-Template/.github/skills"
-)
+#
+# Deployment roots are site-specific, so they are not hardcoded here. They come
+# from, in order of precedence:
+#   1. $SKILL_DRIFT_ROOTS   — colon-separated list of .github/skills paths
+#   2. $XDG_CONFIG_HOME/agent-skills/drift-roots  — one path per line, # comments ok
+#   3. auto-discovery       — any */.github/skills under $HOME, two levels deep
+XDG_CONFIG_HOME="${XDG_CONFIG_HOME:-$HOME/.config}"
+DRIFT_ROOTS_FILE="$XDG_CONFIG_HOME/agent-skills/drift-roots"
+
+SEARCH_ROOTS=()
+if [[ -n "${SKILL_DRIFT_ROOTS:-}" ]]; then
+  IFS=':' read -r -a SEARCH_ROOTS <<< "$SKILL_DRIFT_ROOTS"
+elif [[ -f "$DRIFT_ROOTS_FILE" ]]; then
+  while IFS= read -r line; do
+    line="${line%%#*}"; line="${line#"${line%%[![:space:]]*}"}"; line="${line%"${line##*[![:space:]]}"}"
+    [[ -n "$line" ]] && SEARCH_ROOTS+=("${line/#\~/$HOME}")
+  done < "$DRIFT_ROOTS_FILE"
+else
+  while IFS= read -r d; do SEARCH_ROOTS+=("$d"); done \
+    < <(find "$HOME" -mindepth 3 -maxdepth 4 -type d -path '*/.github/skills' 2>/dev/null)
+fi
 
 # Symlinked locations — always in sync (symlinks point back to canonical)
 SYMLINKED_ROOTS=(
@@ -32,7 +52,7 @@ label() {
   local path="$1"
   echo "$path" \
     | sed "s|$HOME/||" \
-    | sed 's|oneTakeda/||' \
+    | sed 's|^[^/]*/||' \
     | sed 's|/.github/skills||' \
     | sed 's|/.pi/agent/skills|.pi/skills|' \
     | sed 's|/.gemini/skills|.gemini/skills|'
