@@ -31,6 +31,7 @@ For command references, GraphQL mutations, and delivery metrics, refer to:
 - `references/planning-commands.guide.md`: Core commands for discovery and updates.
 - `references/iteration-crud.guide.md`: Instructions for creating/deleting iterations.
 - `references/delivery-metrics.guide.md`: Logic for Retro analysis and capacity forecasting.
+- `references/roadmap-view-troubleshooting.guide.md`: Why an "Epic" issue doesn't show up in a Roadmap-layout view (hint: it almost always needs a real sub-issue), plus the Project/Start date/Target date hygiene checklist for epics.
 
 ## Orchestration Flow
 
@@ -52,9 +53,15 @@ For command references, GraphQL mutations, and delivery metrics, refer to:
     - Verify with `gh project item-list --limit 200` that assignments are correct.
 
 ---
-**Maintained by**: contributors | **Version**: 1.2 | **Last Updated**: 2026-04-21
+**Maintained by**: contributors | **Version**: 1.3 | **Last Updated**: 2026-07-08
 
 ## Changelog
+- **1.3 (2026-07-08)**: Added `roadmap-view-troubleshooting.guide.md` — empirically confirmed that
+  Roadmap-layout "Epics" views require the epic issue to have at least one real GitHub sub-issue
+  (via `addSubIssue`, not a text reference) to render; `issueType`, `Parent issue`, dates, and the
+  saved view filter were all ruled out as gating factors. Also codified the best practice of always
+  setting the correct Project membership plus `Start date`/`Target date` on epics, even though those
+  dates don't gate visibility — they matter for timeline accuracy regardless.
 - **1.2 (2026-04-21)**: Added lessons from live session — `--limit 200` requirement for stocktake,
   `completedIterations` must be preserved to keep `@current` views working, ID regeneration
   side-effect on every mutation, GraphQL item assignment pattern. See `iteration-crud.guide.md`.
