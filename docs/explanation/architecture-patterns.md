@@ -329,4 +329,4 @@ Once you've identified your pattern:
 
 ---
 
-**Related**: [Use case design](./use-case-design.md) | [MCP + Skills](./mcp-plus-skills.md)
+**Related**: Use case design | MCP + Skills

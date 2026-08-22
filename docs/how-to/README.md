@@ -5,11 +5,11 @@ Step-by-step instructions for accomplishing specific tasks.
 ## Quick Links
 
 **For Skill Authors**:
-- **[Create your first skill](./create-first-skill.md)** ✅ — 15-30 minute walkthrough to build a working skill
+- **[Create your first skill](./quickstart.md)** ✅ — 15-30 minute walkthrough to build a working skill
 - **[Structure a skill](./structure-skill.md)** — Folder layout and file organization *(IN PROGRESS)*
-- **[Write effective instructions](./write-instructions.md)** — Best practices for SKILL.md *(IN PROGRESS)*
-- **[Test and iterate](./test-and-iterate.md)** — Testing patterns and quality gates *(IN PROGRESS)*
-- **[Distribute your skill](./distribute-skill.md)** — Share with teams or communities *(IN PROGRESS)*
+- **Write effective instructions** — Best practices for SKILL.md *(IN PROGRESS)*
+- **Test and iterate** — Testing patterns and quality gates *(IN PROGRESS)*
+- **Distribute your skill** — Share with teams or communities *(IN PROGRESS)*
 
 **For Agent/IDE Developers**:
 - **[Implement skills support](./implement-skills-support.md)** ✅ — Add Agent Skills to your agent or development tool
@@ -23,12 +23,12 @@ Each guide:
 - Includes troubleshooting tips
 
 **Choose by your needs**:
-- **Building a skill?** → [Create your first skill](./create-first-skill.md)
+- **Building a skill?** → [Create your first skill](./quickstart.md)
 - **Adding to your agent/IDE?** → [Implement skills support](./implement-skills-support.md)
 - **Need to organize files?** → [Structure a skill](./structure-skill.md)
-- **Want to improve instructions?** → [Write effective instructions](./write-instructions.md)
-- **Testing before release?** → [Test and iterate](./test-and-iterate.md)
-- **Ready to share?** → [Distribute your skill](./distribute-skill.md)
+- **Want to improve instructions?** → Write effective instructions
+- **Testing before release?** → Test and iterate
+- **Ready to share?** → Distribute your skill
 
 ## Document Status
 

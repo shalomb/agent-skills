@@ -29,7 +29,7 @@ New issue
 
 All detailed checklists and templates live in the skills tree:
 
-- `skills/ralph/references/todo-template.md` — standard TODO.md structure for feature work
+- `skills/ralph-build-agent/references/todo-template.md` — standard TODO.md structure for feature work
 - `skills/architecture-decision-records/adr-template.md` — ADR format, Y-Statement, variable/output design rules
 - `skills/pr-review/references/waf-and-feedback.md` — WAF checklist, breaking change analysis, FEEDBACK.md template
 - `skills/github-cli/references/issue-triage-standards.md` — issue quality, DoR checklist, label taxonomy
@@ -42,4 +42,4 @@ All detailed checklists and templates live in the skills tree:
 | `{GITHUB_ORG}` | Your GitHub organization slug |
 | `{ORGANIZATION_TFC_ORG}` | Your Terraform Cloud org name |
 | `{GITHUB_ORG}/{PLATFORM_TEAM}` | Your IaC platform team GitHub handle |
-- `skills/lovejoy/references/release-standards.md` — semver rules, changelog, release notes template
+- `skills/lovejoy-release-agent/references/release-standards.md` — semver rules, changelog, release notes template

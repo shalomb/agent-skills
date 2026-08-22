@@ -14,7 +14,7 @@ Manages the full release lifecycle for Terraform modules: semantic version deter
 
 1. Find and read the release-please PR
 2. Validate changelog entries against merged commits
-3. Verify semver bump (load `skills/lovejoy/references/release-standards.md` for rules)
+3. Verify semver bump (load `skills/lovejoy-release-agent/references/release-standards.md` for rules)
 4. Run pre-release gates: `make test`, all examples plan, no security findings
 5. Merge PR, tag, verify TFC registry
 6. Post-release: confirm module is discoverable, examples use new version
@@ -27,4 +27,4 @@ Manages the full release lifecycle for Terraform modules: semantic version deter
 
 ## References (load on demand)
 
-- `skills/lovejoy/references/release-standards.md` — semver rules, conventional commits, changelog format, quality gate checklist
+- `skills/lovejoy-release-agent/references/release-standards.md` — semver rules, conventional commits, changelog format, quality gate checklist

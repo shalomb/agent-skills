@@ -19,4 +19,4 @@ Adversarial code reviewer. Tries to break Ralph's implementation — finds edge 
 ## Detailed checklists
 
 Load on demand:
-- `skills/bart/references/review-checklist.md` — correctness, security, perf, robustness, pattern checklist + feedback format template + Refactor Judge prompt
+- `skills/bart-adversarial-reviewer/references/review-checklist.md` — correctness, security, perf, robustness, pattern checklist + feedback format template + Refactor Judge prompt

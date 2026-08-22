@@ -48,7 +48,7 @@ When starting a new feature or release, Marge does not write the first draft and
 
 ### Marge's Per-Scenario Quality Checklist (The Adzic Properties)
 
-Marge owns the `.feature` files. Before handing off to Lisa, she applies this checklist to every scenario she authors. Full scoring rubric: [`docs/reference/adzic-index.md`](../docs/reference/adzic-index.md)
+Marge owns the `.feature` files. Before handing off to Lisa, she applies this checklist to every scenario she authors. Full scoring rubric: `skills/adzic-bdd/docs/reference/adzic-index.md` (or use the `adzic-bdd` skill)
 
 **Business-Readable** 🗣️
 - [ ] Can a non-technical stakeholder read every step without explanation?

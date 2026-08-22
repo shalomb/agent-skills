@@ -24,7 +24,7 @@ Complete list of external URLs, APIs, and references used throughout this docume
 | **OpenAPI Browser UI** | https://apidocs.harness.io | Interactive API explorer (read-only, no auth) |
 
 ### Harness API Modules (in official spec)
-Documented in: `skills/harness-idp/OPENAPI-XREF.md`
+Documented in: `skills/harness-idp/references/OPENAPI-XREF.md`
 
 | Module | Endpoints | Key APIs |
 |--------|-----------|----------|
@@ -147,7 +147,7 @@ Documented in: `skills/harness-idp/OPENAPI-XREF.md`
 
 #### Harness IDP Skill
 - Location: `skills/harness-idp/`
-- Main: `skills/harness-idp/README.md`
+- Main: `skills/harness-idp/SKILL.md`
 - Docs:
   - `SKILL.md` - Skill instructions
   - `OPENAPI-FALLBACK.md` - Discovery system guide
@@ -198,7 +198,7 @@ Documented in: `skills/harness-idp/OPENAPI-XREF.md`
 - `POST /pipeline/api/inputSets/merge` - Merge input sets
 - `POST /pipeline/api/pipeline/execute/{identifier}` - Execute pipeline
 
-See: `skills/harness-idp/OPENAPI-XREF.md` for complete reference with parameters and schemas.
+See: `skills/harness-idp/references/OPENAPI-XREF.md` for complete reference with parameters and schemas.
 
 ## Development Tools & CLI Commands
 

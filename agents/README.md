@@ -43,12 +43,12 @@ Agent reference content is stored in `skills/*/references/` so it's reusable acr
 
 | Content | Where |
 |---|---|
-| Bart's review checklist + Refactor Judge | `skills/bart/references/review-checklist.md` |
-| Semver rules, changelog format, release notes | `skills/lovejoy/references/release-standards.md` |
+| Bart's review checklist + Refactor Judge | `skills/bart-adversarial-reviewer/references/review-checklist.md` |
+| Semver rules, changelog format, release notes | `skills/lovejoy-release-agent/references/release-standards.md` |
 | Adzic scenario quality scoring | `skills/adzic-index/` |
 | Farley per-test quality checklist | `skills/farley-index/` |
 | TDD red-green-refactor discipline | `skills/test-driven-development/` |
-| TODO.md template (feature work) | `skills/ralph/references/todo-template.md` |
+| TODO.md template (feature work) | `skills/ralph-build-agent/references/todo-template.md` |
 | ADR format + Y-Statement + design rules | `skills/architecture-decision-records/adr-template.md` |
 | WAF review checklist + FEEDBACK.md template | `skills/pr-review/references/waf-and-feedback.md` |
 | Issue triage: DoR, labels, priority matrix | `skills/github-cli/references/issue-triage-standards.md` |

@@ -171,7 +171,7 @@ skill-name/
 
 For guidance on creating your own skills, see [AGENTS.md](AGENTS.md) and the documentation:
 
-- **[How to Create Your First Skill](docs/how-to/create-first-skill.md)** - Step-by-step tutorial
+- **[How to Create Your First Skill](docs/how-to/quickstart.md)** - Step-by-step tutorial
 - **[Best Practices](docs/how-to/best-practices.md)** - Writing effective skills
 - **[Reference: SKILL.md Frontmatter](docs/reference/frontmatter.md)** - Field specifications
 - **[Architecture Patterns](docs/explanation/architecture-patterns.md)** - Three skill design patterns
@@ -249,6 +249,6 @@ Found a bug? Want to improve a skill? Have a new skill to add?
 
 **Want to use these skills?** Copy them to your agent's skills directory (see Quick Start above).
 
-**Want to build your own?** Start with the [How to Create Your First Skill](docs/how-to/create-first-skill.md) guide.
+**Want to build your own?** Start with the [How to Create Your First Skill](docs/how-to/quickstart.md) guide.
 
 **Questions?** Check the [documentation](docs/README.md) or [AGENTS.md](AGENTS.md).
