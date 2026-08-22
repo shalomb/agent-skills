@@ -44,6 +44,37 @@ the scripts are at `{SKILLS_DIR}/tmux-remote-control/scripts/`.
 **Never use `./scripts/`** — that resolves against the agent's current working
 directory (the project repo), not the skill directory.
 
+## ⚠️ Critical Limitation: tmux-exec.sh Runs in a Subshell
+
+`tmux-exec.sh` wraps every command in a **new subshell** inside the pane. This means:
+
+- Environment variables set inside the command (`export FOO=bar`) **do not persist** to the pane's parent shell after the command exits.
+- Commands that `source` credentials into the shell (e.g. `aws-login`, `eval $(...)`, `. ~/.env`) will appear to succeed but **have no effect** on subsequent `tmux-exec.sh` calls.
+
+**Rule:** For any command that must mutate the pane's shell environment, use raw
+`tmux send-keys` to type directly into the pane's own shell, then scrape the output
+with `tmux-read.sh` once the prompt returns:
+
+```bash
+# WRONG — tmux-exec.sh ALWAYS uses a subshell, even with -w.
+# aws-login sources creds into that subshell, which exits immediately.
+# The pane's parent shell never sees the credentials.
+$SKILL_SCRIPTS/tmux-exec.sh "1.0" "aws-login my-account"       # subshell, creds lost
+$SKILL_SCRIPTS/tmux-exec.sh -w '\$' "1.0" "aws-login my-account"  # still a subshell!
+
+# CORRECT — type directly into the pane's own shell via send-keys
+SESSION=$(tmux display-message -p '#{session_name}')
+tmux send-keys -t "${SESSION}:1.0" "aws-login my-account" Enter
+sleep 5   # allow login to complete (adjust for slow SSO)
+$SKILL_SCRIPTS/tmux-read.sh "1.0"   # scrape output to confirm success
+```
+
+After the pane's shell has credentials set via send-keys, subsequent `tmux-exec.sh`
+calls for AWS CLI queries work fine — those subshells inherit the pane's exported
+env vars. Only the credential-sourcing step itself requires send-keys.
+
+---
+
 ## 1. Execute (`scripts/tmux-exec.sh`)
 
 Primary tool.  Sends a command, waits for completion, returns output + exit code.
