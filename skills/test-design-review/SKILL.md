@@ -1,6 +1,12 @@
 ---
 name: test-design-review
-description: Review tests for design quality using test design guidelines.
+description: >
+  Review specific tests — or the current diff — against test design guidelines,
+  flagging each violation with the offending code and a suggested fix. Use when
+  tests have been written and need critique before merge. For scoring a whole
+  suite use `farley-tdd`; for writing new code test-first use
+  `test-driven-development`. Triggers on: 'review these tests', 'test design',
+  'are these tests any good', 'test review', 'critique my tests'.
 ---
 
 # Test Design Review

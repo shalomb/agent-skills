@@ -1,18 +1,18 @@
 ---
 name: ralph-build-agent
 description: >
-  Build Agent — Red-Green-Refactor TDD executor that burns down a TODO.md task
-  list. Reads TODO.md as the plan, implements each task using strict red-green
-  TDD (write failing test → minimal code to pass → refactor), updates task
-  status in TODO.md on completion, and creates an Atomic Commit Protocol (ACP)
-  commit per task. Automatically progresses to the next task and repeats until
-  the TODO.md is fully burned down. Uses INVEST task decomposition, Farley
-  per-test quality checklist, and Conventional Commits.
+  Build Agent — burns down a TODO.md task list end to end, unattended. Use when
+  there is an existing TODO.md to execute: reads it as the plan, implements each
+  task, updates task status on completion, creates an Atomic Commit Protocol
+  (ACP) commit per task, then progresses to the next until the list is done.
+  Implementation uses red-green-refactor TDD with INVEST decomposition, a Farley
+  per-test checklist, and Conventional Commits. Not for one-off changes with no
+  task list — for those use `test-driven-development`. Triggers on: 'ralph',
+  'build agent', 'burn down the TODO', 'work through TODO.md', 'execute the
+  backlog'.
 metadata:
   version: 1.1.0
   tags:
-    - tdd
-    - red-green-refactor
     - todo-burndown
     - atomic-commits
     - acp
