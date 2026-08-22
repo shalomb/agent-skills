@@ -190,12 +190,23 @@ main() {
     fi
 }
 
-# ── shell mode: wait-for + file redirection ──────────────────────────────
+# ── shell mode: poll-based (resilient to caller interruption) ────────────
+#
+# Replaces the tmux wait-for blocking approach with ecfile polling.
+# The pane still emits `tmux wait-for -S` in its payload (harmless if
+# nobody listens), but the caller polls the ecfile every POLL_INTERVAL
+# seconds instead of blocking.  This means:
+#
+#   • The pi tool-caller can kill this process at any point without
+#     leaving a "busy" pane — the next call auto-harvests via
+#     try_harvest_previous once the pane writes the ecfile.
+#   • No more "Command aborted" false-negatives for long-running commands.
 
 exec_shell() {
     local pane_id=$1 sf=$2 lock=$3 target=$4 command=$5 timeout=$6
     shift 6
     local -a sock=( "$@" )
+    local POLL_INTERVAL=2
 
     (
         flock -x -w 5 200 \
@@ -211,8 +222,9 @@ exec_shell() {
 
         # Payload: run command, tee stdout+stderr to file (visible in pane
         # AND captured), write exit code via PIPESTATUS, signal wait-for.
-        # Pretty-print: vars on line 1, { on line 2, command body indented
-        # at 2 spaces with --flags at 4 spaces, } + plumbing on last line.
+        # tmux wait-for -S is kept so fast completions signal immediately
+        # if a future caller happens to be listening; polling handles the
+        # general case.
         local pretty_command payload
         pretty_command=$(printf '%s' "${command}" | sed 's/ --/ \\\n    --/g')
         # shellcheck disable=SC2016
@@ -229,56 +241,39 @@ exec_shell() {
         # Release flock — state file guards against concurrent use now.
         flock -u 200
 
-        # ── wait for completion ──────────────────────────────────────
-        # tmux wait-for exits 0 even when killed, so we can't branch on
-        # wait's return code.  Instead, after wait returns we check whether
-        # the command actually finished (ecfile written) or not (timeout /
-        # pane death).
-        local wait_pid
-        tmux "${sock[@]}" wait-for "${channel}" &
-        wait_pid=$!
+        # ── poll for completion ──────────────────────────────────────
+        # Poll ecfile every POLL_INTERVAL seconds.  If this process is
+        # killed by the caller (e.g. pi tool timeout), the pane keeps
+        # running and writes ecfile on completion.  The NEXT call to
+        # tmux-exec.sh will auto-harvest via try_harvest_previous.
+        local start_t
+        printf -v start_t '%(%s)T' -1
 
-        if (( timeout > 0 )); then
-            # Watchdog: kill the waiter after $timeout seconds.
-            (
-                sleep "${timeout}"
-                kill "${wait_pid}" 2>/dev/null
-            ) &
-            local watchdog_pid=$!
+        while true; do
+            # Done?
+            [[ -s ${ecfile} ]] && break
 
-            wait "${wait_pid}" 2>/dev/null || true
-            kill "${watchdog_pid}" 2>/dev/null || true
-            wait "${watchdog_pid}" 2>/dev/null || true
-
-            if [[ ! -s ${ecfile} ]]; then
-                # Command did not finish — timeout.
-                warn "Timeout after ${timeout}s — command is STILL RUNNING in the pane."
-                warn "The pane is marked busy until the command finishes."
-                warn "Use tmux-read.sh to check progress, or:  tmux send-keys -t '${pane_id}' C-c"
-                exit 124
+            # Timeout?
+            if (( timeout > 0 )); then
+                local now; printf -v now '%(%s)T' -1
+                if (( now - start_t >= timeout )); then
+                    warn "Timeout after ${timeout}s — command is STILL RUNNING in the pane."
+                    warn "Call tmux-exec.sh again on the same pane to auto-harvest the result."
+                    warn "Or check progress:  tmux-read.sh '${target}'"
+                    exit 124
+                fi
             fi
-        else
-            # No timeout — monitor liveness so we don't block forever
-            # if the pane dies.
-            (
-                while pane_alive "${pane_id}" "${sock[@]}"; do
-                    sleep 2
-                done
-                kill "${wait_pid}" 2>/dev/null
-            ) &
-            local liveness_pid=$!
 
-            wait "${wait_pid}" 2>/dev/null || true
-            kill "${liveness_pid}" 2>/dev/null || true
-            wait "${liveness_pid}" 2>/dev/null || true
-
-            if [[ ! -s ${ecfile} ]]; then
-                # Pane died before command finished.
+            # Pane died?
+            if ! pane_alive "${pane_id}" "${sock[@]}"; then
+                [[ -s ${ecfile} ]] && break
                 clear_state "${sf}" "${outfile}" "${ecfile}"
                 die "Error: Pane '${target}' (${pane_id}) died while command was running." \
                     $'\n'"Use tmux-list.sh to see available panes."
             fi
-        fi
+
+            sleep "${POLL_INTERVAL}"
+        done
 
         # ── harvest ──────────────────────────────────────────────────
         local ec=0
