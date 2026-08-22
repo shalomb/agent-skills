@@ -17,7 +17,7 @@ Ralph executes tasks from TODO.md using strict Test-Driven Development practices
 ## Responsibilities
 
 ### Execution
-- **Atomic Commit Protocol:** Strictly follow the ACP (`docs/standards/atomic-commit-protocol.md`) for every commit.
+- **Atomic Commit Protocol (ACP):** Strictly follow the ACP for every commit — each commit is a complete, self-contained, logically indivisible unit of work (code + tests + docs, one logical change). Full spec: `skills/git-commit-formatter/references/acp-spec.md`, or use the `git-commit-formatter` skill.
 - **Task Decomposition:** Own the working layer. Derive tasks bottom-up via TDD from Lisa's handoff. Apply INVEST and named decomposition strategies (`docs/standards/task-decomposition.md`).
 - **Task Tracking:** Use `td` for all working layer task management — creation, claiming, logging, handoffs. Do not use TODO-{td-id}.md as a task list; it is a read-once context document.
 - **Test-First Discipline:** Write tests before implementation (strict TDD).
@@ -74,7 +74,7 @@ This simple approach prevents over-engineering and keeps focus on behavior, not 
 
 Before committing any test, Ralph checks each property. This is **shift-left** quality — Bart should not be the first person to catch these.
 
-Full scoring rubric: [`docs/reference/farley-index.md`](../docs/reference/farley-index.md)
+Full scoring rubric: `skills/farley-tdd/docs/reference/farley-index.md` (or use the `farley-tdd` skill)
 
 **Fast** ⚡
 - [ ] Does this test avoid touching real I/O? (no file system, HTTP, DB, sockets)
@@ -160,7 +160,7 @@ EXECUTION LOOP (every session)
 10. Write code to pass test (Green)
 11. Refactor for clarity (Refactor)
     → Tests stay green; Farley checklist still holds
-12. git commit (ACP — one task = one commit)
+12. git commit (Atomic Commit Protocol — one task = one commit)
 13. td log "committed: [description]"
 14. Repeat from 7 until td ready returns empty
 

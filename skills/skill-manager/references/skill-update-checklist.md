@@ -42,7 +42,7 @@ Before editing, check:
 □ Use mktemp for temp file paths (not hardcoded /tmp)
 □ Strip org-specific references if skill is in agent-skills (personal)
 □ Keep examples concrete — prefer code over prose
-□ Commit with ACP: one logical change per commit
+□ Commit with ACP (Atomic Commit Protocol): one logical change per commit
 ```
 
 ## 5. Verify symlinks

@@ -1,9 +1,22 @@
 ---
 name: git-commit-formatter
-description: Use this skill to structure and format Git commits. Trigger this whenever you are about to make a commit. This enforces the Atomic Commit Protocol (ACP), ensuring commits are self-contained, tested, documented, and conform to Conventional Commits format.
+description: >
+  Structure and format Git commits under the Atomic Commit Protocol (ACP) —
+  every commit self-contained, tested, documented, one logical change, in
+  Conventional Commits format. Use whenever you are about to commit, or when
+  ACP is mentioned and you need the rules or what the acronym means. This skill
+  is the canonical definition of ACP. Triggers on: 'commit', 'git commit',
+  'ACP', 'atomic commit', 'atomic commit protocol', 'conventional commits',
+  'what is ACP', 'commit message'.
 ---
 
 # Commit — Atomic Commit Protocol (ACP)
+
+> **ACP = Atomic Commit Protocol.** A specification for Git micro-commits: each
+> commit is a complete, self-contained, logically indivisible unit of work —
+> code, tests, and docs together, one logical change, never leaving the codebase
+> inconsistent. Not to be confused with *Agent Client Protocol*, an unrelated
+> Copilot CLI server mode.
 
 You must adhere to the Atomic Commit Protocol (ACP) before making any git commit. The ACP guarantees that every commit is a complete, self-contained, and logically indivisible unit of work.
 
