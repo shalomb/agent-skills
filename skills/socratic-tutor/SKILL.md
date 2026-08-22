@@ -26,3 +26,6 @@ Following the progressive disclosure pattern, detailed instructions for complex 
 
 - **[Interaction Loop Details](references/interaction-loop.md):** Read this for in-depth guidance on Socratic dialogue patterns, managing distinct communication spaces (e.g., Obsidian vault), and guiding reflection.
 - **[Curriculum Management](references/curriculum-management.md):** Read this for managing structured versus casual learning, using a syllabus map, and setting up practical challenges.
+
+Design rationale for this skill lives in
+`docs/superpowers/specs/2026-06-07-socratic-tutor-design.md`.

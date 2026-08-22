@@ -1,5 +1,8 @@
 # Principle of Least Surprise (Least Astonishment)
 
+**Tags:** `UX`, `API Design`, `Developer Experience`, `Naming`, `Defaults`
+**Related Principles:** [DWIM (Do What I Mean)](dwim.md) — DWIM removes the boilerplate; Least Surprise ensures what remains behaves as expected.
+
 ## Context/Problem
 When designing APIs, functions, or user interfaces, developers often make decisions that contradict established norms or user expectations (e.g., a getter function that modifies state, or a configuration default that prioritizes edge cases over the common use case). This forces the consumer to deeply inspect documentation or source code rather than relying on their intuition.
 

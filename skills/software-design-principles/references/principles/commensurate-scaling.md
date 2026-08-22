@@ -1,5 +1,8 @@
 # Commensurate Scaling
 
+**Tags:** `Architecture`, `Scalability`, `Performance`, `Cost`, `Statelessness`
+**Related Principles:** *(None yet)*
+
 ## Context/Problem
 As demand (traffic, data, or computing) increases by an order of magnitude N, system architectures often experience exponential growth in resource costs, operational overhead, and development effort. Traditional vertical scaling (buying bigger machines) or tightly coupled stateful architectures hit physical and financial ceilings quickly, leading to cascading failures under heavy load.
 
