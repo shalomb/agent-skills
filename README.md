@@ -60,7 +60,7 @@ After copying skills, restart your agent and try triggering one:
 - **adzic-index** - Evaluate BDD/Gherkin feature file quality (Specification by Example)
 - **farley-index** - Evaluate test suite quality (Dave Farley's properties)
 - **lessons-learned** - Extract engineering lessons from recent code changes
-- **pr-review** - Automated GitHub PR review and analysis
+- **bart-adversarial-reviewer** - Adversarial code review, GitHub PR analysis and inline comments
 - **software-design-principles** - Capture, catalogue, and retrieve software design principles discovered during coding sessions
 
 ### Document Processing

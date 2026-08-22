@@ -5,9 +5,9 @@ description: >
   every commit self-contained, tested, documented, one logical change, in
   Conventional Commits format. Use whenever you are about to commit, or when
   ACP is mentioned and you need the rules or what the acronym means. This skill
-  is the canonical definition of ACP. Triggers on: 'commit', 'git commit',
-  'ACP', 'atomic commit', 'atomic commit protocol', 'conventional commits',
-  'what is ACP', 'commit message'.
+  is the canonical definition of ACP. Triggers on: 'git commit', 'commit this',
+  'commit these changes', 'ACP', 'atomic commit', 'atomic commit protocol',
+  'conventional commits', 'what is ACP', 'commit message'.
 ---
 
 # Commit — Atomic Commit Protocol (ACP)

@@ -347,7 +347,7 @@ EOF
 # Values here apply to ALL skills for this project unless overridden
 # in a skill-specific .env file.
 
-# GitHub org (used by github-cli, pr-review, tfc-api VCS validation)
+# GitHub org (used by github-cli, bart-adversarial-reviewer, tfc-api VCS validation)
 #GH_ORG=
 
 # Terraform Cloud org (used by tfc-api, terraform-dev)

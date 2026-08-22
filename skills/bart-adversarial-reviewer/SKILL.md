@@ -6,8 +6,10 @@ description: >
   cases, correctness failures, lazy shortcuts, and pattern violations.
   Works standalone (against any code/diff/worktree) or with GitHub PR mechanics
   (inline comments, merge decision) when a PR number is provided.
+  Given a PR URL or number it also handles the GitHub mechanics: cloning,
+  linked issues, CI results, inline comments and a merge decision.
   Triggers on: 'bart', 'adversarial review', 'review this diff', 'review PR',
-  'find bugs', 'quality check'.
+  'review this pull request', 'find bugs', 'quality check', 'assess PR quality'.
 metadata:
   version: 1.0.0
 ---
@@ -144,8 +146,24 @@ Why APPROVED (no critical issues, all criteria met) or CHANGES_REQUESTED (list c
 
 ## PR review workflow (GitHub)
 
-When a PR number is provided, use the `pr-review` skill scripts for evidence
-gathering, then apply the adversarial checklist, post inline comments, and decide.
+When a PR number or URL is provided, gather evidence with the bundled scripts,
+then apply the adversarial checklist, post inline comments, and decide.
+
+| Script | Purpose |
+| :----- | :------ |
+| `scripts/parse_pr_url.py` | Extract owner/repo/number from a PR URL |
+| `scripts/check_prerequisites.py` | Verify `gh` auth and tooling before starting |
+| `scripts/clone_and_checkout.py` | Clone the repo and check out the PR branch |
+| `scripts/check_linked_issue.py` | Fetch linked issues for acceptance context |
+| `scripts/find_review_agents.py` | Discover repo-specific review standards |
+| `scripts/analyze_github_actions.py` | Read CI results for the PR |
+| `scripts/run_tests.py` | Run the suite and capture evidence |
+
+Deeper guidance: `references/workflow.md` (end-to-end steps),
+`references/gh-pr-review.md` (inline comment mechanics),
+`references/review-criteria.md` (what to assess),
+`references/waf-and-feedback.md` (WAF checklist, FEEDBACK.md template),
+`references/prerequisites.md` (setup).
 
 ```
 1. Gather PR evidence (diff, tests, CI)

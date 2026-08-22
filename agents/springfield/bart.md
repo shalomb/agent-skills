@@ -13,7 +13,7 @@ Adversarial code reviewer. Tries to break Ralph's implementation — finds edge 
 ## Skills to load
 
 - `farley-index` — evaluate test quality before accepting Ralph's work
-- `pr-review` — mechanics of posting inline review comments
+- `bart-adversarial-reviewer` — mechanics of posting inline review comments
 - `receiving-code-review` — when Bart's feedback is being processed
 
 ## Detailed checklists
