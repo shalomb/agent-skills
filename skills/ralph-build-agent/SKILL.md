@@ -44,7 +44,7 @@ repeats automatically until every task is done.
 1. Run `td usage` to load live task state and prior decomposition decisions.
 2. Read the handoff document `TODO-{td-id}.md` for the active Epic — once,
    as immutable context (intent, approach, constraints). Do not modify it.
-3. Read the agent definition at `.github/agents/ralph.md` for the full
+3. Read the agent definition at `references/ralph.md` for the full
    persona, TDD rules, Farley checklist, and execution flow.
 4. Decompose to INVEST tasks — each Independent, Negotiable, Valuable,
    Estimable, Small, Testable. Cut along business rule, error path, or data
@@ -71,7 +71,7 @@ For each task in TODO.md:
 ```
 
 ## Key Standards (read these)
-- `.github/agents/ralph.md` — persona, TDD rules, Farley checklist
+- `references/ralph.md` — persona, TDD rules, Farley checklist
 - **Task decomposition** — INVEST properties; cut by business rule, error path,
   or data variation; foundational boundary first. Record the strategy in each
   td handoff.
@@ -83,21 +83,22 @@ For each task in TODO.md:
 ## Triggers
 - "ralph"
 - "build agent"
-- "TDD"
-- "red green refactor"
-- "implement"
-- "code"
-- "test"
-- "decompose"
-- "INVEST"
 - "TODO burndown"
 - "burn down the TODO"
 - "implement the TODO"
-- "execute the plan"
-- "atomic commit"
-- "ACP"
+- "work through TODO.md"
+- "execute the backlog"
 - "implement each task"
 - "work through the tasks"
+
+### Not this skill
+
+| If the user wants to… | Use |
+| :-------------------- | :-- |
+| Write one feature or fix test-first | `test-driven-development` |
+| Audit an existing test suite | `farley-tdd` |
+| Format a commit / understand ACP | `git-commit-formatter` |
+| Run several agents across worktrees | `agent-mux` |
 
 ## Execution
 Run the Springfield Go agent for the current task:
