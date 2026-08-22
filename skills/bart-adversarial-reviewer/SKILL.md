@@ -6,8 +6,10 @@ description: >
   cases, correctness failures, lazy shortcuts, and pattern violations.
   Works standalone (against any code/diff/worktree) or with GitHub PR mechanics
   (inline comments, merge decision) when a PR number is provided.
-  Triggers: "bart", "review this", "adversarial review", "code review",
-  "review PR", "find bugs", "QA", "quality check".
+  Triggers on: 'bart', 'adversarial review', 'review this diff', 'review PR',
+  'find bugs', 'quality check'.
+metadata:
+  version: 1.0.0
 ---
 
 # Bart — Adversarial Reviewer
