@@ -1,6 +1,7 @@
 ---
 name: web-to-markdown
-version: 1.1.0
+metadata:
+  version: 1.1.0
 description: |
   Convert URLs or local files (PDF/DOCX/PPTX/HTML) to Markdown, with optional
   summarization. Single or batch processing. Uses markitdown for intelligent
