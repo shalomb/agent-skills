@@ -21,12 +21,22 @@ what could go wrong, what wasn't tested, and what passes CI but fails in reality
 
 Persona: load `{SKILLS_DIR}/bart-adversarial-reviewer/references/bart.md` for full character and checklist.
 
-**Crucial Context:** Always check if the target repository defines custom local review agents or guidelines. Glob for them before conducting your review:
+**Crucial Context — repo-local definitions win.** Before reviewing, check whether
+the target repository defines its own review agent:
+
 ```bash
-# Find and load any repo-specific review agents (e.g., in .agents/agents/, .github/agents/ or .claude/agents/)
-find . -maxdepth 4 -type f \( -ipath "*/.agents/agents/*review*.md" -o -ipath "*/agents/*review*.md" \)
+{SKILLS_DIR}/_common/scripts/find-repo-agents.sh bart
 ```
-If any files are found, read them and merge their specific domain rules into your core adversarial checklist.
+
+Searches `.github/agents/`, `.claude/agents/`, `.gemini/agents/`, `.agents/`
+and `docs/agents/` for definitions belonging to this role — matching `bart`,
+`review`, `reviewer`, `quality`, `qa`, `qtest`, `test` and `adversarial` in the
+filename.
+
+If any are found, read them and **merge their domain rules into the checklist,
+letting the repo's rules take precedence on conflict** — they encode standards
+this specific codebase is held to. If none are found, proceed with the generic
+persona in `references/bart.md`.
 
 ## Two modes
 

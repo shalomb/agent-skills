@@ -44,7 +44,7 @@ repeats automatically until every task is done.
 1. Run `td usage` to load live task state and prior decomposition decisions.
 2. Read the handoff document `TODO-{td-id}.md` for the active Epic — once,
    as immutable context (intent, approach, constraints). Do not modify it.
-3. Read the agent definition at `references/ralph.md` for the full
+3. Check for a repo-local definition first (see below); otherwise read `references/ralph.md` for the full
    persona, TDD rules, Farley checklist, and execution flow.
 4. Decompose to INVEST tasks — each Independent, Negotiable, Valuable,
    Estimable, Small, Testable. Cut along business rule, error path, or data
@@ -79,6 +79,22 @@ For each task in TODO.md:
   `skills/git-commit-formatter/references/acp-spec.md`, or use the
   `git-commit-formatter` skill.
 - `skills/farley-tdd/docs/reference/farley-index.md` — per-test quality checklist
+
+## Repo-local definitions take precedence
+
+Before adopting the persona, check whether this repository defines its own
+Ralph agent:
+
+```bash
+{SKILLS_DIR}/_common/scripts/find-repo-agents.sh ralph
+```
+
+Searches `.github/agents/`, `.claude/agents/`, `.gemini/agents/`, `.agents/`
+and `docs/agents/` for definitions matching `ralph`, `develop`, `developer`, `build`, `implement`, `refactor` in the filename.
+
+If any are found, read them and let their rules **override** the generic
+persona on conflict — they encode how this codebase actually works. If none
+are found, use `references/ralph.md` alone.
 
 ## Triggers
 - "ralph"
