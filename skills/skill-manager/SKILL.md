@@ -72,7 +72,9 @@ When a session reveals new knowledge (gotchas, patterns, workflows):
    - Cross-reference to another skill → one-liner in References section
 3. **Edit and verify** — read the skill-creator SKILL.md for progressive
    disclosure principles. Keep SKILL.md lean (ideally under 100-300 lines).
-4. **Commit** — if the skill is in a git-tracked location, use ACP.
+4. **Commit** — if the skill is in a git-tracked location, follow the Atomic
+   Commit Protocol (ACP): one logical change per commit, code + tests + docs
+   together. Use the `git-commit-formatter` skill.
 
 Key principle: **add what you fumbled with**. If you had to discover something
 through trial and error that wasn't in the skill, that's exactly what should

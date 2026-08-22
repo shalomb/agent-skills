@@ -71,9 +71,11 @@ For each task in TODO.md:
 ## Key Standards (read these)
 - `.github/agents/ralph.md` — persona, TDD rules, Farley checklist
 - `docs/standards/task-decomposition.md` — INVEST, decomposition strategies,
-  td continuity convention
-- `docs/standards/atomic-commit-protocol.md` — one task = one ACP commit
-- `docs/reference/farley-index.md` — per-test quality checklist
+  td continuity convention *(not present in this repo)*
+- **ACP — Atomic Commit Protocol**: one task = one atomic commit. Full spec:
+  `skills/git-commit-formatter/references/acp-spec.md`, or use the
+  `git-commit-formatter` skill.
+- `skills/farley-tdd/docs/reference/farley-index.md` — per-test quality checklist
 
 ## Triggers
 - "ralph"

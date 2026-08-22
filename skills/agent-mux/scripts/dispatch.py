@@ -356,7 +356,8 @@ export GIT_TERMINAL_PROMPT=0 GIT_ASK_YESNO=false GIT_PAGER=cat
 
 ## Non-negotiable rules
 - Red/Green TDD: write a failing test first, minimal code to pass, then refactor
-- One atomic ACP commit: code + tests together, Conventional Commits format
+- One atomic commit per task, following the Atomic Commit Protocol (ACP):
+  code + tests together, one logical change, Conventional Commits format
 - Use `uv run pytest tests/ --ignore=tests/uat -q --override-ini="addopts="` to run tests
 - Do NOT fix anything outside the scope of this task
 - After committing: push the branch and open a PR with `gh pr create`
