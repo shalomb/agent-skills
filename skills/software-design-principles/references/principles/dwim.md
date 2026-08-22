@@ -1,5 +1,8 @@
 # DWIM (Do What I Mean) Pattern
 
+**Tags:** `UX`, `Developer Experience`, `Architecture`, `Automation`, `Boilerplate-Reduction`
+**Related Principles:** [Principle of Least Surprise](least-surprise.md) — both aim to match the consumer's expectations rather than force them to learn internals.
+
 ## Context/Problem
 When a user consumes a module or building block, they often have to provide boilerplate configuration or wire up disconnected components (like attaching a specific security group to an instance just to allow health checks to pass). If they forget, the deployment fails or times out.
 
