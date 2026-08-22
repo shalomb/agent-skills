@@ -1,160 +1,109 @@
 ---
 name: daily-standup
 description: >
-  Assemble a daily standup from what you actually did — git commits, GitHub PRs
-  and Project moves, assigned GitHub issues with new activity, and Jira issues —
-  then log it to a dated file in ~/projects/dailies/. Use when the user asks for
-  their standup, what they did yesterday, or a daily summary. Triggers on:
-  'standup', 'stand-up', 'daily', 'what did I do yesterday', 'daily summary'.
+  Turn a Teams meeting transcript or minutes into a plan for the day — map
+  discussion to GitHub issues, record decisions, detect stalls, update issues,
+  and set reminders. Use after a standup or team call when you have a transcript
+  to act on. For reporting your own recent activity with no meeting involved,
+  use `daily-status` instead. Triggers on: 'daily standup', 'standup',
+  'process the standup', 'meeting transcript', 'what came out of the call'.
 ---
 
-# Daily Standup
+# Daily Standup Skill
 
-Gathers yesterday's activity from the systems that already record it, and writes
-a dated standup note. The goal is recall, not invention — every line in the
-output must trace back to something a command returned.
+Automate the bridge between synchronized engineering discussions and asynchronous project tracking.
 
 ## Scope
 
-This skill covers the **daily** cycle. For sprint boundaries — stocktake,
-planning the next iteration — use `iteration-planner` instead.
+Transcript in, plan and updates out. Related skills:
 
-## Step 1: Set the window
+- `meeting-notes` — general transcript → minutes extraction. This skill calls it.
+- `daily-status` — your own activity from git/gh/Jira, no transcript.
+- `iteration-planner` — sprint boundaries, not the daily cycle.
 
-Default window is "since the last working day":
+## Purpose
 
-```bash
-# Monday looks back to Friday; otherwise yesterday
-if [ "$(date +%u)" = "1" ]; then SINCE="3 days ago"; else SINCE="1 day ago"; fi
-SINCE_ISO=$(date -d "$SINCE" +%Y-%m-%d)
-TODAY=$(date +%Y-%m-%d)
-```
+- **Status Updates**: Move cards and post technical rationale to GitHub issues.
+- **Bias for Action**: Enforce an options-based resolution format for blockers.
+- **Proactive Intervention**: Detect stalled items and flag "Reality Gaps" between claims and system state.
 
-If the user names a different window ("since Thursday", "this week"), use that.
+## Capabilities
 
-## Step 2: Gather
+1. **Context Discovery**: Auto-infer Project and current Iteration.
+2. **Semantic Mapping**: Link transcript discussion points to specific GitHub issues.
+3. **Stall Detection**: Flag items blocked for 2+ days without progress.
+4. **Lead Briefing**: Prioritize critical path unblocking for the Engineering Lead.
 
-Run these independently — a failing source must not abort the standup. If a
-source is unavailable, note it as unavailable rather than silently omitting it.
+## Technical Guides
 
-### Git commits
+- `references/status-update.template.md`: Mandatory action-oriented comment format.
+- `references/intervention-logic.md`: Rules for stall detection and reality checking.
 
-Across your active repos:
+## Phase 0: Locate the transcript
 
-```bash
-for r in ~/projects/*/ ~/shalomb/*/ ~/oneTakeda/*/; do
-  [ -d "$r/.git" ] || continue
-  log=$(git -C "$r" log --author="$(git -C "$r" config user.email)" \
-        --since="$SINCE" --pretty='  %h %s' 2>/dev/null)
-  [ -n "$log" ] && printf '%s\n%s\n' "$(basename "$r")" "$log"
-done
-```
-
-Adjust the repo roots to wherever the user's work actually lives.
-
-### GitHub PRs
+Look for a Teams transcript among the newest files in `~/Downloads`:
 
 ```bash
-gh search prs --author=@me --updated=">=$SINCE_ISO" \
-  --json repository,number,title,state,url --limit 50
+find ~/Downloads -maxdepth 1 -type f \
+  \( -iname '*.vtt' -o -iname '*.srt' -o -iname '*transcript*' -o -iname '*recap*' \) \
+  -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -5
 ```
 
-### GitHub issues assigned to me, with new activity
+Decide as follows:
 
-This is the "decisions and comments" source — an issue you own that moved
-without you committing anything:
+- **A recent transcript is found** (within ~24h): state the filename and its
+  timestamp, and confirm it is the right meeting before proceeding.
+- **Nothing matches, or the newest match is stale**: do not guess and do not
+  scan the wider filesystem. Ask the user for the transcript location, and say
+  what you looked for. Accept a path, a paste of the transcript text, or a
+  Teams chat name to pull via the `teams-headless` skill (`--recap`).
 
-```bash
-gh search issues --assignee=@me --state=open \
-  --updated=">=$SINCE_ISO" --json repository,number,title,url --limit 50
-```
+Never proceed on an unconfirmed file. Acting on the wrong meeting means writing
+wrong decisions into real issues.
 
-For each hit, pull what actually changed in the window:
+## Orchestration Flow
 
-```bash
-gh issue view <N> --repo <owner/repo> \
-  --json title,url,comments \
-  --jq '{title, url, recent: [.comments[] | select(.createdAt >= "'"$SINCE_ISO"'") | {author: .author.login, body: .body[:400]}]}'
-```
+1.  **Phase 1: Knowledge Gathering**
+    - Identify Project, Iteration, and Working Set.
+    - Load the transcript confirmed in Phase 0.
+2.  **Phase 2: Deep Analysis**
+    - Call `meeting-notes` skill to parse transcript.
+    - Fetch issue history for all matches to detect stalls.
+    - Perform **Reality Checks** (Refer to `intervention-logic.md`).
+3.  **Phase 3: Proposal Generation**
+    - Apply the **Bias for Action** template to each update.
+    - Generate **Lead Briefing** with priority escalations.
+    - Assemble the day's plan (see Outputs below).
+4.  **Phase 4: User Validation & Execution**
+    - Display Plan and Briefing; execute confirmed updates via `gh`.
 
-Summarise the substance of new comments — decisions reached, questions raised,
-blockers named. Do not paste comment bodies wholesale.
+## Outputs
 
-### GitHub Project moves
+Produce all four, in this order:
 
-If the user tracks work on a GitHub Project, check for items whose status
-changed in the window. Follow the patterns in `iteration-planner` for
-project/field queries rather than reinventing them.
+1.  **The day's plan** — what the user should do today, ordered by priority,
+    derived from actions assigned to them plus anything the Reality Check
+    flagged as a gap.
+2.  **Decisions** — material decisions reached in the meeting, each with the
+    issue or PR it belongs to. Post as issue comments using the
+    `status-update.template.md` format.
+3.  **Issue updates** — status moves, comments, new issues for unowned action
+    items. Proposed first, executed only after confirmation.
+4.  **Reminders** — time-bound commitments made in the meeting ("I'll check
+    with Priya by Thursday"). Write to the user's usual capture point: append
+    to the Obsidian vault via `obsidian-notetaker`, or `~/projects/dailies/`
+    if the vault is unavailable. Ask once which, then keep to it.
 
-### Jira
+## Execution Safety
 
-Use the `jira-issue-manager` skill — it resolves CLI vs MCP backend itself.
-With the CLI backend:
+Issue comments and status changes are visible to your team and are hard to
+retract. Therefore:
 
-```bash
-jira issue list -a"$(jira me)" --updated ">-1d" --plain
-jira issue list -a"$(jira me)" -s"In Progress" --plain
-```
+- Show every proposed write — target, action, exact body — before executing.
+- Batch the confirmation: one list, one approval, then execute.
+- Never invent an action item, owner, or decision that is not in the transcript.
+  If attribution is ambiguous, mark it `[owner unclear]` and ask.
+- A **Reality Gap** is reported, never silently corrected.
 
-## Step 3: Compose
-
-Three sections. Keep each item one line, with a link or ref.
-
-- **Yesterday** — what completed or moved. Merged PRs, commits, issues closed,
-  decisions recorded.
-- **Today** — what is in progress or next. In-progress Jira issues, open PRs
-  awaiting review, assigned issues not yet started.
-- **Blockers** — anything waiting on someone else: PRs open for review, issues
-  with a question addressed to you, failing CI.
-
-Blockers are inferred, not fabricated. A PR open for >2 days with no review is
-a blocker; an issue where someone asked you a question is a blocker. If nothing
-qualifies, write `None`.
-
-## Step 4: Write the daily note
-
-```bash
-mkdir -p ~/projects/dailies
-```
-
-Write to `~/projects/dailies/YYYY-MM-DD.md`. If the file already exists, append
-a new timestamped section — never overwrite an earlier entry in the same day.
-
-```markdown
-# Standup — 2026-08-22
-
-_Window: since 2026-08-21_
-
-## Yesterday
-- Merged [#412 fix retry backoff](url) — agent-skills
-- 3 commits on `superpowers`: trigger phrases for brainstorming, dispatching
-- PROJ-118 moved to In Review
-
-## Today
-- PROJ-121 (In Progress) — TDD trigger deconfliction
-- [#415](url) open, awaiting review
-
-## Blockers
-- [#409](url) open 4 days, no reviewer assigned
-- PROJ-118 — Priya asked which region to target, unanswered
-
-## Sources
-git, gh (PRs, issues), jira
-```
-
-Always include the **Sources** line, naming which sources contributed and which
-were unavailable. It is how the reader knows what the summary could not see.
-
-## Step 5: Report
-
-Print the composed standup to the terminal as well, and tell the user the path
-written. They usually want to read it out immediately.
-
-## Notes
-
-- Never invent activity to fill a section. An empty Yesterday is a real and
-  useful signal.
-- Prefer the user's own commits (`--author` by configured email) over all
-  branch activity — a standup is first-person.
-- Keep the whole note under ~30 lines. If there is more, summarise by theme
-  rather than listing every commit.
+---
+**Maintained by**: contributors | **Version**: 1.2 | **Last Updated**: 2026-03-14
