@@ -19,7 +19,7 @@ The **project key** is derived automatically from the current working directory'
 repo root, relative to `$HOME`:
 
 ```
-~/organization/my-repo/  →  projects/organization/my-repo/
+~/acme-corp/my-repo/  →  projects/acme-corp/my-repo/
 ~/work/api-service/   →  projects/work/api-service/
 ```
 
@@ -33,7 +33,7 @@ $XDG_CONFIG_HOME/agent-skills/          # default: ~/.config/agent-skills/
 ├── tfc-api.env                          # global tfc-api defaults
 ├── harness-idp.env                      # global harness-idp defaults
 └── projects/
-    └── organization/
+    └── acme-corp/
         └── my-repo/
             ├── config.env               # cross-skill: GH_ORG, TFC_ORG, etc.
             ├── github-cli.env           # project-specific github-cli overrides
@@ -63,13 +63,13 @@ skill-config --show github-cli
 Output:
 ```
 skill-config resolution chain for skill: github-cli
-  cwd:         /home/user/organization/my-repo
-  project key: organization/my-repo
+  cwd:         /home/user/acme-corp/my-repo
+  project key: acme-corp/my-repo
 
   Config files (low → high priority):
     [global]              ~/.config/agent-skills/github-cli.env              ✓ exists
-    [project cross-skill] ~/.config/agent-skills/projects/organization/my-repo/config.env  ✓ exists
-    [project skill]       ~/.config/agent-skills/projects/organization/my-repo/github-cli.env  ✓ exists
+    [project cross-skill] ~/.config/agent-skills/projects/acme-corp/my-repo/config.env  ✓ exists
+    [project skill]       ~/.config/agent-skills/projects/acme-corp/my-repo/github-cli.env  ✓ exists
 ```
 
 ### 3. Use in scripts
