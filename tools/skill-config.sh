@@ -27,14 +27,14 @@
 #   ├── tfc-api.env               # global defaults for tfc-api skill
 #   ├── harness-idp.env           # global defaults for harness-idp skill
 #   └── projects/
-#       └── oneTakeda/
+#       └── acme-corp/
 #           └── my-repo/
 #               ├── github-cli.env   # project-specific github-cli overrides
 #               ├── tfc-api.env      # project-specific tfc-api overrides
 #               └── config.env       # cross-skill project config (GH_ORG, etc.)
 #
 # The project key is derived from the git repo root (or $PWD) relative to $HOME.
-# Example: ~/oneTakeda/my-repo → projects/oneTakeda/my-repo/
+# Example: ~/acme-corp/my-repo → projects/acme-corp/my-repo/
 #
 # Secrets note: these files should be chmod 600. skill-config warns if they are not.
 # Do NOT commit these files to any repository.
@@ -46,7 +46,7 @@ SKILL_CONFIG_DIR="$XDG_CONFIG_HOME/agent-skills"
 
 # ---------------------------------------------------------------------------
 # Internal: resolve the project key from the current working directory.
-# Returns a relative path like "oneTakeda/my-repo" or "" if not in a git repo.
+# Returns a relative path like "acme-corp/my-repo" or "" if not in a git repo.
 # ---------------------------------------------------------------------------
 _skill_config_project_key() {
   local cwd="${1:-$PWD}"

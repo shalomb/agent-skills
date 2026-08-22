@@ -19,7 +19,7 @@ The **project key** is derived automatically from the current working directory'
 repo root, relative to `$HOME`:
 
 ```
-~/oneTakeda/my-repo/  →  projects/oneTakeda/my-repo/
+~/acme-corp/my-repo/  →  projects/acme-corp/my-repo/
 ~/work/api-service/   →  projects/work/api-service/
 ```
 
@@ -33,7 +33,7 @@ $XDG_CONFIG_HOME/agent-skills/          # default: ~/.config/agent-skills/
 ├── tfc-api.env                          # global tfc-api defaults
 ├── harness-idp.env                      # global harness-idp defaults
 └── projects/
-    └── oneTakeda/
+    └── acme-corp/
         └── my-repo/
             ├── config.env               # cross-skill: GH_ORG, TFC_ORG, etc.
             ├── github-cli.env           # project-specific github-cli overrides
@@ -63,13 +63,13 @@ skill-config --show github-cli
 Output:
 ```
 skill-config resolution chain for skill: github-cli
-  cwd:         /home/user/oneTakeda/my-repo
-  project key: oneTakeda/my-repo
+  cwd:         /home/user/acme-corp/my-repo
+  project key: acme-corp/my-repo
 
   Config files (low → high priority):
     [global]              ~/.config/agent-skills/github-cli.env              ✓ exists
-    [project cross-skill] ~/.config/agent-skills/projects/oneTakeda/my-repo/config.env  ✓ exists
-    [project skill]       ~/.config/agent-skills/projects/oneTakeda/my-repo/github-cli.env  ✓ exists
+    [project cross-skill] ~/.config/agent-skills/projects/acme-corp/my-repo/config.env  ✓ exists
+    [project skill]       ~/.config/agent-skills/projects/acme-corp/my-repo/github-cli.env  ✓ exists
 ```
 
 ### 3. Use in scripts
