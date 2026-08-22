@@ -47,7 +47,7 @@ fi
 echo "Fetching workspace ID for: $ORG/$WORKSPACE"
 
 # Get workspace ID
-WORKSPACE_ID=$(http --ignore-stdin --quiet GET \
+WORKSPACE_ID=$(http --ignore-stdin GET \
   "https://app.terraform.io/api/v2/organizations/$ORG/workspaces/$WORKSPACE" \
   "Authorization: Bearer $TFC_TOKEN" \
   "Content-Type: application/vnd.api+json" \
