@@ -24,8 +24,8 @@ Marge agent:
 {SKILLS_DIR}/_common/scripts/find-repo-agents.sh marge
 ```
 
-Searches `.github/agents/`, `.claude/agents/`, `.gemini/agents/`, `.agents/`
-and `docs/agents/` for definitions matching `marge`, `product`, `triage`, `discovery`, `requirements`, `intake` in the filename.
+Searches `.github/`, `.claude/`, `.gemini/` and `.agents/` for both `agents/*.md`
+definitions and repo-local `skills/*/SKILL.md` matching `marge`, `product`, `triage`, `discovery`, `requirements`, `intake` in the filename.
 
 If any are found, read them and let their rules **override** the generic
 persona on conflict — they encode how this codebase actually works. If none

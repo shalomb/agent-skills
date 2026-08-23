@@ -28,10 +28,12 @@ the target repository defines its own review agent:
 {SKILLS_DIR}/_common/scripts/find-repo-agents.sh bart
 ```
 
-Searches `.github/agents/`, `.claude/agents/`, `.gemini/agents/`, `.agents/`
-and `docs/agents/` for definitions belonging to this role — matching `bart`,
-`review`, `reviewer`, `quality`, `qa`, `qtest`, `test` and `adversarial` in the
-filename.
+Searches `.github/`, `.claude/`, `.gemini/` and `.agents/` for both `agents/*.md`
+definitions and repo-local `skills/*/SKILL.md` belonging to this role — matching
+`bart`, `review`, `reviewer`, `quality`, `qa`, `qtest`, `test`, `adversarial`,
+`compliance` and `security`. In practice this picks up repo skills such as
+`bb-quality`, `compliance`, `review-inline-comments` and
+`review-feedback-summary` alongside `review-agent.md`.
 
 If any are found, read them and **merge their domain rules into the checklist,
 letting the repo's rules take precedence on conflict** — they encode standards
