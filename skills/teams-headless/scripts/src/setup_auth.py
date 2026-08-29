@@ -36,10 +36,25 @@ async def run():
         page = context.pages[0]
         print("Navigating to Teams V2...")
         await page.goto("https://teams.microsoft.com/v2/")
-        print("Please log in. Once you see your Teams chat list, return here.")
-        input("Press Enter here after you have fully logged in...")
+        print("Sign in to Teams using SSO...")
+        print("Waiting for Teams to load (up to 3 minutes)...")
+
+        try:
+            # Wait for Teams chat list or main app shell to appear
+            await page.wait_for_selector(
+                'input[data-tid="AUTOSUGGEST_INPUT"], '
+                'div[data-tid="chat-list"], '
+                'button[data-tid="3b64df9d-7e97-4d9c-ac5c-2e0a5d8e6f40"], '
+                'div[data-app-section="chat"]',
+                timeout=180000
+            )
+            print("✓ Teams loaded!")
+        except Exception as e:
+            print(f"⚠ Timeout waiting for Teams: {e}")
+            print("Proceeding anyway — session may still be valid...")
+
         await context.close()
-        print(f"Auth session saved to {USER_DATA_DIR}")
+        print(f"✓ Session saved to {USER_DATA_DIR}")
 
 if __name__ == "__main__":
     asyncio.run(run())
