@@ -11,8 +11,8 @@ Usage:
 Options:
   --assets   343,257,14006,14005   Ordered fallback list (default: all four)
   --date     YYYY-MM-DD | +N       Target date; +N = N days from today (default: +7)
-  --start    HH:MM AM/PM           Start time (default: 08:30 AM)
-  --end      HH:MM AM/PM           End time   (default: 04:00 PM)
+  --start    HH:MM AM/PM           Start time (default: 09:00 AM)
+  --end      HH:MM AM/PM           End time   (default: 05:00 PM)
   --prestage                       Stage form now, sleep until 23:59:58, then submit
 
 Cron:
@@ -42,8 +42,8 @@ from lib.agilquest import (
 from lib.logging import log_result
 
 DEFAULT_ASSETS = ["343", "257", "14006", "14005"]
-DEFAULT_START = "08:30 AM"
-DEFAULT_END = "04:00 PM"
+DEFAULT_START = "09:00 AM"
+DEFAULT_END = "05:00 PM"
 
 
 def parse_date(date_arg: str, prestage: bool = False) -> datetime:
@@ -54,6 +54,13 @@ def parse_date(date_arg: str, prestage: bool = False) -> datetime:
         base = datetime.now() + timedelta(days=1) if prestage else datetime.now()
         return base + timedelta(days=int(date_arg[1:]))
     return datetime.strptime(date_arg, "%Y-%m-%d")
+
+
+def humanize_date(d: datetime) -> str:
+    """Format as 'Mon 6th Jul, 2026' — weekday, ordinal day, month, year."""
+    n = d.day
+    suffix = "th" if 11 <= n <= 13 else {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
+    return d.strftime(f"%a {n}{suffix} %b, %Y")
 
 
 def trigger_reauth():
@@ -76,7 +83,7 @@ def book_with_fallbacks(
 
     print(
         f"{'[prestage] ' if prestage else ''}"
-        f"Booking {target_str} {start_time}-{end_time} "
+        f"Booking {target_str} ({humanize_date(target)}) {start_time}-{end_time} "
         f"(assets: {', '.join(assets)})...",
         file=sys.stderr,
     )
