@@ -33,8 +33,8 @@ from lib.agilquest import (
 from lib.logging import log_result
 
 PRIMARY_ASSET = "343"
-DEFAULT_START = "08:30 AM"
-DEFAULT_END = "04:00 PM"
+DEFAULT_START = "09:00 AM"
+DEFAULT_END = "05:00 PM"
 
 
 def trigger_reauth_and_wait() -> bool:
