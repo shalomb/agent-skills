@@ -27,5 +27,5 @@ for i in $(seq 1 30); do
 done
 
 cd "$(dirname "$0")"
-uv run src/prewarm.py
+uv run src/agilquest_reservations/prewarm.py
 echo "Exit: $?"

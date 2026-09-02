@@ -7,7 +7,7 @@ On session failure, launches setup_auth.py in a Terminal via osascript
 and waits up to 5 minutes for the user to complete SSO, then retries.
 
 Usage:
-  uv run src/ensure_reservation.py
+  uv run src/agilquest_reservations/ensure_reservation.py
 """
 
 import sys
@@ -23,14 +23,14 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-from lib.browser import (
+from agilquest_reservations.lib.browser import (
     APP_LAUNCHER, launch_headless, launch_headed, verify_auth,
     get_state_dir, get_chrome_path,
 )
-from lib.agilquest import (
+from agilquest_reservations.lib.agilquest import (
     RESERVATIONS_URL, get_reservations, find_existing, stage, submit_with_retries,
 )
-from lib.logging import log_result
+from agilquest_reservations.lib.logging import log_result
 
 PRIMARY_ASSET = "343"
 DEFAULT_START = "09:00 AM"
@@ -39,11 +39,11 @@ DEFAULT_END = "05:00 PM"
 
 def trigger_reauth_and_wait() -> bool:
     """Launch setup_auth.py in a Terminal window, then poll headlessly for up to 5 minutes."""
-    scripts_dir = Path(__file__).parent.parent
+    scripts_dir = Path(__file__).parent.parent.parent
     print("\nSession invalid — opening Terminal to run setup_auth.py...", file=sys.stderr)
     subprocess.Popen([
         "/usr/bin/osascript", "-e",
-        f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/setup_auth.py"',
+        f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/agilquest_reservations/setup_auth.py"',
     ])
     print("Waiting up to 5 minutes for SSO to complete...", file=sys.stderr)
 

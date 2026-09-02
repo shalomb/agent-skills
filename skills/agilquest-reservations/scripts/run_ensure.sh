@@ -8,5 +8,5 @@ exec >> "$LOG_FILE" 2>&1
 set -euo pipefail
 echo "=== $(date '+%Y-%m-%dT%H:%M:%S') ==="
 cd "$(dirname "$0")"
-uv run src/ensure_reservation.py
+uv run src/agilquest_reservations/ensure_reservation.py
 echo "Exit: $?"

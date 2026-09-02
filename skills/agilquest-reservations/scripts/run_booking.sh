@@ -34,5 +34,5 @@ if [ -L "$LOCK" ]; then
 fi
 
 cd "$(dirname "$0")"
-uv run src/book_reservation.py "$@"
+uv run src/agilquest_reservations/book_reservation.py "$@"
 echo "Exit: $?"

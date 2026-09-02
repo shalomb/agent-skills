@@ -2,7 +2,7 @@
 """List active Agilquest reservations.
 
 Usage:
-  uv run src/get_reservations.py
+  uv run src/agilquest_reservations/get_reservations.py
 """
 
 import sys
@@ -14,8 +14,8 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-from lib.browser import launch_headless, verify_auth
-from lib.agilquest import get_reservations
+from agilquest_reservations.lib.browser import launch_headless, verify_auth
+from agilquest_reservations.lib.agilquest import get_reservations
 
 
 def main():
@@ -25,7 +25,7 @@ def main():
             page = browser.new_page()
             print("Checking auth...", file=sys.stderr)
             if not verify_auth(page):
-                print("Session invalid — run: uv run src/setup_auth.py", file=sys.stderr)
+                print("Session invalid — run: aq setup-auth", file=sys.stderr)
                 sys.exit(1)
             reservations = get_reservations(page)
             print(json.dumps(reservations, indent=2))
