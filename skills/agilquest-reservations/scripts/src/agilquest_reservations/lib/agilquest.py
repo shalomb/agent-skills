@@ -4,6 +4,8 @@ import sys
 import time
 from datetime import datetime
 
+from agilquest_reservations.lib.cache import save_reservations
+
 RESERVATIONS_URL = "https://login.agilquest.com/myreservations/active?viewMode=table"
 ASSET_URL = "https://login.agilquest.com/asset/{asset_id}"
 
@@ -23,11 +25,19 @@ def get_reservations(page) -> list[dict]:
             se_cell = row.query_selector("td.start-end-cell")
             status_cell = row.query_selector("td.status-cell")
             location_cell = row.query_selector("td.location-cell")
+            checkin_cb = row.query_selector('input[type="checkbox"][id$="_0"]')
 
             asset_href = asset_link.get_attribute("href") if asset_link else ""
             resv_href = resv_link.get_attribute("href") if resv_link else ""
             id_parts = [x for x in resv_href.split("/") if x.isdigit()]
             spans = se_cell.query_selector_all("span") if se_cell else []
+
+            # Actions column lists "Check In" before "Cancel" only on rows
+            # where check-in is currently offered (i.e. today's reservation).
+            checkin_label = ""
+            if checkin_cb:
+                label_el = row.query_selector(f'label[for="{checkin_cb.get_attribute("id")}"]')
+                checkin_label = label_el.text_content().strip() if label_el else ""
 
             reservations.append({
                 "id": id_parts[0] if id_parts else "",
@@ -38,10 +48,94 @@ def get_reservations(page) -> list[dict]:
                 "start": spans[0].text_content().strip() if len(spans) > 0 else "",
                 "end": spans[1].text_content().strip() if len(spans) > 1 else "",
                 "status": status_cell.text_content().strip() if status_cell else "",
+                "checkin_checkbox_id": checkin_cb.get_attribute("id") if checkin_label == "Check In" else "",
             })
     except Exception:
         pass
+    save_reservations(reservations)
     return reservations
+
+
+def find_today(reservations: list[dict], target: datetime) -> dict | None:
+    """Return the reservation whose start date is target's date, if any."""
+    label = target.strftime("%B %d, %Y")  # "September 02, 2026"
+    for r in reservations:
+        if label in r.get("start", ""):
+            return r
+    return None
+
+
+def check_in(page, reservation: dict) -> dict:
+    """Check in to today's reservation via the active-reservations table.
+
+    Expects `reservation` from get_reservations() with a populated
+    checkin_checkbox_id (i.e. the row currently offers "Check In").
+    Ticks the checkbox, clicks the page-level SUBMIT, and verifies the
+    row's status is no longer "Awaiting Check In".
+    """
+    resv_id = reservation.get("id", "")
+    cb_id = reservation.get("checkin_checkbox_id", "")
+    if not cb_id:
+        return {
+            "status": "error",
+            "reservation_id": resv_id,
+            "message": "No Check In checkbox available for this reservation",
+        }
+
+    print(f"Checking in reservation {resv_id}...", file=sys.stderr)
+    checkbox = page.locator(f"#{cb_id}")
+    if not checkbox.is_checked():
+        # Checkbox input is visually hidden behind a styled label — JS click
+        # bypasses Playwright's visibility/viewport constraints (same
+        # approach as the Private checkbox in stage()).
+        page.evaluate(f"document.querySelector('#{cb_id}').click()")
+    page.wait_for_timeout(300)
+
+    submit_btn = page.locator("button").filter(has_text="SUBMIT").first
+    if submit_btn.is_disabled():
+        return {
+            "status": "error",
+            "reservation_id": resv_id,
+            "message": "SUBMIT button still disabled after checking Check In box",
+        }
+
+    submit_btn.click()
+
+    # A confirmation dialog appears: "Would you like to Start the
+    # Reservation Now?" — must click YES to actually check in. Matched by
+    # visible text rather than a specific container class, since the
+    # dialog's markup wasn't confirmed against source.
+    try:
+        page.get_by_text("Start the Reservation Now", exact=False).wait_for(
+            state="visible", timeout=10000
+        )
+        print("Confirming 'Start the Reservation Now?' dialog...", file=sys.stderr)
+        page.locator("button").filter(has_text="YES").first.click()
+    except Exception:
+        print("No confirmation dialog appeared — continuing.", file=sys.stderr)
+
+    page.wait_for_load_state("networkidle", timeout=30000)
+    page.wait_for_timeout(1000)
+
+    reservations = get_reservations(page)
+    updated = next((r for r in reservations if r.get("id") == resv_id), None)
+    status = updated.get("status", "") if updated else ""
+
+    if updated and status.lower() != "awaiting check in":
+        print(f"Check-in confirmed: status is now '{status}'.", file=sys.stderr)
+        return {
+            "status": "success",
+            "reservation_id": resv_id,
+            "reservation_status": status,
+            "message": f"Checked in to reservation {resv_id} (status: {status})",
+        }
+
+    return {
+        "status": "error",
+        "reservation_id": resv_id,
+        "reservation_status": status,
+        "message": f"Status still '{status}' after SUBMIT — check-in not confirmed",
+    }
 
 
 def find_existing(reservations: list[dict], asset_id: str, target: datetime) -> dict | None:

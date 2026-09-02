@@ -18,7 +18,7 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-from lib.browser import APP_LAUNCHER, launch_headless, establish_session
+from agilquest_reservations.lib.browser import APP_LAUNCHER, launch_headless, establish_session
 
 DOMAINS = [
     "login.agilquest.com",
@@ -59,7 +59,7 @@ def warm_chrome():
             else:
                 print(
                     "  WARNING: launcher landed on MS login — MS tokens may have expired. "
-                    "Run: uv run src/setup_auth.py",
+                    "Run: aq setup-auth",
                     file=sys.stderr,
                 )
         except Exception as e:

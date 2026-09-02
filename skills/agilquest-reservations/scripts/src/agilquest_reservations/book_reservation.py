@@ -6,7 +6,8 @@ Tries assets in order, moving to the next on asset_unavailable.
 On auth failure, launches setup_auth.py in a Terminal via osascript.
 
 Usage:
-  uv run src/book_reservation.py [options]
+  aq book [DATE] [options]
+  uv run src/agilquest_reservations/book_reservation.py [options]
 
 Options:
   --assets   343,257,14006,14005   Ordered fallback list (default: all four)
@@ -35,11 +36,11 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-from lib.browser import launch_headless, verify_auth
-from lib.agilquest import (
+from agilquest_reservations.lib.browser import launch_headless, verify_auth
+from agilquest_reservations.lib.agilquest import (
     RESERVATIONS_URL, get_reservations, find_existing, stage, submit_with_retries,
 )
-from lib.logging import log_result
+from agilquest_reservations.lib.logging import log_result
 
 DEFAULT_ASSETS = ["343", "257", "14006", "14005"]
 DEFAULT_START = "09:00 AM"
@@ -64,11 +65,11 @@ def humanize_date(d: datetime) -> str:
 
 
 def trigger_reauth():
-    scripts_dir = Path(__file__).parent.parent
+    scripts_dir = Path(__file__).parent.parent.parent
     print("Session invalid — opening Terminal to run setup_auth.py...", file=sys.stderr)
     subprocess.Popen([
         "/usr/bin/osascript", "-e",
-        f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/setup_auth.py"',
+        f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/agilquest_reservations/setup_auth.py"',
     ])
 
 

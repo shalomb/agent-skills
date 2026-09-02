@@ -10,7 +10,8 @@ Run this again whenever the headless scripts report MS SSO requires
 interactive login.
 
 Usage:
-  uv run src/setup_auth.py
+  aq setup-auth
+  uv run src/agilquest_reservations/setup_auth.py
 """
 
 import sys
@@ -22,7 +23,7 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-from lib.browser import APP_LAUNCHER, AGILQUEST_HOME, get_state_dir, get_chrome_path, launch_headed
+from agilquest_reservations.lib.browser import APP_LAUNCHER, AGILQUEST_HOME, get_state_dir, get_chrome_path, launch_headed
 
 
 def clear_singleton_lock():
