@@ -79,15 +79,20 @@ Skip for:
 
 ## The Y-Statement Format (The Decision Anchor)
 
-```
-In context of [situation / use case],
-facing [concern / tension / constraint],
-we decided for [chosen option]
-to achieve [quality attribute / goal],
-accepting [downside / trade-off].
-```
+Format the Y-Statement as an 8-row scannable table:
 
-This single sentence forces synthesis: if the Y-Statement cannot be drafted cleanly, the trade-offs are not yet sufficiently understood.
+| Dimension | Detail |
+|---|---|
+| **Context** | [Situation driving the decision — link to baseline evidence] |
+| **Constraint(s)** | [Hard technical, budget, team, or regulatory limits] |
+| **Requirement(s)** | [Core capability or ASR that must be delivered] |
+| **Decision** | [Chosen architectural approach — or `[PROPOSED]` / `[PENDING]`] |
+| **Alternatives Rejected** | [Primary rejected options — or `[PENDING]`] |
+| **Rationale** | [Core justification linking requirement to decision] |
+| **Tradeoff Accepted** | [Explicit non-trivial cost, debt, or limitation accepted] |
+| **Decision Authority** | [Accountable role/decider — review timebox: YYYY-MM-DD] |
+
+*Rule:* Keep rows concise (≤ 25 words). Elaborate in the dedicated sections of the ADR.
 
 ---
 
@@ -96,18 +101,22 @@ This single sentence forces synthesis: if the Y-Statement cannot be drafted clea
 1. **Discover Repository Conventions:**
    - Scan the codebase for existing ADR directories: `docs/adr/`, `docs/decisions/`, `.github/decisions/`, or `doc/architecture/decisions/`. Default to `docs/adr/` if none exist.
    - Inspect existing filenames to detect the numbering and naming convention (e.g., `0001-title.md` vs `ADR-001-title.md`). Determine the next sequential number.
-2. **Frame Intent, Forces, and Stakeholders:**
+2. **Classify Domain Archetype & Framework:**
+   - Classify the decision archetype: *Cloud & Infrastructure*, *Software & Code Architecture*, or *Distributed Systems & Data*.
+   - Consult [`references/architectural-frameworks.md`](references/architectural-frameworks.md) and select 2–3 driving pillars/qualities (e.g., AWS/Azure WAF Cost & Reliability vs. ISO 25010 Modifiability & Testability).
+3. **Frame Intent, Forces, and Stakeholders:**
    - Define the architectural intent (avoid mechanism-first titles).
-   - Identify stakeholders consulted and informed.
+   - Identify stakeholders consulted and informed (The Advice Process).
    - Identify at least one credible alternative and at least one non-trivial downside.
-3. **Draft the Y-Statement:**
-   - Synthesize the core decision into the 5-clause Y-statement format.
-4. **Instantiate the Template:**
+4. **Draft the Tabular Y-Statement:**
+   - Synthesize the core decision into the 8-row Y-statement table.
+5. **Instantiate the Template:**
    - Load [`references/adr-template.md`](references/adr-template.md) and populate all sections.
-   - Document how the decision is reified and enforced in code or CI.
-5. **Verify Against Core Qualities:**
+   - Include the **Multi-Criteria Comparison Matrix** across alternatives.
+   - Document how the decision is reified and mechanically enforced in code or CI.
+6. **Verify Against Core Qualities:**
    - Check against the 9 Core Architectural Qualities & Principles above.
-6. **Update the ADR Index:**
+7. **Update the ADR Index:**
    - If an `index.md` or `README.md` exists in the ADR directory, append a table row with the new ADR's ID, Title, Status, and Date.
 
 ---
@@ -116,14 +125,16 @@ This single sentence forces synthesis: if the Y-Statement cannot be drafted clea
 
 When asked to review an existing ADR:
 1. **Intention Check:** Is the decision framed around architectural capability, or just naming a tool?
-2. **Honesty Check:** Are negative consequences genuine, or is it a one-sided justification?
-3. **Alternative Check:** Is the alternative realistic with substantive rationale for rejection?
-4. **Reification Check:** Is there a mechanism (type, lint, test, boundary) that enforces this decision?
-5. **Y-Statement Integrity:** Does the Y-Statement clearly link the tension, choice, benefit, and trade-off?
+2. **Domain Quality Alignment:** Does it cite concrete quality pillars from the relevant framework (AWS/Azure WAF, ISO 25010, Evolutionary Architecture)?
+3. **Honesty Check:** Are negative consequences genuine, or is it a one-sided justification?
+4. **Comparison Matrix:** Does the multi-criteria matrix evaluate realistic alternatives across cost, ops overhead, latency, and lock-in?
+5. **Reification Check:** Is there a mechanism (type, lint, test, boundary) that enforces this decision?
+6. **Y-Statement Completeness:** Are all 8 dimensions populated clearly without hand-waving?
 
 ---
 
 ## References
 
-- [`references/adr-template.md`](references/adr-template.md) — Standard markdown ADR template.
-- [`references/example-adr.md`](references/example-adr.md) — Gold-standard example illustrating architectural qualities in practice.
+- [`references/adr-template.md`](references/adr-template.md) — Standard markdown ADR template with tabular Y-statement and comparison matrix.
+- [`references/architectural-frameworks.md`](references/architectural-frameworks.md) — Domain evaluation frameworks (AWS/Azure WAF, ISO 25010, Evolutionary Architecture, Distributed Data).
+- [`references/example-adr.md`](references/example-adr.md) — Gold-standard example illustrating architectural qualities and matrix in practice.
