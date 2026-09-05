@@ -61,6 +61,21 @@ Every generated ADR must satisfy and consider these foundational qualities:
 
 ---
 
+## Anti-Patterns & Red Flags (STOP and Correct)
+
+Before finalizing an ADR, the agent must self-critique against these common architectural traps:
+
+| Anti-Pattern | Symptom / Red Flag | Required Correction |
+|---|---|---|
+| **The "God Decision"** | Multiple compound choices (e.g., database + caching + auth in one ADR). | **Decompose:** One ASR per document. Split into independent, linked ADRs. |
+| **The Change Log** | Reading like a sprint recap or git commit log of tasks performed. | **Refocus:** Strip task history. ADRs document *decision forks*, not task execution. |
+| **The Jargon Fortress** | Heavy tribal acronyms, insider shorthand, and unstated context. | **Apply Uninformed Reader Test:** Rewrite crisply so a newcomer understands the forces in 3 minutes. |
+| **The Free Lunch** | Glowing benefits with only trivial/cosmetic cons ("minor learning curve"). | **Enforce Trade-offs:** Actively identify operational debt, blast radius, or performance costs accepted. |
+| **The Strawman** | Ridiculous alternatives designed only to make the chosen option look good. | **Fair Representation:** List genuine runners-up and give their strongest arguments fair weight. |
+| **The Implementation Manifesto** | Long code blocks, task steps, and migration runbooks. | **Extract to Issues/PRs:** Document the architectural invariant and reification; delegate task steps to epics. |
+
+---
+
 ## When to Write an ADR
 
 Write one when:
@@ -116,8 +131,10 @@ Format the Y-Statement as an 8-row scannable table:
    - Map the rows of the **Multi-Criteria Comparison Matrix** directly to the Decision Drivers.
    - In rejected alternatives, explicitly cite which Decision Driver(s) they failed or violated.
    - Document how the decision is reified and mechanically enforced in code or CI.
-6. **Verify Against Core Qualities:**
+6. **Verify Against Core Qualities & Self-Critique:**
    - Check against the 9 Core Architectural Qualities & Principles above.
+   - Run the **Uninformed Reader Test**: Can an engineer with zero prior context understand the problem, constraints, and why we chose this in under 3 minutes?
+   - Scan against the Anti-Patterns table to ensure no God Decisions, change logs, free lunches, strawmen, or implementation bloat crept in.
 7. **Update the ADR Index:**
    - If an `index.md` or `README.md` exists in the ADR directory, append a table row with the new ADR's ID, Title, Status, and Date.
 
@@ -129,10 +146,12 @@ When asked to review an existing ADR:
 1. **Intention Check:** Is the decision framed around architectural capability, or just naming a tool?
 2. **Domain Quality Alignment:** Does it cite concrete quality pillars from the relevant framework (AWS/Azure WAF, ISO 25010, Evolutionary Architecture)?
 3. **Decision Driver Traceability:** Are 3–5 prioritized decision drivers listed? Do the Y-Statement constraints/requirements, comparison matrix rows, and alternative rejections map back directly to these drivers?
-4. **Honesty Check:** Are negative consequences genuine, or is it a one-sided justification?
-5. **Comparison Matrix:** Does the multi-criteria matrix evaluate realistic alternatives across the stated drivers?
-6. **Reification Check:** Is there a mechanism (type, lint, test, boundary) that enforces this decision?
-7. **Y-Statement Completeness:** Are all 8 dimensions populated clearly without hand-waving?
+4. **Uninformed Reader Test:** Is the language crisp, clear, and readable by anyone without relying on tribal jargon?
+5. **Honesty & Downside Check:** Are negative consequences genuine and non-trivial, or is it a one-sided "free lunch"?
+6. **Comparison Matrix:** Does the multi-criteria matrix evaluate realistic alternatives across the stated drivers?
+7. **Reification Check:** Is there a concrete mechanism (type, lint, test, boundary) that mechanically enforces this decision?
+8. **Anti-Pattern Gate:** Is the document free from God Decisions (multi-ASR bundling), change log narration, and implementation manifesto bloat?
+9. **Y-Statement Completeness:** Are all 8 dimensions populated clearly without hand-waving?
 
 ---
 
