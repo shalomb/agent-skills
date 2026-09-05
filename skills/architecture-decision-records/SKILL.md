@@ -104,15 +104,17 @@ Format the Y-Statement as an 8-row scannable table:
 2. **Classify Domain Archetype & Framework:**
    - Classify the decision archetype: *Cloud & Infrastructure*, *Software & Code Architecture*, or *Distributed Systems & Data*.
    - Consult [`references/architectural-frameworks.md`](references/architectural-frameworks.md) and select 2–3 driving pillars/qualities (e.g., AWS/Azure WAF Cost & Reliability vs. ISO 25010 Modifiability & Testability).
-3. **Frame Intent, Forces, and Stakeholders:**
+3. **Enumerate Prioritized Decision Drivers:**
    - Define the architectural intent (avoid mechanism-first titles).
    - Identify stakeholders consulted and informed (The Advice Process).
-   - Identify at least one credible alternative and at least one non-trivial downside.
+   - List 3–5 prioritized Decision Drivers (e.g., `DRV-01` primary ASR, `DRV-02` technical constraint, `DRV-03` quality attribute, `DRV-04` operational boundary).
+   - These drivers anchor the Y-statement, define the rows in the Comparison Matrix, and provide the objective criteria for rejecting alternatives.
 4. **Draft the Tabular Y-Statement:**
-   - Synthesize the core decision into the 8-row Y-statement table.
+   - Synthesize the core decision into the 8-row Y-statement table, mapping `Constraint(s)` and `Requirement(s)` directly to the numbered Decision Drivers.
 5. **Instantiate the Template:**
    - Load [`references/adr-template.md`](references/adr-template.md) and populate all sections.
-   - Include the **Multi-Criteria Comparison Matrix** across alternatives.
+   - Map the rows of the **Multi-Criteria Comparison Matrix** directly to the Decision Drivers.
+   - In rejected alternatives, explicitly cite which Decision Driver(s) they failed or violated.
    - Document how the decision is reified and mechanically enforced in code or CI.
 6. **Verify Against Core Qualities:**
    - Check against the 9 Core Architectural Qualities & Principles above.
@@ -126,15 +128,16 @@ Format the Y-Statement as an 8-row scannable table:
 When asked to review an existing ADR:
 1. **Intention Check:** Is the decision framed around architectural capability, or just naming a tool?
 2. **Domain Quality Alignment:** Does it cite concrete quality pillars from the relevant framework (AWS/Azure WAF, ISO 25010, Evolutionary Architecture)?
-3. **Honesty Check:** Are negative consequences genuine, or is it a one-sided justification?
-4. **Comparison Matrix:** Does the multi-criteria matrix evaluate realistic alternatives across cost, ops overhead, latency, and lock-in?
-5. **Reification Check:** Is there a mechanism (type, lint, test, boundary) that enforces this decision?
-6. **Y-Statement Completeness:** Are all 8 dimensions populated clearly without hand-waving?
+3. **Decision Driver Traceability:** Are 3–5 prioritized decision drivers listed? Do the Y-Statement constraints/requirements, comparison matrix rows, and alternative rejections map back directly to these drivers?
+4. **Honesty Check:** Are negative consequences genuine, or is it a one-sided justification?
+5. **Comparison Matrix:** Does the multi-criteria matrix evaluate realistic alternatives across the stated drivers?
+6. **Reification Check:** Is there a mechanism (type, lint, test, boundary) that enforces this decision?
+7. **Y-Statement Completeness:** Are all 8 dimensions populated clearly without hand-waving?
 
 ---
 
 ## References
 
-- [`references/adr-template.md`](references/adr-template.md) — Standard markdown ADR template with tabular Y-statement and comparison matrix.
+- [`references/adr-template.md`](references/adr-template.md) — Standard markdown ADR template with Decision Drivers, tabular Y-statement, and comparison matrix.
 - [`references/architectural-frameworks.md`](references/architectural-frameworks.md) — Domain evaluation frameworks (AWS/Azure WAF, ISO 25010, Evolutionary Architecture, Distributed Data).
-- [`references/example-adr.md`](references/example-adr.md) — Gold-standard example illustrating architectural qualities and matrix in practice.
+- [`references/example-adr.md`](references/example-adr.md) — Gold-standard example illustrating Decision Drivers, tabular Y-statement, and matrix in practice.
