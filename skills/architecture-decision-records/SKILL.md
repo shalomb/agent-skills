@@ -7,48 +7,17 @@ description: Create, update, and review Architecture Decision Records (ADRs) usi
 
 Create ADRs that capture *why* an architectural decision was made, the forces balanced, and the trade-offs accepted—not merely *what* was implemented.
 
-## Core Architectural Qualities & Principles
+## Core Principles: The 5 Tenets
 
-Every generated ADR must satisfy and consider these foundational qualities:
+Every ADR generated or reviewed must adhere to these five universal tenets:
 
-1. **Intention-Revealing (Intent over Mechanism):**
-   - Frame the decision around **domain capability and architectural intent**, not incidental tooling or vendor names (e.g., *"Ephemeral Request De-duplication"* rather than *"Use Redis"*).
-   - The core intent and invariant must remain understandable even if the underlying library or cloud service is replaced.
+1. **Intent over Mechanism:** Frame decisions around domain capabilities and architectural invariants, not tool brands (e.g., *"Ephemeral Request De-duplication"* vs. *"Use Redis"*). The intent must hold even if tooling changes.
+2. **Reification over Tribal Memory:** Architecture is what the system mechanically enforces, not what people remember. Every decision must anchor in code: explicit domain types, module boundaries, automated CI fitness functions (e.g., ArchUnit, import linter rules), contract tests, or telemetry alarms.
+3. **Honest Trade-offs & Real Alternatives:** Zero "free lunches." Every choice incurs costs (operational debt, latency, lock-in). Evaluate genuine runners-up and state the concrete driver that disqualified them.
+4. **Advice Process over Gatekeepers:** Decentralize decisions with transparent alignment rather than committee bottlenecks. Autonomously own choices, but explicitly record who was consulted (for expertise) and who is informed (for impact).
+5. **Reversibility & Immutability:** Treat decisions as two-way doors: preserve optionality with seams and define explicit revisit criteria. Once accepted, records are immutable history—supersede with a new ADR, never rewrite.
 
-2. **Architectural Reification (Making the Implicit Concrete):**
-   - Decisions must not rely on unwritten tribal agreements or developer memory.
-   - Explain how the decision is **mechanically reified and enforced** in the codebase (e.g., explicit domain types, strict module boundaries, architectural fitness functions, CI lints, contract tests, or telemetry alarms).
-
-3. **Singular Focus (One ASR per Document):**
-   - Address exactly one Architecturally Significant Requirement (ASR) per ADR.
-   - If a proposed decision covers multiple orthogonal concerns (e.g., language runtime, persistence store, auth provider, and hosting), decompose it into separate, focused ADRs.
-
-4. **Objective & Consequence-Driven ("No Free Lunch"):**
-   - Refuse decisions that list only benefits. Every architectural choice accepts trade-offs.
-   - Actively identify and document negative consequences: operational complexity, latency overhead, performance trade-offs, or accepted technical debt.
-
-5. **Alternatives Required (Avoid Strawmen):**
-   - An ADR is incomplete without legitimate rejected options.
-   - Document at least one viable alternative with its strongest argument and the objective reason it was not chosen. Avoid ridiculous caricature alternatives.
-
-6. **Reversibility & Optionality (Two-Way vs. One-Way Doors):**
-   - Assess how difficult and costly it will be to reverse this choice in 12–24 months.
-   - Introduce architectural seams or abstractions to preserve optionality where possible.
-   - Define concrete **Revisit Criteria** (e.g., throughput thresholds, team growth, or external constraints that invalidate the choice).
-
-7. **The Advice Process (Social Alignment):**
-   - Architecture requires team alignment over isolated decree.
-   - Explicitly record who was **Consulted** (whose input was sought) and who must be **Informed** (stakeholders impacted).
-
-8. **Immutability & Traceability (Living Proposals vs. Historical Records):**
-   - While in review (`Proposed`), an ADR is a living document and may be revised in place.
-   - Once `Accepted`, an ADR is an immutable historical record. Never rewrite an accepted ADR.
-   - To revise a past decision, create a new `Proposed` ADR that links `Supersedes: [ADR-00X](...)`, and upon acceptance mark the prior ADR as `Superseded by [ADR-00Y](...)`.
-
-9. **Proximity & Portability:**
-   - Store ADRs as plain Markdown (`.md`) co-located with the source code inside the repository to ensure version control alignment.
-
----
+*(Enforced via **Singular Focus & Plain Language**: exactly one decision per document, passing the 3-minute Uninformed Reader test in repository-co-located Markdown).*
 
 ## Agent Directives (Operational Guardrails)
 
@@ -132,7 +101,7 @@ Format the Y-Statement as an 8-row scannable table:
    - In rejected alternatives, explicitly cite which Decision Driver(s) they failed or violated.
    - Document how the decision is reified and mechanically enforced in code or CI.
 6. **Verify Against Core Qualities & Self-Critique:**
-   - Check against the 9 Core Architectural Qualities & Principles above.
+   - Check against the 5 Core Tenets above.
    - Run the **Uninformed Reader Test**: Can an engineer with zero prior context understand the problem, constraints, and why we chose this in under 3 minutes?
    - Scan against the Anti-Patterns table to ensure no God Decisions, change logs, free lunches, strawmen, or implementation bloat crept in.
 7. **Update the ADR Index:**
