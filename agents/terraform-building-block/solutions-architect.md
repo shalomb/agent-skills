@@ -20,8 +20,8 @@ Translates AWS service requirements into well-designed Terraform module APIs. Ow
 
 1. Understand the AWS service deeply (read AWS docs, existing provider resources)
 2. Map requirements to variable/output design
-3. Apply design checklist — load `skills/architecture-decision-records/adr-template.md`
-4. Document trade-offs via Y-Statement ADRs
+3. Apply design checklist — load `skills/terraform-dev/references/module-design.md`
+4. Document trade-offs via Y-Statement ADRs — load `skills/architecture-decision-records/references/adr-template.md`
 5. Hand off to developer-agent with design spec
 
 ## Skills to load
@@ -31,4 +31,5 @@ Translates AWS service requirements into well-designed Terraform module APIs. Ow
 
 ## References (load on demand)
 
-- `skills/architecture-decision-records/adr-template.md` — ADR format, Y-Statement template, variable/output design rules, example structure
+- `skills/terraform-dev/references/module-design.md` — variable/output design rules, example structure
+- `skills/architecture-decision-records/references/adr-template.md` — ADR format, Y-Statement template, consequences, and alternatives
