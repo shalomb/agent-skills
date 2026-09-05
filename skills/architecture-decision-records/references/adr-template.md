@@ -1,4 +1,4 @@
-# ADR Template (Tabular Y-Statement, Quality Frameworks & Multi-Criteria Matrix)
+# ADR Template (Decision Drivers, Tabular Y-Statement & Multi-Criteria Matrix)
 
 A standard, domain-agnostic template for Architecture Decision Records (ADRs). Copy this template into your project's ADR directory (e.g., `docs/adr/0001-intention-revealing-title.md`).
 
@@ -16,7 +16,15 @@ A standard, domain-agnostic template for Architecture Decision Records (ADRs). C
 
 ## Context
 
-[Describe the context, problem statement, and forces driving this decision. What technical, business, or operational tensions exist (e.g., developer velocity vs. operational overhead, consistency vs. availability, flexibility vs. cognitive load)? Link to relevant baseline issues or metrics.]
+[Describe the context, problem statement, and background. What situation forces this decision? What baseline metrics, incidents, or changes compelled this review? Link to relevant baseline evidence.]
+
+## Decision Drivers
+
+[List the 3–5 primary forces, constraints, and requirements compelling this decision in priority order. These drivers directly feed the Y-Statement, the Comparison Matrix, and alternative rejection rationales.]
+1. **[DRV-01 — Core ASR / Capability]:** [e.g., Target throughput SLA, latency budget, or essential business capability]
+2. **[DRV-02 — Technical / Resource Constraint]:** [e.g., Hard connection limits, legacy system compatibility, compute bounds]
+3. **[DRV-03 — Quality Attribute / Framework Pillar]:** [e.g., ISO 25010 Modifiability/Testability, AWS WAF Security/Blast Radius]
+4. **[DRV-04 — Operational / Organizational Constraint]:** [e.g., On-call cognitive burden, delivery timeline, licensing, compliance/GxP]
 
 ## Domain Quality Framework Alignment
 
@@ -36,11 +44,11 @@ A standard, domain-agnostic template for Architecture Decision Records (ADRs). C
 | Dimension | Detail |
 |---|---|
 | **Context** | [Situation driving the decision — link to baseline evidence] |
-| **Constraint(s)** | [Hard technical, budget, team, or regulatory constraints] |
-| **Requirement(s)** | [Core capability or ASR that must be delivered] |
+| **Constraint(s)** | [Hard limits — reference DRV-02, DRV-04] |
+| **Requirement(s)** | [Core ASRs to deliver — reference DRV-01, DRV-03] |
 | **Decision** | [Chosen architectural approach — or `[PROPOSED]` / `[PENDING]`] |
 | **Alternatives Rejected** | [Primary rejected options — or `[PENDING]`] |
-| **Rationale** | [Core justification linking requirement to decision] |
+| **Rationale** | [Core justification linking drivers to decision] |
 | **Tradeoff Accepted** | [Explicit non-trivial cost, debt, or limitation accepted] |
 | **Decision Authority** | [Accountable role/decider — review timebox: YYYY-MM-DD] |
 
@@ -70,25 +78,24 @@ Examples:
 
 ### Multi-Criteria Comparison Matrix
 
-*Required when 2 or more options exist.*
+*Map criteria directly to the Decision Drivers above.*
 
 | Evaluation Criterion | Option A (Chosen) | Option B | Option C |
 |---|---|---|---|
-| **Cost / TCO** | [Fixed / variable estimate] | [Estimate] | [Estimate] |
-| **Operational Overhead** | [Low / Med / High on-call burden] | [...] | [...] |
-| **Latency / Performance** | [Response profile under load] | [...] | [...] |
-| **Reversibility & Lock-in** | [Two-way door / open standard] | [...] | [...] |
-| **Domain Framework Fit** | [Alignment with pillars] | [...] | [...] |
-| **Team Familiarity** | [Existing skills vs. training needed] | [...] | [...] |
+| **DRV-01: [Requirement]** | [Fit/Score] | [Fit/Score] | [Fit/Score] |
+| **DRV-02: [Constraint]** | [Fit/Score] | [Fit/Score] | [Fit/Score] |
+| **DRV-03: [Quality / WAF]** | [Fit/Score] | [Fit/Score] | [Fit/Score] |
+| **DRV-04: [Ops / Team]** | [Fit/Score] | [Fit/Score] | [Fit/Score] |
+| **Reversibility / Lock-in** | [Two-way door / open standard] | [...] | [...] |
 
 ### Option A: [Name of Chosen Option]
-- **Why Chosen:** [Summary of primary advantage and fit]
+- **Why Chosen:** [Summary of primary advantage and fit across drivers]
 - **Key Caveat:** [Primary trade-off accepted]
 
 ### Option B: [Name of Alternative]
 - **Description:** [Brief summary of the alternative]
 - **Strongest Argument:** [Why this option was compelling]
-- **Why Rejected:** [Specific, objective reason this was not chosen]
+- **Why Rejected:** [Explicitly cite which Decision Driver(s) this option fails or violates]
 
 ## Revisit Criteria
 
