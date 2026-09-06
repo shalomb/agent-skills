@@ -12,20 +12,24 @@ The `todo` CLI provides task backlog navigation, dependency management, and inte
 ## Subcommands
 
 ### 1. `list`
-Prints concise task heading lines without dumping full markdown bodies.
+Prints concise task heading lines grouped by markdown section without dumping full markdown bodies.
 
 ```bash
-todo list [query]
+todo list [query] [--id]
 ```
 
-- **Without arguments:** Lists all tasks in active backlog.
-- **With `query`:** Filters tasks using smart/partial matching (substring, stem, or token match).
+- **Without arguments:** Lists all tasks in active backlog, grouped under their markdown section headers.
+- **With `query`:** Filters tasks matching by task ID, title substring, or markdown section name (e.g. `todo list critical`).
+- **`--id`**: Include the generated task ID slug in the output (e.g. `[fix-crash]`).
 
 **Output format:**
 ```text
-[ ] [P1] [core-engine] Build Core Engine (WSJF: 2.0)
-[ ] [P2] [editor-launch] Implement Editor (after: core-engine)
-[x] [P0] [setup] Project Scaffolding
+## 🔴 CRITICAL
+  [ ] [P0] Fix startup crash (after: db-init)
+
+## 🟡 HIGH
+  [ ] [P1] Add export report
+  [x] [P1] Project Scaffolding
 ```
 
 ---
@@ -34,12 +38,13 @@ todo list [query]
 Creates a new task in `TODO.md` and automatically scaffolds a BDD task card in `tasks/<id>.md`.
 
 ```bash
-todo add "<title>" [--id <id>] [--prio P0-P3] [--after <id>] [--depends <id1,id2>] [--wsjf <cost>/<size>]
+todo add "<title>" [--id <id>] [--prio P0-P3] [--section <heading>] [--after <id>] [--depends <id1,id2>] [--wsjf <cost>/<size>]
 ```
 
 - **`title`**: Task title / description (required).
-- **`--id`**: Explicit task identifier (defaults to kebab-cased title).
+- **`--id`**: Explicit task identifier (defaults to a clean, capped kebab-cased slug).
 - **`--prio`**: Priority level (`P0`, `P1`, `P2`, `P3`). Default `P2`.
+- **`--section`**: Markdown section heading under which to insert the task (e.g. `CRITICAL` or `🟡 HIGH`).
 - **`--after`**: Places the task immediately after the specified task and adds a dependency on it.
 - **`--depends`**: Comma-separated list of prerequisite task IDs.
 - **`--wsjf`**: Cost of Delay / Job Size ratio (e.g. `4.0/2.0`).
@@ -111,7 +116,10 @@ todo view <query>
 Interactive editing in Vim/Neovim or express non-interactive updates.
 
 ```bash
-# Interactive editing in tmux popup or terminal
+# Edit master backlog (TODO.md) in tmux popup or terminal
+todo edit
+
+# Interactive editing of matching task cards in tmux popup or terminal
 todo edit <query>
 
 # Express operations:
@@ -120,6 +128,10 @@ todo edit <query> undone          # Reopen task
 todo edit <query> P0|P1|P2|P3     # Update priority
 todo edit <query> add <text>      # Append acceptance criterion
 ```
+
+- **Without arguments (`todo edit`):** Opens the master `TODO.md` file in `$EDITOR` / tmux popup.
+- **With `<query>`:** Smart-matches task cards. If multiple match, opens all matching files simultaneously (`vi card1 card2...`).
+- **With express ops:** Applies non-interactive in-place modifications to criteria or completion status.
 
 ---
 

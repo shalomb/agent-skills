@@ -56,22 +56,27 @@ class TestTodoBDDScenarios(unittest.TestCase):
             self.assertEqual(ret2, 0)
             self.assertIn("Added task [implement-editor]", out2.getvalue())
 
-        # Step 3: todo list (all)
+        # Step 3: todo list (all) - clean headings without redundant slug
         with patch("sys.stdout", new=io.StringIO()) as out_list:
             ret_list = main(["list"])
             self.assertEqual(ret_list, 0)
-            lines = out_list.getvalue().strip().splitlines()
-            self.assertEqual(len(lines), 2)
-            self.assertIn("[P1] [build-core-engine] Build Core Engine", lines[0])
-            self.assertIn("[P2] [implement-editor] Implement Editor", lines[1])
+            val = out_list.getvalue()
+            self.assertIn("[P1] Build Core Engine", val)
+            self.assertNotIn("[build-core-engine]", val)
+            self.assertIn("[P2] Implement Editor", val)
 
-        # Step 4: todo list with partial filter 'core'
+        # Step 4: todo list with --id displays the task ID
+        with patch("sys.stdout", new=io.StringIO()) as out_id:
+            ret_id = main(["list", "--id"])
+            self.assertEqual(ret_id, 0)
+            self.assertIn("[P1] [build-core-engine] Build Core Engine", out_id.getvalue())
+
+        # Step 5: todo list with partial filter 'core'
         with patch("sys.stdout", new=io.StringIO()) as out_filter:
             ret_filter = main(["list", "core"])
             self.assertEqual(ret_filter, 0)
-            lines_filter = out_filter.getvalue().strip().splitlines()
-            self.assertEqual(len(lines_filter), 1)
-            self.assertIn("build-core-engine", lines_filter[0])
+            self.assertIn("Build Core Engine", out_filter.getvalue())
+            self.assertNotIn("Implement Editor", out_filter.getvalue())
 
     def test_scenario_manage_dependencies_and_prevent_cycles(self) -> None:
         """Scenario: User wires dependencies and prevents circular deadlocks.
@@ -155,6 +160,71 @@ class TestTodoBDDScenarios(unittest.TestCase):
             self.assertEqual(ret_mermaid, 0)
             self.assertIn("```mermaid", out_mermaid.getvalue())
             self.assertIn("root --> child", out_mermaid.getvalue())
+
+    def test_scenario_edit_without_arg_edits_todo_file(self) -> None:
+        """Scenario: User runs 'todo edit' without an argument to edit master TODO.md.
+
+        Given an active backlog in TODO.md
+        When the user runs 'todo edit' with no target argument
+        Then the editor is launched targeting the active TODO.md file
+        """
+        with patch("todo_navigator.cli.launch_editor") as mock_launch:
+            mock_launch.return_value = 0
+            ret = main(["edit"])
+            self.assertEqual(ret, 0)
+            self.assertTrue(mock_launch.called)
+            # Verify target was TODO.md
+            matches_passed = mock_launch.call_args[0][1]
+            self.assertEqual(matches_passed[0][0], "todo")
+            self.assertEqual(matches_passed[0][1], self.todo_file)
+
+    def test_scenario_section_grouping_and_filtering(self) -> None:
+        """Scenario: User organizes tasks by sections and filters by section.
+
+        Given a TODO.md containing '## 🔴 CRITICAL' and '## 🟡 HIGH' sections
+        When the user runs 'todo list'
+        Then tasks are rendered grouped under their section headers
+        And when the user runs 'todo list critical'
+        Then all tasks under the CRITICAL section are returned
+        And when the user adds a task with '--section CRITICAL'
+        Then it is inserted into the CRITICAL section in TODO.md
+        """
+        self.todo_file.write_text(
+            "# Project Backlog\n\n"
+            "## 🔴 CRITICAL\n"
+            "- [ ] Fix crash on startup <!-- [id: fix-crash] -->\n\n"
+            "## 🟡 HIGH\n"
+            "- [ ] Add dark mode <!-- [id: dark-mode] -->\n",
+            encoding="utf-8",
+        )
+
+        # Step 1: todo list shows sections
+        with patch("sys.stdout", new=io.StringIO()) as out_list:
+            ret_list = main(["list"])
+            self.assertEqual(ret_list, 0)
+            val = out_list.getvalue()
+            self.assertIn("## 🔴 CRITICAL", val)
+            self.assertIn("Fix crash on startup", val)
+            self.assertIn("## 🟡 HIGH", val)
+            self.assertIn("Add dark mode", val)
+
+        # Step 2: filter by section name 'critical'
+        with patch("sys.stdout", new=io.StringIO()) as out_crit:
+            ret_crit = main(["list", "critical"])
+            self.assertEqual(ret_crit, 0)
+            val_crit = out_crit.getvalue()
+            self.assertIn("Fix crash on startup", val_crit)
+            self.assertNotIn("Add dark mode", val_crit)
+
+        # Step 3: add task under section
+        with patch("sys.stdout", new=io.StringIO()):
+            ret_add = main(["add", "Patch security advisory", "--section", "CRITICAL"])
+            self.assertEqual(ret_add, 0)
+
+        with patch("sys.stdout", new=io.StringIO()) as out_crit2:
+            main(["list", "critical"])
+            val_crit2 = out_crit2.getvalue()
+            self.assertIn("Patch security advisory", val_crit2)
 
 
 if __name__ == "__main__":

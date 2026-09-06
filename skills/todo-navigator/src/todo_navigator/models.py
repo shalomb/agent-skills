@@ -17,6 +17,7 @@ class Task:
     wsjf_cost: float = 1.0
     wsjf_size: float = 1.0
     depends_on: List[str] = field(default_factory=list)
+    section: str = ""
     raw_line: str = ""
 
     @property

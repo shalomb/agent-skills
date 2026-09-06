@@ -91,6 +91,63 @@ class TestParser(unittest.TestCase):
             self.assertEqual(tasks[0].id, "new-feature")
             self.assertEqual(tasks[0].depends_on, ["dep1"])
 
+    def test_generate_task_id_caps_length(self) -> None:
+        long_title = "Fix link: docs/tutorials/01-getting-started.md -> docs/getting-started.md"
+        slug = generate_task_id(long_title)
+        self.assertLessEqual(len(slug), 45)
+        self.assertTrue(slug.startswith("fix-link-docstutorials01"))
+
+    def test_parse_todo_file_sections(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "TODO.md"
+            p.write_text(
+                "# Title\n\n"
+                "## 🔴 CRITICAL (Blockers)\n"
+                "- [ ] Task 1 <!-- [id: t1] -->\n\n"
+                "## 🟡 HIGH\n"
+                "- [ ] Task 2 <!-- [id: t2] -->\n",
+                encoding="utf-8",
+            )
+            _, tasks, _ = parse_todo_file(p)
+            self.assertEqual(len(tasks), 2)
+            self.assertEqual(tasks[0].section, "🔴 CRITICAL (Blockers)")
+            self.assertEqual(tasks[1].section, "🟡 HIGH")
+
+    def test_add_task_under_section(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            local_todo = repo_root / "TODO.md"
+            local_todo.write_text(
+                "# Title\n\n"
+                "## 🔴 CRITICAL\n"
+                "- [ ] Existing Critical <!-- [id: c1] -->\n\n"
+                "## 🟡 HIGH\n"
+                "- [ ] Existing High <!-- [id: h1] -->\n",
+                encoding="utf-8",
+            )
+            add_task_to_todo(
+                repo_root=repo_root,
+                title="New Critical Bug",
+                section="CRITICAL",
+                force_shadow=False,
+            )
+            _, tasks, _ = parse_todo_file(local_todo)
+            self.assertEqual(len(tasks), 3)
+            # Should be placed in CRITICAL section before HIGH section
+            self.assertEqual(tasks[1].title, "New Critical Bug")
+            self.assertEqual(tasks[1].section, "🔴 CRITICAL")
+
+    def test_parse_todo_file_h2_with_h3_subsections(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            p = Path(td) / "TODO.md"
+            p.write_text(
+                "# Title\n\n## 🔴 CRITICAL\n\n### 1. Subheading\n- [ ] Task in subsection <!-- [id: t1] -->\n",
+                encoding="utf-8",
+            )
+            _, tasks, _ = parse_todo_file(p)
+            self.assertEqual(len(tasks), 1)
+            self.assertEqual(tasks[0].section, "🔴 CRITICAL")
+
 
 if __name__ == "__main__":
     unittest.main()

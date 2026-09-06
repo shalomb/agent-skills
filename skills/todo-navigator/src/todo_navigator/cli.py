@@ -33,6 +33,7 @@ from todo_navigator.visualizer import (
     format_task_heading,
     render_ascii_tree,
     render_mermaid_graph,
+    render_section_grouped_list,
 )
 
 
@@ -52,12 +53,19 @@ def cmd_list(args: argparse.Namespace) -> int:
         return 0
 
     query = getattr(args, "query", "")
+    show_id = getattr(args, "show_id", False)
     if query:
         query_str = str(query).strip()
         matches = find_matching_targets(repo_root, shadow_dir, query_str, force_shadow=getattr(args, "shadow", False))
         matched_ids = {cid for cid, _ in matches}
 
-        filtered = [t for t in tasks if t.id in matched_ids or query_str.lower() in t.title.lower()]
+        filtered = [
+            t
+            for t in tasks
+            if t.id in matched_ids
+            or query_str.lower() in t.title.lower()
+            or (t.section and query_str.lower() in t.section.lower())
+        ]
         if not filtered:
             print(f"❌ No tasks matching '{query_str}' found.")
             print(f"   Available tasks: {', '.join(t.id for t in tasks)}")
@@ -66,8 +74,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     else:
         tasks_to_display = tasks
 
-    for t in tasks_to_display:
-        print(format_task_heading(t))
+    print(render_section_grouped_list(tasks_to_display, show_id=show_id))
     return 0
 
 
@@ -79,6 +86,7 @@ def cmd_add(args: argparse.Namespace) -> int:
     prio = getattr(args, "prio", "P2") or "P2"
     after_id = getattr(args, "after", None)
     task_id = getattr(args, "id", None)
+    section = getattr(args, "section", None)
 
     deps = []
     if getattr(args, "depends", None):
@@ -104,6 +112,7 @@ def cmd_add(args: argparse.Namespace) -> int:
         wsjf_cost=wsjf_cost,
         wsjf_size=wsjf_size,
         after_id=after_id,
+        section=section,
         force_shadow=force_shadow,
     )
 
@@ -330,7 +339,7 @@ def cmd_edit(args: argparse.Namespace) -> int:
     """Opens candidate cards in editor or applies express operations."""
     repo_root = get_repo_root()
     shadow_dir = get_shadow_dir(repo_root)
-    target = args.target
+    target = getattr(args, "target", "todo") or "todo"
     extra_ops = getattr(args, "ops", [])
 
     matches = find_matching_targets(repo_root, shadow_dir, target, force_shadow=getattr(args, "shadow", False))
@@ -397,6 +406,7 @@ def build_parser() -> argparse.ArgumentParser:
     # list
     p_list = subparsers.add_parser("list", help="List task item headings only")
     p_list.add_argument("query", nargs="?", default="", help="Optional search query filter")
+    p_list.add_argument("--id", dest="show_id", action="store_true", help="Display task ID slugs")
     p_list.set_defaults(func=cmd_list)
 
     # add
@@ -407,6 +417,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_add.add_argument("--after", help="Place task after this task ID and depend on it")
     p_add.add_argument("--depends", help="Comma-separated prerequisite task IDs")
     p_add.add_argument("--wsjf", help="WSJF cost/size ratio (e.g. 2.0/1.0)")
+    p_add.add_argument("--section", help="Insert task under this markdown section heading")
     p_add.set_defaults(func=cmd_add)
 
     # dep
@@ -440,7 +451,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     # edit
     p_edit = subparsers.add_parser("edit", help="Edit a task card or perform express ops")
-    p_edit.add_argument("target", help="Task ID or partial query")
+    p_edit.add_argument("target", nargs="?", default="todo", help="Task ID or partial query (default: todo)")
     p_edit.add_argument("ops", nargs="*", help="Optional express operations (done, P1, add ...)")
     p_edit.add_argument("--no-popup", action="store_true", help="Bypass tmux popup")
     p_edit.set_defaults(func=cmd_edit)

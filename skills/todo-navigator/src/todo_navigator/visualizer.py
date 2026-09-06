@@ -8,11 +8,14 @@ from todo_navigator.dag import compute_waves
 from todo_navigator.models import Task
 
 
-def format_task_heading(task: Task, show_deps: bool = True) -> str:
+def format_task_heading(task: Task, show_id: bool = False, show_deps: bool = True) -> str:
     """Formats a single concise task heading line."""
     checkbox = "[x]" if task.completed else "[ ]"
     prio = f"[{task.priority}]"
-    base = f"{checkbox} {prio} [{task.id}] {task.title}"
+    if show_id:
+        base = f"{checkbox} {prio} [{task.id}] {task.title}"
+    else:
+        base = f"{checkbox} {prio} {task.title}"
     details = []
     if task.wsjf_score != 1.0:
         details.append(f"WSJF: {task.wsjf_score}")
@@ -21,6 +24,37 @@ def format_task_heading(task: Task, show_deps: bool = True) -> str:
     if details:
         base += f" ({'; '.join(details)})"
     return base
+
+
+def render_section_grouped_list(tasks: List[Task], show_id: bool = False) -> str:
+    """Renders task headings grouped by their markdown section."""
+    if not tasks:
+        return "Backlog is empty."
+
+    has_sections = any(bool(t.section) for t in tasks)
+    if not has_sections:
+        return "\n".join(format_task_heading(t, show_id=show_id) for t in tasks)
+
+    sections: Dict[str, List[Task]] = {}
+    for t in tasks:
+        sec = t.section or "General"
+        if sec not in sections:
+            sections[sec] = []
+        sections[sec].append(t)
+
+    lines: List[str] = []
+    for sec, sec_tasks in sections.items():
+        if sec == "General":
+            for t in sec_tasks:
+                lines.append(format_task_heading(t, show_id=show_id))
+        else:
+            if lines:
+                lines.append("")
+            lines.append(f"## {sec}")
+            for t in sec_tasks:
+                lines.append(f"  {format_task_heading(t, show_id=show_id)}")
+
+    return "\n".join(lines)
 
 
 def render_ascii_tree(tasks: List[Task]) -> str:

@@ -24,9 +24,10 @@ Lightweight, zero-repo-pollution task navigator and backlog engine for autonomou
 # Heading-only listing (all or smart filtered)
 todo list
 todo list <query>
+todo list --id
 
 # Task creation and dependency wiring
-todo add "Task Title" [--prio P0-P3] [--after <task-id>] [--depends <id1,id2>]
+todo add "Task Title" [--prio P0-P3] [--section <heading>] [--after <task-id>] [--depends <id1,id2>]
 todo dep add <task-id> <prerequisite-id>
 todo dep rm <task-id> <prerequisite-id>
 
@@ -42,7 +43,8 @@ todo replan            # Topologically sort backlog by WSJF waves
 
 # Inspection & Editing
 todo view <query>      # View card (smart partial matching)
-todo edit <query>      # Edit in Vim (multi-file args in tmux popup)
+todo edit              # Edit master TODO.md in Vim tmux popup
+todo edit <query>      # Edit card in Vim (multi-file args in tmux popup)
 todo edit <query> done # Express mark done
 todo edit <query> add <text> # Express add acceptance criterion
 ```

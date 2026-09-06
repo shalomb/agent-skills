@@ -15,12 +15,30 @@ from todo_navigator.visualizer import (
 class TestVisualizer(unittest.TestCase):
     def test_format_task_heading(self) -> None:
         t = Task(id="core", title="Core Engine", priority="P1", wsjf_cost=2.0, wsjf_size=1.0)
-        heading = format_task_heading(t)
-        self.assertIn("[ ]", heading)
-        self.assertIn("[P1]", heading)
-        self.assertIn("[core]", heading)
-        self.assertIn("Core Engine", heading)
-        self.assertIn("WSJF: 2.0", heading)
+        heading_default = format_task_heading(t)
+        self.assertIn("[ ]", heading_default)
+        self.assertIn("[P1]", heading_default)
+        self.assertNotIn("[core]", heading_default)
+        self.assertIn("Core Engine", heading_default)
+        self.assertIn("WSJF: 2.0", heading_default)
+
+        heading_with_id = format_task_heading(t, show_id=True)
+        self.assertIn("[core]", heading_with_id)
+
+    def test_render_section_grouped_list(self) -> None:
+        from todo_navigator.visualizer import render_section_grouped_list
+
+        tasks = [
+            Task(id="c1", title="Critical Task", section="🔴 CRITICAL"),
+            Task(id="h1", title="High Task", section="🟡 HIGH"),
+            Task(id="gen", title="General Task", section=""),
+        ]
+        out = render_section_grouped_list(tasks)
+        self.assertIn("## 🔴 CRITICAL", out)
+        self.assertIn("  [ ] [P2] Critical Task", out)
+        self.assertIn("## 🟡 HIGH", out)
+        self.assertIn("  [ ] [P2] High Task", out)
+        self.assertIn("[ ] [P2] General Task", out)
 
     def test_render_ascii_tree(self) -> None:
         tasks = [
@@ -30,9 +48,9 @@ class TestVisualizer(unittest.TestCase):
         tree = render_ascii_tree(tasks)
         self.assertIn("Execution Waves", tree)
         self.assertIn("Wave 1", tree)
-        self.assertIn("build", tree)
+        self.assertIn("Build", tree)
         self.assertIn("Completed Tasks", tree)
-        self.assertIn("setup", tree)
+        self.assertIn("Setup", tree)
 
     def test_render_mermaid_graph(self) -> None:
         tasks = [
