@@ -1,0 +1,25 @@
+{
+  "skill_name": "todo-navigator",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "What's on my task backlog? Show me a concise list of what's unblocked.",
+      "expected_output": "The agent invokes `todo list` or `todo status` and returns concise headings with priority, ID, and ready status without dumping raw markdown files."
+    },
+    {
+      "id": 2,
+      "prompt": "Add a new P1 task to build an eval runner, and make it depend on the test harness task.",
+      "expected_output": "The agent runs `todo add \"Build eval runner\" --prio P1 --after create-an-automated-test-harness` or wires it with `todo dep add`, confirming task creation and BDD task card scaffolding."
+    },
+    {
+      "id": 3,
+      "prompt": "Can you show me the dependency graph for our tasks as a Mermaid chart?",
+      "expected_output": "The agent executes `todo graph --mermaid` and displays a valid Mermaid flowchart representing task nodes, priorities, and dependency edges."
+    },
+    {
+      "id": 4,
+      "prompt": "I want to edit the test harness card to add a criterion for checking timing.json.",
+      "expected_output": "The agent invokes `todo edit test-harness add Verify timing.json metrics recorded` using smart partial matching to update the task card."
+    }
+  ]
+}
