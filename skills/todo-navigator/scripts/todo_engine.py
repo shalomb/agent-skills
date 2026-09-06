@@ -540,7 +540,29 @@ def cmd_edit(args: argparse.Namespace) -> int:
             print(f"⚠️ Failed to launch editor '{editor}': {e}")
             print(f"   Direct file link: [Open file](file://{target_path})")
     else:
-        # Non-interactive / Agent mode: stage artifact if in Antigravity environment
+        # If running inside tmux (even from an AI agent subshell), launch interactive popup
+        tmux_socket = os.environ.get("TMUX")
+        no_popup = getattr(args, "no_popup", False)
+        if tmux_socket and not no_popup:
+            title = f" Todo Navigator: {target} "
+            try:
+                res = subprocess.run([
+                    "tmux", "display-popup", "-E",
+                    "-d", str(repo_root),
+                    "-w", "85%", "-h", "85%",
+                    "-T", title,
+                    editor, str(target_path),
+                ])
+                if res.returncode == 0:
+                    print(f"✅ Completed editing [{target_path.name}](file://{target_path}).")
+                    stage_card_as_artifact(target, target_path)
+                    return 0
+                else:
+                    print(f"⚠️ Editor in popup exited with status {res.returncode}")
+            except Exception as e:
+                print(f"⚠️ Failed to launch tmux popup: {e}")
+
+        # Non-interactive fallback: stage artifact if in Antigravity environment
         staged = stage_card_as_artifact(target, target_path)
         print(f"✏️ Task Card: [{target_path.name}](file://{target_path})")
         if staged:
@@ -607,6 +629,7 @@ def main():
 
     sub_edit = subparsers.add_parser("edit", parents=[common_parser], help="Open task card or TODO.md in $EDITOR")
     sub_edit.add_argument("target", nargs="?", default="todo", help="Task ID or 'todo'")
+    sub_edit.add_argument("--no-popup", action="store_true", help="Do not open interactive tmux popup even if tmux is detected")
     sub_edit.add_argument("ops", nargs="*", help="Optional express operations (e.g. 'done', 'P1', 'add <criterion>')")
     sub_edit.set_defaults(func=cmd_edit)
 
