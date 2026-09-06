@@ -183,6 +183,56 @@
         "Load core software engineering principles catalog from `references/se-principles.md` and `references/anti-patterns.md`.",
         "Extract actionable, grounded software engineering lessons demonstrating what the code changes prove or caution against."
       ]
+    },
+    {
+      "name": "todo",
+      "skill": "todo-navigator",
+      "title": "Todo Navigator",
+      "description": "Navigate project tasks, inspect roadmap, and view or edit task cards in shadow cache",
+      "default_action": "navigating project tasks and inspecting the roadmap",
+      "instructions": [
+        "Inspect the project roadmap using `uv run {SKILLS_DIR}/todo-navigator/scripts/todo_engine.py status`.",
+        "To view a specific task card, run `uv run {SKILLS_DIR}/todo-navigator/scripts/todo_engine.py view <id>`.",
+        "To edit a task card: support express operations (`done`, `P0-P3`, `add <text>`) via `uv run {SKILLS_DIR}/todo-navigator/scripts/todo_engine.py edit <id> <ops>`.",
+        "For interactive editing, stage the task card as an artifact in `<appDataDir>/brain/<conversation-id>/task-<id>.md` with UserFacing: true, and direct the user to run `/artifact` or click the link.",
+        "Keep chat responses concise: never dump the full 30+ line markdown card into chat on an edit command."
+      ]
+    },
+    {
+      "name": "next",
+      "skill": "todo-navigator",
+      "title": "Next Task Selector",
+      "description": "Select the next unblocked, highest-leverage task and page in its acceptance criteria card",
+      "default_action": "selecting the next actionable task",
+      "instructions": [
+        "Run `uv run {SKILLS_DIR}/todo-navigator/scripts/todo_engine.py next` to pull the highest-WSJF unblocked task.",
+        "Page in the task card content directly into context and present actionable next steps to the user.",
+        "Provide a clickable file:// link to the task card for direct editing."
+      ]
+    },
+    {
+      "name": "prev",
+      "skill": "todo-navigator",
+      "title": "Previous Work Recall",
+      "description": "Recall what was just worked on: 3-line factual summary of last completed task and git commit",
+      "default_action": "recalling the last completed work and git commit",
+      "instructions": [
+        "Run `uv run {SKILLS_DIR}/todo-navigator/scripts/todo_engine.py prev`.",
+        "Output the concise 3-line factual summary strictly based on the system output.",
+        "Do not speculate or propose new actions unless explicitly asked."
+      ]
+    },
+    {
+      "name": "replan",
+      "skill": "todo-navigator",
+      "title": "Todo Replanner & Bootstrapper",
+      "description": "Bootstrap task backlog or replan outstanding tasks with topological DAG sorting and WSJF waves",
+      "default_action": "bootstrapping or replanning the project task backlog",
+      "instructions": [
+        "Run `uv run {SKILLS_DIR}/todo-navigator/scripts/todo_engine.py replan`.",
+        "If the backlog is empty, bootstrap initial tasks and goal from git context and specifications.",
+        "Highlight critical path bottlenecks (tasks blocking downstream items) and execution waves."
+      ]
     }
   ]
 }
