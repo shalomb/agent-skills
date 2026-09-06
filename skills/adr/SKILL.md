@@ -5,9 +5,10 @@ description: Create, update, or review an Architecture Decision Record (ADR). Sh
 
 # Architecture Decision Records (/adr)
 
+<!-- generated:alias-skill -->
 When invoked, load and execute the **`architecture-decision-records`** skill:
 1. Follow all instructions and guidelines in [`architecture-decision-records`](../architecture-decision-records/SKILL.md).
-2. Adhere to the 5 Core Tenets:
+2. Enforce the 5 Core Tenets:
    - **Intent over Mechanism:** Domain capability and architectural invariants over tool brand names.
    - **Reification over Tribal Memory:** Mechanically enforceable via explicit types, module boundaries, automated CI fitness functions (e.g., ArchUnit, import linter rules), contract tests, or alarms.
    - **Honest Trade-offs & Real Alternatives:** Zero free lunches; evaluate genuine runners-up and state why they were rejected.

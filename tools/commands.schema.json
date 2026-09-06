@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AgentSkillsCommandRegistry",
+  "description": "Registry schema for slash commands across agent runtimes (Claude Code, Pi, Antigravity/Gemini)",
+  "type": "object",
+  "required": ["commands"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "skill", "description"],
+        "additionalProperties": false,
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z0-9-]+$",
+            "description": "Unique slash command name (kebab-case, e.g. adr, review, c4)"
+          },
+          "skill": {
+            "type": "string",
+            "pattern": "^[a-z0-9_-]+$",
+            "description": "Name of the backing skill directory in skills/"
+          },
+          "title": {
+            "type": "string",
+            "description": "Display title for the command and documentation"
+          },
+          "description": {
+            "type": "string",
+            "description": "Concise description of what the command does"
+          },
+          "default_action": {
+            "type": "string",
+            "description": "Action description used in fallback prompt when invoked without arguments"
+          },
+          "alias_skill": {
+            "type": "boolean",
+            "description": "Whether to generate an alias skill in skills/<name>/SKILL.md for Antigravity (default: true if name != skill)"
+          },
+          "instructions": {
+            "oneOf": [
+              {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "description": "Core instructions or tenets to embed in the command prompt and alias skill"
+          },
+          "prompt_template": {
+            "type": "string",
+            "description": "Optional custom prompt template for Claude Code command"
+          }
+        }
+      }
+    }
+  }
+}

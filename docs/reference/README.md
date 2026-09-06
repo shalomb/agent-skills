@@ -38,6 +38,11 @@ Authoritative technical specifications for Agent Skills, aligned with the offici
   - Python API usage
   - CI/CD integration examples
 
+- **[Slash Commands & Compilation Pipeline](./slash-commands.md)** — Declarative commands registry and multi-agent compilation
+  - `commands.json` registry schema and properties
+  - Compilation to Claude Code, Pi, and Antigravity runtimes
+  - `uv`, `ruff`, and `make` automation workflows
+
 ### Supporting Files
 
 - **[Bundled Skills Reference](./bundled-skills.md)** — Pre-built skills in this repository
