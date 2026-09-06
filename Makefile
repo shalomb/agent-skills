@@ -19,7 +19,7 @@ PI_PROMPTS_DIR := $(PI_DIR)/prompts
 
 SKILLS_CONF := $(HOME)/.config/agent-skills/skills.conf
 
-.PHONY: all help install build-commands check-commands test lint format uninstall status doctor
+.PHONY: all help install build-commands check-commands test lint format uninstall status doctor install-tools
 
 all: help
 
@@ -59,7 +59,7 @@ format:
 	@uvx ruff format tools/
 	@uvx ruff check --fix tools/
 
-install: build-commands install-skills install-commands update-conf
+install: build-commands install-skills install-commands install-tools update-conf
 	@echo ""
 	@echo "=================================================================="
 	@echo "✅ Installation complete! All skills and commands linked to:"
@@ -117,6 +117,12 @@ install-commands:
 			echo "  ✓ Antigravity:  /$$cmd_name -> $$alias_md"; \
 		fi; \
 	done
+
+install-tools:
+	@echo ""
+	@echo "Installing CLI tools via uv tool..."
+	@uv tool install --editable "$(SKILLS_SRC)/todo-navigator" --force
+	@echo "  ✓ Installed: todo -> ~/.local/bin/todo"
 
 update-conf:
 	@if [ -f "$(SKILLS_CONF)" ]; then \
@@ -187,4 +193,5 @@ uninstall:
 			rm -f "$(PI_PROMPTS_DIR)/$$(basename "$$prm")"; \
 		done; \
 	fi
+	@uv tool uninstall todo-navigator 2>/dev/null || true
 	@echo "Uninstalled."
