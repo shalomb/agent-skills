@@ -1,169 +1,103 @@
 ---
 name: test-design-review
 description: >
-  Review specific tests — or the current diff — against test design guidelines,
-  flagging each violation with the offending code and a suggested fix. Use when
-  tests have been written and need critique before merge. For scoring a whole
-  suite use `farley-tdd`; for writing new code test-first use
-  `test-driven-development`. Triggers on: 'review these tests', 'test design',
-  'are these tests any good', 'test review', 'critique my tests'.
+  Critically review tests or diffs against Dave Farley's Properties of Good Tests
+  and Gojko Adzic's Specification by Example principles. Evaluates test speed,
+  determinism, atomicity, maintainability, necessity, and behavior-versus-implementation
+  fidelity, flagging violations with concrete fixes. Triggers on: 'test review',
+  'review tests', 'review these tests', 'critique tests', 'test design review'.
 ---
 
 # Test Design Review
 
-When invoked, review the specified tests (or the diff if none specified) against the guidelines in this document.
+Review tests (or a git diff containing tests) against an authoritative dual rubric: **Dave Farley's Properties of Good Tests** and **Gojko Adzic's Specification by Example (BDD)**.
 
-Important: use a SEPARATE AGENT which does not share your context.
+---
 
-For each violation found, show the offending code and suggest a fix. Group by guideline.
+## The Dual Rubric
 
-> **Related Skills:** 
-> - Use **`farley-tdd`** for guidance on the broader Red-Green-Refactor workflow and high-level test suite properties.
-> - Use **`adzic-bdd`** for evaluating high-level Gherkin/BDD feature specifications.
+### 1. Dave Farley's Properties of Good Tests
 
-## Core Principle
+Every unit and integration test must satisfy Farley's 6 core properties:
 
-Tests are executable specifications. A specification answers: "In scenario X, what should happen?"
+| Property | Standard | Violation Tells |
+|---|---|---|
+| **Fast** | Unit tests execute in milliseconds; test suite runs in seconds. | Use of `sleep()`, artificial delays, network calls, slow disk I/O in unit tests. |
+| **Maintainable** | Tests change only when requirements change, not when internal code refactors. | Fragile mocks coupling to private methods; copy-pasted 50-line test setups. |
+| **Repeatable** | Deterministic: passes 1,000 times out of 1,000 runs in any order on any machine. | Flakiness, reliance on system timezone/clock, random seeds without fixed seeding, database pollution across runs. |
+| **Atomic** | Each test is completely self-contained, tests one logical behavior, and fails for exactly one reason. | Cascading failures (Test B fails only if Test A runs first), `.first` or `.last` queries dependent on DB ordering. |
+| **Necessary** | Every assertion validates a required domain capability or invariant. | Tautological assertions (`assert true`), testing standard library or framework features, redundant `is_successful` checks before body checks. |
+| **Understandable** | Serves as living documentation. Clear Arrange-Act-Assert structure and intention-revealing names. | Vague test names (`test_case_1`, `it_works`), mixed levels of abstraction, obscure assertions. |
 
-## Specification Format
+---
 
-Good: "When the user submits an empty form, display a validation error."
-Good: "When the API returns 500, show a graceful error message."
-Good: "When no records exist, display 'No results found'."
+### 2. Gojko Adzic's Specification by Example (BDD)
 
-Bad: "It works correctly." (What does 'correctly' mean?)
-Bad: "It handles errors." (Which errors? How?)
-Bad: "It validates input." (What validation? What happens on failure?)
+Tests are executable specifications. They must reflect business behavior, not mechanical wiring:
 
-## Test Behavior, Not Implementation Details
+| Principle | Standard | Violation Tells |
+|---|---|---|
+| **Behavior over Implementation** | Specify *what* happens in response to a business event, not *how* functions communicate internally. | Asserting method call counts (`verify(service, times(3))`), mocking internal collaborators excessively, inspecting private state. |
+| **High Signal-to-Noise Ratio** | Every variable, input, and assertion in the test directly influences the outcome. | Incidental boilerplate, 20 unneeded mock returns, arbitrary dummy data obscuring the relevant parameter. |
+| **Concrete Domain Examples** | Illustrate edge cases and rules with realistic domain examples rather than abstract placeholders. | Meaningless test values (`foo`, `bar`, `asdf`, `test1`), lack of domain edge-case verification. |
+| **Living Documentation** | Specification names describe scenarios and business consequences. | Technical names (`test_process_data_flag_false`) instead of domain rules (`when_account_is_suspended_reject_withdrawal`). |
 
-Bad:
-```rust
-#[cfg(test)]
-mod tests {
-    use super::*;
+---
 
-    mod tick {
-        use super::*;
+## Review Process
 
-        #[test]
-        fn marks_the_particles_position_blue() {
-            let mut world = World::new(10, 10);
+When reviewing tests:
 
-            world.tick();
+1. **Locate Target Tests:**
+   - If specific files/lines are provided, review those.
+   - If a diff or branch is provided, extract all modified or added test files (`git diff origin/main...HEAD -- '*test*' '*spec*'`).
+2. **Evaluate Farley Properties:**
+   - Audit test speed, isolation, determinism, and atomicity.
+   - Check for test pollution risks (global state, uncleaned fixtures, ordering dependencies).
+3. **Evaluate Adzic Specification Fidelity:**
+   - Check if tests read as executable specifications.
+   - Identify tests coupled to implementation details rather than behavior.
+   - Check signal-to-noise: flag incidental setup or redundant assertions.
+4. **Produce Structured Review Report:**
+   - Output the Farley Scorecard & Adzic Scorecard.
+   - For every flagged violation: provide file path, line numbers, offending code, explanation, and a drop-in replacement fix.
 
-            assert_eq!(world.color_at(5, 0), 0x0000FF);
-        }
-    }
-}
+---
+
+## Review Report Output Template
+
+```markdown
+# Test Design Review
+
+## Summary & Recommendation
+- **Target:** `<file or diff>`
+- **Verdict:** [PASS / NEEDS REVISION / BLOCKING]
+- **Key Takeaway:** <1-2 sentences on overall test quality>
+
+## Farley Properties Scorecard
+- **Fast:** [Pass / Warning / Fail] — <notes>
+- **Maintainable:** [Pass / Warning / Fail] — <notes>
+- **Repeatable:** [Pass / Warning / Fail] — <notes>
+- **Atomic:** [Pass / Warning / Fail] — <notes>
+- **Necessary:** [Pass / Warning / Fail] — <notes>
+- **Understandable:** [Pass / Warning / Fail] — <notes>
+
+## Adzic Specification Scorecard
+- **Behavior over Implementation:** [Pass / Warning / Fail] — <notes>
+- **Signal-to-Noise Ratio:** [Pass / Warning / Fail] — <notes>
+- **Concrete Examples:** [Pass / Warning / Fail] — <notes>
+
+## Detailed Findings & Fixes
+
+### 1. [Violation Name] (`path/to/test.ext:L12-L25`)
+- **Rubric Rule:** Farley (Atomic) / Adzic (Behavior over Implementation)
+- **Problem:** <explanation of the defect>
+- **Offending Code:**
+```code
+<bad code>
 ```
-
-  Good:
-```rust
-mod when_a_particle_touches_a_grid_cell {
-    use super::*;
-
-    #[test]
-    fn the_cell_turns_the_particles_color() {
-        let mut world = World::new(10, 10);
-        let particle_color = world.particle_color();
-        let particle_position = world.particle_position();
-
-        world.tick();
-
-        assert_eq!(
-            world.color_at(particle_position.0, particle_position.1),
-            particle_color
-        );
-    }
-}
+- **Recommended Fix:**
+```code
+<improved code>
 ```
-
-## When Capturing Scenarios, Describe the Essence
-
-Bad:
 ```
-describe "scope=failed" do
-```
-
-Good:
-```
-describe "rerunning only failed tests" do
-```
-
-## Avoid Arbitrariness
-
-### Avoid .first and .last in Tests
-
-Using `.first` or `.last` to retrieve records in tests is fragile because it depends on ordering, which can change unexpectedly. Instead, use explicit queries with `change` and `where`:
-
-Bad:
-```ruby
-post repositories_path, params: { repo_full_name: "jasonswett/ductwork" }
-repository = Repository.last
-expect(repository.github_account).to eq(github_account_jasonswett)
-```
-
-Good:
-```ruby
-expect { post repositories_path, params: { repo_full_name: "jasonswett/ductwork" } }
-  .to change { Repository.where(github_account: github_account_jasonswett).count }.by(1)
-```
-
-## Make Assertions About What's Essential, Not What's Incidental
-
-Only assert what matters. Don't assert things that are:
-- Implied by other assertions (if checking response body, don't also check `be_successful` - if it wasn't successful, the body check would fail)
-- Implementation details rather than behavior
-- Just noise that makes the test longer without adding meaning
-
-Bad:
-```ruby
-expect(response).to be_successful  # redundant noise
-expect(response.body).not_to include("deleted_item")
-```
-
-Good:
-```ruby
-expect(response.body).not_to include("deleted_item")
-```
-
-If the response wasn't successful, the body assertion tells you something went wrong. The `be_successful` check adds nothing.
-
-## Don't Mix Levels of Abstraction
-
-Bad:
-```ruby
-describe "Rerun test suite run", type: :system do
-  # ... existing tests ...
-
-  describe "Rerun Failed button" do
-    context "when the test suite run has failed tests" do
-      let!(:test_suite_run) { create(:test_suite_run, :with_failed_run) }
-      let!(:failed_test_case_run) { create(:test_case_run, task: test_suite_run.tasks.first, status: "failed") }
-
-      before do
-        allow(ENV).to receive(:fetch).and_call_original
-        allow(ENV).to receive(:fetch).with("NOVA_K8S_API_URL").and_return("https://k8s.example.com")
-        allow(ENV).to receive(:fetch).with("NOVA_K8S_TOKEN").and_return("test-token")
-        allow(ENV).to receive(:fetch).with("NOVA_K8S_CA_CERT").and_return("test-ca-cert")
-        allow_any_instance_of(User).to receive(:can_access_repository?).and_return(true)
-        login_as(test_suite_run.repository.user)
-      end
-
-      it "displays the Rerun Failed button" do
-        visit repository_test_suite_run_path(id: test_suite_run.id, repository_id: test_suite_run.repository.id)
-        expect(page).to have_button("Rerun Failed")
-      end
-    end
-  end
-end
-```
-
-Good:
-```ruby
-describe "Rerun Failed button", type: :system do
-  context "when the test suite run has failed tests" do
-    let!(:test_suite_run) { create(:test_suite_run, :with_task) }
-    let!(:test_case_run) { create(:test_case_run, task: test_suite_run.tasks.first, status: "failed") }
-

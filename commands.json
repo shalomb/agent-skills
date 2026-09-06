@@ -97,6 +97,92 @@
         "Evaluate and optimize scenarios using the Adzic Index.",
         "Ensure business-readable acceptance criteria focused on behavior rather than UI interactions."
       ]
+    },
+    {
+      "name": "debug",
+      "skill": "systematic-debugging",
+      "title": "Systematic Debugging",
+      "description": "Investigate and resolve bugs systematically with root cause analysis before proposing fixes",
+      "default_action": "systematic root cause debugging",
+      "instructions": [
+        "Enforce the Iron Law: NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.",
+        "Follow the 4 Systematic Phases: (1) Root Cause Investigation & reproduction, (2) Pattern Analysis & reference comparison, (3) Single-variable Hypothesis testing, (4) Implementation via TDD regression test.",
+        "Apply systematic troubleshooting playbooks: backward data-flow tracing (`root-cause-tracing.md`), test pollution isolation (`find-polluter.sh`), condition-based waiting (`condition-based-waiting.md`), and defense-in-depth boundary validation (`defense-in-depth.md`).",
+        "Adhere to the 3-strike rule: if 3 fix attempts fail, stop immediately and question the architecture."
+      ]
+    },
+    {
+      "name": "test-review",
+      "skill": "test-design-review",
+      "title": "Test Design Review",
+      "description": "Critique tests or diffs against Dave Farley's Properties of Good Tests and Gojko Adzic's BDD principles",
+      "default_action": "reviewing test design and executable specifications",
+      "instructions": [
+        "Evaluate tests against Dave Farley's 6 Properties of Good Tests: Fast, Maintainable, Repeatable, Atomic, Necessary, and Understandable.",
+        "Evaluate tests against Gojko Adzic's Specification by Example: Behavior over Implementation, high signal-to-noise ratio (Adzic Index), concrete domain examples, and living documentation.",
+        "Produce a structured review report containing the Farley Scorecard, Adzic Scorecard, and line-by-line violation findings with concrete fixes."
+      ]
+    },
+    {
+      "name": "doctor",
+      "skill": "branch-doctor",
+      "title": "Branch & PR Doctor",
+      "description": "Audit branch health, working tree cleanliness, conventional commits, local tests, GitHub CI, and PR well-formedness",
+      "default_action": "running a comprehensive branch and PR health check",
+      "instructions": [
+        "Run the automated diagnostic check: `uv run {SKILLS_DIR}/branch-doctor/scripts/doctor.py`.",
+        "Inspect the 5 health dimensions: (1) Working tree cleanliness, (2) Git commit history sanity against Conventional Commits & ACP, (3) Local test suite execution, (4) GitHub Actions CI status, (5) PR existence and well-formedness against PR templates and issue references.",
+        "Provide actionable recommendations for any failing or warning health checks."
+      ]
+    },
+    {
+      "name": "forensics",
+      "skill": "git-forensics",
+      "title": "Git Forensics & Code Archaeology",
+      "description": "Diagnose codebase health, detect bug hotspots, churn, bus factor, and perform git pickaxe archaeology",
+      "default_action": "analyzing codebase health and git forensics",
+      "instructions": [
+        "Analyze codebase health using `uv run scripts/forensics.py`: churn (codebase drag), bus factor (knowledge silos), bug hotspots, velocity, and rollback commits.",
+        "Perform code archaeology using git pickaxe (`uv run scripts/forensics.py pickaxe '<pattern>'`) to find deleted or modified functions across all branches.",
+        "Use X-Ray Blame (`uv run scripts/forensics.py xblame <file>`) to ignore whitespace and detect code movement."
+      ]
+    },
+    {
+      "name": "codemap",
+      "skill": "codemap",
+      "title": "Codemap Architecture Explorer",
+      "description": "Map codebase architecture, dependency flow, hub files, and blast radius",
+      "default_action": "mapping codebase dependencies and architecture",
+      "instructions": [
+        "Analyze project structure using `codemap .` and dependency flow via `codemap --deps .`.",
+        "Identify architectural hub files and calculate blast radius using `codemap --importers <file>` before modifying shared code.",
+        "Generate or inspect cross-agent handoff context envelopes via `codemap handoff .`."
+      ]
+    },
+    {
+      "name": "trace",
+      "skill": "macro-to-micro",
+      "title": "Macro-to-Micro Codebase Tracing",
+      "description": "Trace bugs and refactoring blast radius by chaining Codemap, LSP, and AST-grep",
+      "default_action": "tracing structural code dependencies and blast radius",
+      "instructions": [
+        "Follow the 3-tier articulation chain: Macro (Codemap file graph) -> Meso (LSP symbol graph) -> Micro (AST-grep syntax tree).",
+        "Identify hub files and dependency blast radius with Codemap before editing.",
+        "Trace call chains and data flow with LSP (`lsp reference`, `lsp definition`, `lsp outline`).",
+        "Perform surgical syntax-aware transformations using AST-grep (`sg run`)."
+      ]
+    },
+    {
+      "name": "lessons",
+      "skill": "lessons-learned",
+      "title": "Lessons Learned Retrospective",
+      "description": "Extract software engineering principles, takeaways, and anti-patterns from recent commits or diffs",
+      "default_action": "extracting software engineering lessons from recent work",
+      "instructions": [
+        "Determine analysis scope: feature branch (`git log main..HEAD` + `git diff main...HEAD`), last N commits, or specific SHA.",
+        "Load core software engineering principles catalog from `references/se-principles.md` and `references/anti-patterns.md`.",
+        "Extract actionable, grounded software engineering lessons demonstrating what the code changes prove or caution against."
+      ]
     }
   ]
 }
