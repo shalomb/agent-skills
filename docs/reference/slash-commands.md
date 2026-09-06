@@ -64,6 +64,28 @@ The registry is validated by the JSON Schema at [`tools/commands.schema.json`](.
 
 ---
 
+## Active Registered Commands (15 total)
+
+| Command | Backing Skill | Category | Description |
+|---|---|---|---|
+| **`/adr`** | `architecture-decision-records` | Architecture | Create, update, or review an Architecture Decision Record (ADR) |
+| **`/review`** | `bart-adversarial-reviewer` | Quality | Bart adversarial code and pull request reviewer |
+| **`/humanize`** | `ai-text-humanizer` | Quality | Strip AI writing tells, filler, and formulaic patterns |
+| **`/c4`** | `c4-architecture` | Architecture | Generate C4 model Mermaid architecture diagrams |
+| **`/commit`** | `git-commit-formatter` | Quality | Atomic Commit Protocol (ACP) & Conventional Commits |
+| **`/standup`** | `daily-standup` | Planning | Process meeting transcripts into daily execution plans |
+| **`/status`** | `daily-status` | Planning | Generate factual activity recall from git and issue trackers |
+| **`/bdd`** | `adzic-bdd` | Testing | Specification by Example & Adzic Index for Gherkin |
+| **`/debug`** | `systematic-debugging` | Diagnostics | Root cause debugging before proposing fixes |
+| **`/test-review`** | `test-design-review` | Testing | Critique tests against Farley & Adzic dual rubrics |
+| **`/doctor`** | `branch-doctor` | Diagnostics | Branch health: git history, local tests, CI, and PR well-formedness |
+| **`/forensics`** | `git-forensics` | Codebase | Churn, bug hotspots, bus factor, and pickaxe archaeology |
+| **`/codemap`** | `codemap` | Codebase | Architectural file graph, dependency flow, and hub files |
+| **`/trace`** | `macro-to-micro` | Codebase | Multi-tier code tracing (Codemap $\rightarrow$ LSP $\rightarrow$ AST-grep) |
+| **`/lessons`** | `lessons-learned` | Retrospective | Extract engineering principles and anti-patterns from git diffs |
+
+---
+
 ## Target Runtime Artifacts
 
 ### 1. Claude Code
