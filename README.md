@@ -62,6 +62,7 @@ After copying skills, restart your agent and try triggering one:
 - **claude-sub-agent** - Launch Claude Code CLI as a headless sub-agent with stream-json monitoring
 - **terraform-dev** - Watch & validate Terraform files continuously
 - **justfile-assistant** - Create well-formed justfiles with test patterns
+- **lazygit** - Launch lazygit in a blocking tmux popup for git review and staging (with /lg alias)
 
 ### Infrastructure & Cloud
 - **tfc-api** - Query Terraform Cloud workspaces, runs, plans, logs

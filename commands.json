@@ -237,6 +237,34 @@
         "If the backlog is empty, bootstrap initial tasks and goal from git context and specifications.",
         "Highlight critical path bottlenecks (tasks blocking downstream items) and execution waves."
       ]
+    },
+    {
+      "name": "lazygit",
+      "skill": "lazygit",
+      "title": "Lazygit Tmux Reviewer",
+      "description": "Launch lazygit terminal UI in a blocking tmux popup to review, stage, and inspect git changes in the current agent repository and branch",
+      "default_action": "launching lazygit in a tmux popup to review work",
+      "instructions": [
+        "FAST PATH: Immediately execute the command on the first turn: `uv run {SKILLS_DIR}/lazygit/scripts/lazygit_popup.py [args]`.",
+        "If tmux is active, this automatically opens an interactive lazygit popup and blocks until the user exits lazygit.",
+        "IMPORTANT: If Antigravity sends this command to the background while the user is inside lazygit, DO NOT poll or monitor it (no manage_task, no ps aux, no reading task logs). Simply inform the user the popup is open and STOP calling tools. The system will automatically wake you when the user finishes reviewing.",
+        "Support forwarding panel subcommands (status, branch, log, stash) or flags (e.g. -f <path>) to lazygit.",
+        "On exit, summarize any working tree changes made during the review session."
+      ]
+    },
+    {
+      "name": "lg",
+      "skill": "lazygit",
+      "title": "Lazygit Shortcut",
+      "description": "Quick alias for /lazygit to launch lazygit in a blocking tmux popup",
+      "default_action": "launching lazygit in a tmux popup to review work",
+      "instructions": [
+        "FAST PATH: Immediately execute the command on the first turn: `uv run {SKILLS_DIR}/lazygit/scripts/lazygit_popup.py [args]`.",
+        "If tmux is active, this automatically opens an interactive lazygit popup and blocks until the user exits lazygit.",
+        "IMPORTANT: If Antigravity sends this command to the background while the user is inside lazygit, DO NOT poll or monitor it (no manage_task, no ps aux, no reading task logs). Simply inform the user the popup is open and STOP calling tools. The system will automatically wake you when the user finishes reviewing.",
+        "Support forwarding panel subcommands (status, branch, log, stash) or flags (e.g. -f <path>) to lazygit.",
+        "On exit, summarize any working tree changes made during the review session."
+      ]
     }
   ]
 }

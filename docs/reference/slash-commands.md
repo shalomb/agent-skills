@@ -83,6 +83,8 @@ The registry is validated by the JSON Schema at [`tools/commands.schema.json`](.
 | **`/codemap`** | `codemap` | Codebase | Architectural file graph, dependency flow, and hub files |
 | **`/trace`** | `macro-to-micro` | Codebase | Multi-tier code tracing (Codemap $\rightarrow$ LSP $\rightarrow$ AST-grep) |
 | **`/lessons`** | `lessons-learned` | Retrospective | Extract engineering principles and anti-patterns from git diffs |
+| **`/lazygit`** | `lazygit` | Review | Launch lazygit in a blocking tmux popup to review, stage, and inspect changes |
+| **`/lg`** | `lazygit` | Review | Fast alias for `/lazygit` |
 
 ---
 
