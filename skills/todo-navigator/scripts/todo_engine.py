@@ -14,11 +14,10 @@ import datetime
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Tuple
 
 
 def get_repo_root() -> Path:
@@ -54,7 +53,9 @@ def get_shadow_dir(repo_root: Optional[Path] = None) -> Path:
     return shadow_dir
 
 
-def get_active_todo_path(repo_root: Optional[Path] = None, force_shadow: bool = False) -> Path:
+def get_active_todo_path(
+    repo_root: Optional[Path] = None, force_shadow: bool = False
+) -> Path:
     """
     Locates the active TODO.md file.
     Prefers repo-native TODO.md if it already exists, unless force_shadow is set.
@@ -152,10 +153,16 @@ def parse_todo_file(todo_path: Path) -> Tuple[str, List[Task], List[str]]:
             continue
 
         if current_section == "intent" and stripped:
-            intent += (line + "\n")
-        elif current_section == "reinforcements" and (stripped.startswith("-") or stripped.startswith("*")):
+            intent += line + "\n"
+        elif current_section == "reinforcements" and (
+            stripped.startswith("-") or stripped.startswith("*")
+        ):
             reinforcements.append(stripped.lstrip("-* ").strip())
-        elif stripped.startswith("- [ ]") or stripped.startswith("- [x]") or stripped.startswith("- [X]"):
+        elif (
+            stripped.startswith("- [ ]")
+            or stripped.startswith("- [x]")
+            or stripped.startswith("- [X]")
+        ):
             tasks.append(Task(line, i))
 
     return intent.strip(), tasks, reinforcements
@@ -183,7 +190,8 @@ Initialize and track work for {repo_root.name}.
     todo_file.write_text(sample_content, encoding="utf-8")
 
     card = shadow_dir / "tasks" / "init-explore.md"
-    card.write_text(f"""# Task: Explore Codebase Structure and Active Goals
+    card.write_text(
+        f"""# Task: Explore Codebase Structure and Active Goals
 **Parent:** [TODO.md](../TODO.md)
 **Status:** In Progress
 **Target Repo:** `{repo_root}`
@@ -194,7 +202,9 @@ Initialize and track work for {repo_root.name}.
 
 ## Target Files
 - [README.md](file://{repo_root}/README.md)
-""", encoding="utf-8")
+""",
+        encoding="utf-8",
+    )
 
     return todo_file
 
@@ -203,7 +213,9 @@ def cmd_replan(args: argparse.Namespace) -> int:
     """Resolves DAG dependencies, detects cycles, calculates WSJF waves, and presents plan."""
     repo_root = get_repo_root()
     shadow_dir = get_shadow_dir(repo_root)
-    todo_file = get_active_todo_path(repo_root, force_shadow=getattr(args, "shadow", False))
+    todo_file = get_active_todo_path(
+        repo_root, force_shadow=getattr(args, "shadow", False)
+    )
 
     if not todo_file.exists():
         print(f"⚡ Bootstrapping new task backlog in {shadow_dir}...")
@@ -242,15 +254,27 @@ def cmd_replan(args: argparse.Namespace) -> int:
 
     unblocked.sort(key=lambda t: t.wsjf, reverse=True)
 
-    print(f"📊 Status: {len(completed)} completed | {len(unblocked)} unblocked | {len(blocked)} blocked\n")
+    print(
+        f"📊 Status: {len(completed)} completed | {len(unblocked)} unblocked | {len(blocked)} blocked\n"
+    )
 
     if unblocked:
         print("🌊 Wave 1 (Ready to Execute - sorted by WSJF):")
         for t in unblocked:
             card_file = shadow_dir / t.card_rel_path.lstrip("./")
-            card_indicator = f"([card](file://{card_file}))" if card_file.exists() else f"[{t.card_rel_path}]"
-            bottleneck_tag = f" ⚠️ [BLOCKS {dependents_count[t.id]} TASKS]" if dependents_count.get(t.id, 0) > 0 else ""
-            print(f"  • {t.title} [id: {t.id}] [{t.priority}] [wsjf: {t.wsjf}]{bottleneck_tag}")
+            card_indicator = (
+                f"([card](file://{card_file}))"
+                if card_file.exists()
+                else f"[{t.card_rel_path}]"
+            )
+            bottleneck_tag = (
+                f" ⚠️ [BLOCKS {dependents_count[t.id]} TASKS]"
+                if dependents_count.get(t.id, 0) > 0
+                else ""
+            )
+            print(
+                f"  • {t.title} [id: {t.id}] [{t.priority}] [wsjf: {t.wsjf}]{bottleneck_tag}"
+            )
             print(f"    └─ Card: {card_indicator}")
 
     if blocked:
@@ -272,19 +296,27 @@ def cmd_next(args: argparse.Namespace) -> int:
     """Pulls the next highest-leverage unblocked task and pages in its card."""
     repo_root = get_repo_root()
     shadow_dir = get_shadow_dir(repo_root)
-    todo_file = get_active_todo_path(repo_root, force_shadow=getattr(args, "shadow", False))
+    todo_file = get_active_todo_path(
+        repo_root, force_shadow=getattr(args, "shadow", False)
+    )
 
     if not todo_file.exists():
-        print(f"❌ No active TODO.md found. Run /replan to bootstrap.")
+        print("❌ No active TODO.md found. Run /replan to bootstrap.")
         return 1
 
     _, tasks, _ = parse_todo_file(todo_file)
     completed_ids = {t.id for t in tasks if t.completed}
-    unblocked = [t for t in tasks if not t.completed and all(d in completed_ids for d in t.depends_on)]
+    unblocked = [
+        t
+        for t in tasks
+        if not t.completed and all(d in completed_ids for d in t.depends_on)
+    ]
 
     if not unblocked:
         if any(not t.completed for t in tasks):
-            print("⚠️ All remaining open tasks are currently blocked by dependencies. Run /replan to inspect.")
+            print(
+                "⚠️ All remaining open tasks are currently blocked by dependencies. Run /replan to inspect."
+            )
         else:
             print("🎉 All tasks in the backlog are complete!")
         return 0
@@ -302,7 +334,9 @@ def cmd_next(args: argparse.Namespace) -> int:
         )
 
     print("=" * 70)
-    print(f"👉 NEXT TASK: {top.title} [id: {top.id}] [{top.priority}] [wsjf: {top.wsjf}]")
+    print(
+        f"👉 NEXT TASK: {top.title} [id: {top.id}] [{top.priority}] [wsjf: {top.wsjf}]"
+    )
     print(f"Card Link: [Open Task Card](file://{card_path})")
     print("=" * 70)
     print(card_path.read_text(encoding="utf-8"))
@@ -314,7 +348,9 @@ def cmd_prev(args: argparse.Namespace) -> int:
     """Context recall: factual 3-line summary of the last completed item and commit."""
     repo_root = get_repo_root()
     shadow_dir = get_shadow_dir(repo_root)
-    todo_file = get_active_todo_path(repo_root, force_shadow=getattr(args, "shadow", False))
+    todo_file = get_active_todo_path(
+        repo_root, force_shadow=getattr(args, "shadow", False)
+    )
 
     if not todo_file.exists():
         print("❌ No active TODO.md found.")
@@ -348,33 +384,148 @@ def cmd_prev(args: argparse.Namespace) -> int:
     return 0
 
 
+def get_all_task_ids(
+    repo_root: Path, shadow_dir: Path, force_shadow: bool = False
+) -> List[str]:
+    """Returns all known task IDs across shadow tasks directory and active TODO.md."""
+    ids = set()
+    tasks_dir = shadow_dir / "tasks"
+    if tasks_dir.exists():
+        for p in tasks_dir.glob("*.md"):
+            ids.add(p.stem)
+    todo_path = get_active_todo_path(repo_root, force_shadow=force_shadow)
+    if todo_path.exists():
+        _, todo_tasks, _ = parse_todo_file(todo_path)
+        for t in todo_tasks:
+            ids.add(t.id)
+    return sorted(ids)
+
+
+def find_matching_targets(
+    repo_root: Path, shadow_dir: Path, target: str, force_shadow: bool = False
+) -> List[Tuple[str, Path]]:
+    """Resolves a target query into matching task (id, file_path) pairs.
+
+    Supports:
+    1. 'todo' / 'backlog' -> active TODO.md
+    2. Exact match on task ID or filename
+    3. Smart / partial match (substring or token match) against task card filenames and TODO.md items
+    """
+    if not target or target.lower() in ("todo", "backlog"):
+        return [("todo", get_active_todo_path(repo_root, force_shadow=force_shadow))]
+
+    tasks_dir = shadow_dir / "tasks"
+    tasks_dir.mkdir(parents=True, exist_ok=True)
+
+    # Check 1: Exact match on filename
+    exact_path = tasks_dir / f"{target}.md"
+    if exact_path.exists():
+        return [(target, exact_path)]
+    if (tasks_dir / target).exists() and (tasks_dir / target).is_file():
+        return [(target, tasks_dir / target)]
+
+    # Collect all known candidates: from disk files and TODO.md tasks
+    candidates: Dict[str, Path] = {}
+    for p in tasks_dir.glob("*.md"):
+        candidates[p.stem] = p
+
+    todo_path = get_active_todo_path(repo_root, force_shadow=force_shadow)
+    if todo_path.exists():
+        _, todo_tasks, _ = parse_todo_file(todo_path)
+        for t in todo_tasks:
+            t_path = tasks_dir / f"{t.id}.md"
+            if t.id not in candidates:
+                candidates[t.id] = t_path
+
+    q = target.lower().strip()
+
+    # Check 2: Exact case-insensitive match on task ID
+    for cid, cpath in candidates.items():
+        if cid.lower() == q:
+            return [(cid, cpath)]
+
+    # Check 3: Substring match in task ID
+    matches: List[Tuple[str, Path]] = []
+    for cid, cpath in candidates.items():
+        if q in cid.lower():
+            matches.append((cid, cpath))
+
+    if matches:
+        matches.sort(key=lambda x: (len(x[0]), x[0]))
+        return matches
+
+    # Check 4: Token match (all words in target query appear in task ID)
+    tokens = [tok for tok in re.split(r"[-_\s]+", q) if tok]
+    if tokens:
+        for cid, cpath in candidates.items():
+            cid_lower = cid.lower()
+            if all(tok in cid_lower for tok in tokens):
+                matches.append((cid, cpath))
+
+    if matches:
+        matches.sort(key=lambda x: (len(x[0]), x[0]))
+        return matches
+
+    return []
+
+
 def cmd_view(args: argparse.Namespace) -> int:
-    """Views TODO.md or a specific task card."""
+    """Views TODO.md or a specific task card with partial matching support."""
     repo_root = get_repo_root()
     shadow_dir = get_shadow_dir(repo_root)
     target = args.target
 
-    if not target or target.lower() in ("todo", "backlog"):
-        target_path = get_active_todo_path(repo_root, force_shadow=getattr(args, "shadow", False))
-    else:
-        target_path = shadow_dir / "tasks" / f"{target}.md"
-        if not target_path.exists():
-            target_path = shadow_dir / "tasks" / target
+    matches = find_matching_targets(
+        repo_root, shadow_dir, target, force_shadow=getattr(args, "shadow", False)
+    )
 
-    if not target_path.exists():
-        print(f"❌ Target not found: {target_path}")
+    if not matches:
+        print(f"❌ No task card matching '{target}' found.")
+        all_candidates = get_all_task_ids(
+            repo_root, shadow_dir, force_shadow=getattr(args, "shadow", False)
+        )
+        if all_candidates:
+            print(f"   Available tasks: {', '.join(all_candidates)}")
         return 1
 
+    if len(matches) == 1:
+        cid, target_path = matches[0]
+        if not target_path.exists():
+            print(f"❌ Task card for [{cid}] does not exist on disk: {target_path}")
+            return 1
+        print("=" * 70)
+        print(f"📄 Viewing: [{target_path.name}](file://{target_path})")
+        print("=" * 70)
+        print(target_path.read_text(encoding="utf-8"))
+        print("=" * 70)
+        return 0
+
+    # Multiple matches
     print("=" * 70)
-    print(f"📄 Viewing: [{target_path.name}](file://{target_path})")
+    print(
+        f"📄 Found {len(matches)} task cards matching '{target}': {', '.join(cid for cid, _ in matches)}"
+    )
     print("=" * 70)
-    print(target_path.read_text(encoding="utf-8"))
+    for idx, (cid, target_path) in enumerate(matches, 1):
+        print(
+            f"\n--- [{idx}/{len(matches)}] {target_path.name} (file://{target_path}) ---"
+        )
+        if target_path.exists():
+            print(target_path.read_text(encoding="utf-8"))
+        else:
+            print(f"(Task card not yet created on disk: {target_path})")
     print("=" * 70)
     return 0
 
 
-def handle_express_edit(repo_root: Path, todo_file: Path, shadow_dir: Path, target: str, target_path: Path, ops: List[str]) -> int:
-    op_str = " ".join(ops).strip()
+def handle_express_edit(
+    repo_root: Path,
+    todo_file: Path,
+    shadow_dir: Path,
+    target: str,
+    target_path: Path,
+    ops: List[str],
+) -> int:
     first_op = ops[0].lower()
 
     # Action: Mark as completed
@@ -402,7 +553,9 @@ def handle_express_edit(repo_root: Path, todo_file: Path, shadow_dir: Path, targ
             card_txt = re.sub(r"\*\*Status:\*\*.*", "**Status:** Completed", card_txt)
             target_path.write_text(card_txt, encoding="utf-8")
 
-        print(f"✅ Marked task [{target}] as completed in [TODO.md](file://{todo_file}).")
+        print(
+            f"✅ Marked task [{target}] as completed in [TODO.md](file://{todo_file})."
+        )
         return 0
 
     # Action: Priority change (P0, P1, P2, P3)
@@ -416,7 +569,9 @@ def handle_express_edit(repo_root: Path, todo_file: Path, shadow_dir: Path, targ
             pattern2 = rf"(\[)P[0-3](\][^\]]*\[id:\s*{re.escape(target)}\])"
             new_content = re.sub(pattern2, rf"\g<1>{new_prio}\g<2>", content, count=1)
         todo_file.write_text(new_content, encoding="utf-8")
-        print(f"✅ Updated priority of [{target}] to [{new_prio}] in [TODO.md](file://{todo_file}).")
+        print(
+            f"✅ Updated priority of [{target}] to [{new_prio}] in [TODO.md](file://{todo_file})."
+        )
         return 0
 
     # Action: WSJF change
@@ -430,7 +585,9 @@ def handle_express_edit(repo_root: Path, todo_file: Path, shadow_dir: Path, targ
             pattern2 = rf"(\[wsjf:\s*)[0-9.]+(\][^\]]*\[id:\s*{re.escape(target)}\])"
             new_content = re.sub(pattern2, rf"\g<1>{new_score}\g<2>", content, count=1)
         todo_file.write_text(new_content, encoding="utf-8")
-        print(f"✅ Updated WSJF of [{target}] to [{new_score}] in [TODO.md](file://{todo_file}).")
+        print(
+            f"✅ Updated WSJF of [{target}] to [{new_score}] in [TODO.md](file://{todo_file})."
+        )
         return 0
 
     # Action: Add acceptance criterion
@@ -450,9 +607,14 @@ def handle_express_edit(repo_root: Path, todo_file: Path, shadow_dir: Path, targ
             card_txt = target_path.read_text(encoding="utf-8")
             if "## Acceptance Criteria" in card_txt:
                 pattern = r"(##\s*Acceptance Criteria[^\n]*\n)"
-                card_txt = re.sub(pattern, rf"\1- [ ] {criterion_text}\n", card_txt, count=1)
+                card_txt = re.sub(
+                    pattern, rf"\1- [ ] {criterion_text}\n", card_txt, count=1
+                )
             else:
-                card_txt = card_txt.rstrip() + f"\n\n## Acceptance Criteria (BDD)\n- [ ] {criterion_text}\n"
+                card_txt = (
+                    card_txt.rstrip()
+                    + f"\n\n## Acceptance Criteria (BDD)\n- [ ] {criterion_text}\n"
+                )
             target_path.write_text(card_txt, encoding="utf-8")
         print(f"✅ Added criterion to [{target_path.name}](file://{target_path}):")
         print(f"   - [ ] {criterion_text}")
@@ -468,13 +630,17 @@ def handle_express_edit(repo_root: Path, todo_file: Path, shadow_dir: Path, targ
             print("• Any changes in the editor directly update the shadow file.")
             return 0
         else:
-            print("⚠️ Could not stage artifact: ANTIGRAVITY_CONVERSATION_ID not found and no artifact path supplied.")
+            print(
+                "⚠️ Could not stage artifact: ANTIGRAVITY_CONVERSATION_ID not found and no artifact path supplied."
+            )
             return 1
 
     return -1
 
 
-def stage_card_as_artifact(target: str, target_path: Path, art_path: Optional[Path] = None) -> Optional[Path]:
+def stage_card_as_artifact(
+    target: str, target_path: Path, art_path: Optional[Path] = None
+) -> Optional[Path]:
     """Stages a task card or backlog as an Antigravity artifact symlinked to the shadow file."""
     if not art_path:
         conv_id = os.environ.get("ANTIGRAVITY_CONVERSATION_ID")
@@ -493,7 +659,9 @@ def stage_card_as_artifact(target: str, target_path: Path, art_path: Optional[Pa
 
     meta_path = art_path.parent / f"{art_path.name}.metadata.json"
     meta_content = {
-        "summary": f"Task card for '{target}' (symlinked to shadow cache)" if target not in ("todo", "backlog") else "Master project TODO backlog (symlinked)",
+        "summary": f"Task card for '{target}' (symlinked to shadow cache)"
+        if target not in ("todo", "backlog")
+        else "Master project TODO backlog (symlinked)",
         "updatedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "userFacing": True,
     }
@@ -502,60 +670,117 @@ def stage_card_as_artifact(target: str, target_path: Path, art_path: Optional[Pa
 
 
 def cmd_edit(args: argparse.Namespace) -> int:
-    """Opens a task card or TODO.md in $EDITOR, or performs express inline edits."""
+    """Opens a task card or TODO.md in $EDITOR, or performs express inline edits.
+    Supports smart/partial matching; if multiple candidate cards match, passes all to $EDITOR.
+    """
     repo_root = get_repo_root()
     shadow_dir = get_shadow_dir(repo_root)
     target = args.target
     extra_ops = getattr(args, "ops", [])
 
-    if not target or target.lower() in ("todo", "backlog"):
-        target_path = get_active_todo_path(repo_root, force_shadow=getattr(args, "shadow", False))
-    else:
-        target_path = shadow_dir / "tasks" / f"{target}.md"
-        if not target_path.exists():
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            target_path.write_text(
+    matches = find_matching_targets(
+        repo_root, shadow_dir, target, force_shadow=getattr(args, "shadow", False)
+    )
+
+    if not matches:
+        # No matches found: create a new task card with the exact target name
+        new_card_path = shadow_dir / "tasks" / f"{target}.md"
+        new_card_path.parent.mkdir(parents=True, exist_ok=True)
+        if not new_card_path.exists():
+            new_card_path.write_text(
                 f"# Task: {target}\n**Parent:** [TODO.md](../TODO.md)\n**ID:** `{target}`\n\n"
+                f"## Acceptance Criteria (BDD)\n- [ ] \n\n## Target Codebase Artifacts\n\n## Notes\n",
+                encoding="utf-8",
+            )
+        matches = [(target, new_card_path)]
+
+    # Ensure all matched task cards exist on disk
+    for cid, cpath in matches:
+        if not cpath.exists() and cid not in ("todo", "backlog"):
+            cpath.parent.mkdir(parents=True, exist_ok=True)
+            cpath.write_text(
+                f"# Task: {cid}\n**Parent:** [TODO.md](../TODO.md)\n**ID:** `{cid}`\n\n"
                 f"## Acceptance Criteria (BDD)\n- [ ] \n\n## Target Codebase Artifacts\n\n## Notes\n",
                 encoding="utf-8",
             )
 
     # Handle express edits (e.g. done, P1, add criterion)
     if extra_ops:
-        res = handle_express_edit(repo_root, get_active_todo_path(repo_root), shadow_dir, target, target_path, extra_ops)
-        if res >= 0:
-            return res
+        if len(matches) > 1:
+            print(
+                f"ℹ️ Applying express edit to {len(matches)} matches: {', '.join(cid for cid, _ in matches)}"
+            )
+        ret = 0
+        for cid, cpath in matches:
+            res = handle_express_edit(
+                repo_root,
+                get_active_todo_path(
+                    repo_root, force_shadow=getattr(args, "shadow", False)
+                ),
+                shadow_dir,
+                cid,
+                cpath,
+                extra_ops,
+            )
+            if res != 0:
+                ret = res
+        return ret
 
     editor = os.environ.get("VISUAL") or os.environ.get("EDITOR") or "vi"
     is_interactive = sys.stdin.isatty() and os.environ.get("TERM", "") != "dumb"
+    file_args = [str(cpath) for _, cpath in matches]
 
     if is_interactive:
-        print(f"🚀 Launching editor: {editor} '{target_path}'")
+        if len(matches) > 1:
+            print(
+                f"🚀 Launching editor with {len(matches)} files: {editor} {' '.join(file_args)}"
+            )
+            print("   (Navigate between files in vim using ':next' and ':prev')")
+        else:
+            print(f"🚀 Launching editor: {editor} '{file_args[0]}'")
         try:
-            res = subprocess.run([editor, str(target_path)])
+            res = subprocess.run([editor] + file_args)
             if res.returncode != 0:
                 print(f"⚠️ Editor exited with non-zero status {res.returncode}.")
-                print(f"   Direct file link: [Open file](file://{target_path})")
+                for _, cpath in matches:
+                    print(f"   Direct file link: [{cpath.name}](file://{cpath})")
         except Exception as e:
             print(f"⚠️ Failed to launch editor '{editor}': {e}")
-            print(f"   Direct file link: [Open file](file://{target_path})")
+            for _, cpath in matches:
+                print(f"   Direct file link: [{cpath.name}](file://{cpath})")
+        return 0
     else:
-        # If running inside tmux (even from an AI agent subshell), launch interactive popup
+        # If running inside tmux (even from an AI agent subshell), launch interactive popup with all candidate files!
         tmux_socket = os.environ.get("TMUX")
         no_popup = getattr(args, "no_popup", False)
         if tmux_socket and not no_popup:
-            title = f" Todo Navigator: {target} "
+            if len(matches) == 1:
+                title = f" Todo Navigator: {matches[0][0]} "
+            else:
+                title = f" Todo Navigator: {len(matches)} files matching '{target}' (:next / :prev) "
+
             try:
-                res = subprocess.run([
-                    "tmux", "display-popup", "-E",
-                    "-d", str(repo_root),
-                    "-w", "85%", "-h", "85%",
-                    "-T", title,
-                    editor, str(target_path),
-                ])
+                cmd = [
+                    "tmux",
+                    "display-popup",
+                    "-E",
+                    "-d",
+                    str(repo_root),
+                    "-w",
+                    "85%",
+                    "-h",
+                    "85%",
+                    "-T",
+                    title,
+                    editor,
+                ] + file_args
+                res = subprocess.run(cmd)
                 if res.returncode == 0:
-                    print(f"✅ Completed editing [{target_path.name}](file://{target_path}).")
-                    stage_card_as_artifact(target, target_path)
+                    print(
+                        f"✅ Completed editing {len(matches)} card(s): {', '.join(f'[{p.name}](file://{p})' for _, p in matches)}."
+                    )
+                    for cid, cpath in matches:
+                        stage_card_as_artifact(cid, cpath)
                     return 0
                 else:
                     print(f"⚠️ Editor in popup exited with status {res.returncode}")
@@ -563,15 +788,17 @@ def cmd_edit(args: argparse.Namespace) -> int:
                 print(f"⚠️ Failed to launch tmux popup: {e}")
 
         # Non-interactive fallback: stage artifact if in Antigravity environment
-        staged = stage_card_as_artifact(target, target_path)
-        print(f"✏️ Task Card: [{target_path.name}](file://{target_path})")
-        if staged:
-            print(f"• Staged Artifact: [{staged.name}](file://{staged})")
-            print("• Run '/artifact' to review, or press 'ctrl+g' in the TUI to edit in vim.")
-            print("  (Edits in vim modify the shadow file directly)")
-        else:
-            print(f"• Path: {target_path}")
-            print("• Click link above to edit in your editor.")
+        for cid, cpath in matches:
+            staged = stage_card_as_artifact(cid, cpath)
+            print(f"✏️ Task Card: [{cpath.name}](file://{cpath})")
+            if staged:
+                print(f"• Staged Artifact: [{staged.name}](file://{staged})")
+                print(
+                    "• Run '/artifact' to review, or press 'ctrl+g' in the TUI to edit in vim."
+                )
+            else:
+                print(f"• Path: {cpath}")
+                print("• Click link above to edit in your editor.")
         print("• Express edits:")
         print(f"  - Mark done:     /todo edit {target} done")
         print(f"  - Change prio:   /todo edit {target} P1")
@@ -582,7 +809,9 @@ def cmd_edit(args: argparse.Namespace) -> int:
 def cmd_learn(args: argparse.Namespace) -> int:
     """Appends a durable reinforcement to the ## Reinforcements section of TODO.md."""
     repo_root = get_repo_root()
-    todo_file = get_active_todo_path(repo_root, force_shadow=getattr(args, "shadow", False))
+    todo_file = get_active_todo_path(
+        repo_root, force_shadow=getattr(args, "shadow", False)
+    )
 
     if not todo_file.exists():
         print("❌ No active TODO.md found. Run /replan first.")
@@ -603,41 +832,78 @@ def cmd_learn(args: argparse.Namespace) -> int:
         new_content = content.rstrip() + "\n\n## Reinforcements\n" + entry
 
     todo_file.write_text(new_content, encoding="utf-8")
-    print(f"💡 Recorded reinforcement into [TODO.md](file://{todo_file}):\n   {entry.strip()}")
+    print(
+        f"💡 Recorded reinforcement into [TODO.md](file://{todo_file}):\n   {entry.strip()}"
+    )
     return 0
 
 
 def main():
     common_parser = argparse.ArgumentParser(add_help=False)
-    common_parser.add_argument("--shadow", action="store_true", help="Force using shadow cache TODO.md")
+    common_parser.add_argument(
+        "--shadow", action="store_true", help="Force using shadow cache TODO.md"
+    )
 
-    parser = argparse.ArgumentParser(description="Todo Navigator Engine", parents=[common_parser])
+    parser = argparse.ArgumentParser(
+        description="Todo Navigator Engine", parents=[common_parser]
+    )
     subparsers = parser.add_subparsers(dest="action", help="Action to execute")
 
-    sub_replan = subparsers.add_parser("replan", aliases=["plan"], parents=[common_parser], help="Resolve DAG, calculate WSJF waves, and replan")
+    sub_replan = subparsers.add_parser(
+        "replan",
+        aliases=["plan"],
+        parents=[common_parser],
+        help="Resolve DAG, calculate WSJF waves, and replan",
+    )
     sub_replan.set_defaults(func=cmd_replan)
 
-    sub_next = subparsers.add_parser("next", parents=[common_parser], help="Select top unblocked task and page in secondary card")
+    sub_next = subparsers.add_parser(
+        "next",
+        parents=[common_parser],
+        help="Select top unblocked task and page in secondary card",
+    )
     sub_next.set_defaults(func=cmd_next)
 
-    sub_prev = subparsers.add_parser("prev", parents=[common_parser], help="3-line factual recall of last completed task and commit")
+    sub_prev = subparsers.add_parser(
+        "prev",
+        parents=[common_parser],
+        help="3-line factual recall of last completed task and commit",
+    )
     sub_prev.set_defaults(func=cmd_prev)
 
-    sub_view = subparsers.add_parser("view", parents=[common_parser], help="View TODO.md or task card")
+    sub_view = subparsers.add_parser(
+        "view", parents=[common_parser], help="View TODO.md or task card"
+    )
     sub_view.add_argument("target", nargs="?", default="todo", help="Task ID or 'todo'")
     sub_view.set_defaults(func=cmd_view)
 
-    sub_edit = subparsers.add_parser("edit", parents=[common_parser], help="Open task card or TODO.md in $EDITOR")
+    sub_edit = subparsers.add_parser(
+        "edit", parents=[common_parser], help="Open task card or TODO.md in $EDITOR"
+    )
     sub_edit.add_argument("target", nargs="?", default="todo", help="Task ID or 'todo'")
-    sub_edit.add_argument("--no-popup", action="store_true", help="Do not open interactive tmux popup even if tmux is detected")
-    sub_edit.add_argument("ops", nargs="*", help="Optional express operations (e.g. 'done', 'P1', 'add <criterion>')")
+    sub_edit.add_argument(
+        "--no-popup",
+        action="store_true",
+        help="Do not open interactive tmux popup even if tmux is detected",
+    )
+    sub_edit.add_argument(
+        "ops",
+        nargs="*",
+        help="Optional express operations (e.g. 'done', 'P1', 'add <criterion>')",
+    )
     sub_edit.set_defaults(func=cmd_edit)
 
-    sub_learn = subparsers.add_parser("learn", parents=[common_parser], help="Record durable learning into Reinforcements ledger")
+    sub_learn = subparsers.add_parser(
+        "learn",
+        parents=[common_parser],
+        help="Record durable learning into Reinforcements ledger",
+    )
     sub_learn.add_argument("message", nargs="+", help="Learning or feedback to record")
     sub_learn.set_defaults(func=cmd_learn)
 
-    sub_status = subparsers.add_parser("status", parents=[common_parser], help="Show current status and roadmap")
+    sub_status = subparsers.add_parser(
+        "status", parents=[common_parser], help="Show current status and roadmap"
+    )
     sub_status.set_defaults(func=cmd_replan)
 
     args = parser.parse_args()
