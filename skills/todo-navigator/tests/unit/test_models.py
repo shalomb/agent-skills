@@ -39,6 +39,10 @@ class TestTaskModel(unittest.TestCase):
         line = t.to_markdown_line()
         self.assertEqual(line, "- [x] Setup Environment <!-- [id: setup] [prio: P0] -->")
 
+    def test_task_section_field(self) -> None:
+        t = Task(id="t1", title="Task 1", section="🔴 CRITICAL")
+        self.assertEqual(t.section, "🔴 CRITICAL")
+
 
 if __name__ == "__main__":
     unittest.main()
