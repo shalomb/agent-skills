@@ -1,0 +1,26 @@
+[project]
+name = "todo-navigator"
+version = "0.1.0"
+description = "Shadow task backlog and navigation engine for AI agents"
+readme = "SKILL.md"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+todo = "todo_navigator.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = []
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
