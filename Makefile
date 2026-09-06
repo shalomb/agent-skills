@@ -19,7 +19,7 @@ PI_PROMPTS_DIR := $(PI_DIR)/prompts
 
 SKILLS_CONF := $(HOME)/.config/agent-skills/skills.conf
 
-.PHONY: all help install uninstall status doctor
+.PHONY: all help install build-commands check-commands test lint format uninstall status doctor
 
 all: help
 
@@ -27,13 +27,39 @@ help:
 	@echo "Agent Skills Management"
 	@echo ""
 	@echo "Usage:"
-	@echo "  make install    Set up symlinks to this repo and register slash commands"
-	@echo "  make status     Inspect current symlinks and registered commands"
-	@echo "  make doctor     Run skills doctor audit"
-	@echo "  make uninstall  Remove symlinks and registered commands"
+	@echo "  make install         Build commands, link skills, and register slash commands"
+	@echo "  make build-commands  Compile slash command artifacts from commands.json using uv"
+	@echo "  make check-commands  Check for drift between commands.json and compiled files"
+	@echo "  make test            Run command generator unit tests"
+	@echo "  make lint            Run ruff checks on tools"
+	@echo "  make format          Format tools with ruff"
+	@echo "  make status          Inspect current symlinks and registered commands"
+	@echo "  make doctor          Run skills doctor audit"
+	@echo "  make uninstall       Remove symlinks and registered commands"
 	@echo ""
 
-install: install-skills install-commands update-conf
+build-commands:
+	@echo "Compiling slash commands from commands.json via uv..."
+	@uv run tools/generate_commands.py
+
+check-commands:
+	@uv run tools/generate_commands.py --check
+
+test:
+	@echo "Running unit tests via uv..."
+	@uv run python -m unittest tools/test_generate_commands.py
+
+lint:
+	@echo "Linting with ruff..."
+	@uvx ruff check tools/
+	@uvx ruff format --check tools/
+
+format:
+	@echo "Formatting with ruff..."
+	@uvx ruff format tools/
+	@uvx ruff check --fix tools/
+
+install: build-commands install-skills install-commands update-conf
 	@echo ""
 	@echo "=================================================================="
 	@echo "✅ Installation complete! All skills and commands linked to:"
@@ -84,10 +110,13 @@ install-commands:
 			echo "  ✓ Pi Prompt:    /prompt:$$([ -f "$$prm" ] && basename "$$prm" .md) -> $$prm"; \
 		done; \
 	fi
-	@# Antigravity/Gemini skills (adr is linked via $(SKILLS_SRC)/adr)
-	@if [ -d "$(SKILLS_SRC)/adr" ]; then \
-		echo "  ✓ Antigravity:  /adr -> $(SKILLS_SRC)/adr/SKILL.md"; \
-	fi
+	@# Antigravity/Gemini alias skills
+	@for alias_md in "$(SKILLS_SRC)"/*/SKILL.md; do \
+		if [ -e "$$alias_md" ] && grep -q "generated:alias-skill" "$$alias_md" 2>/dev/null; then \
+			cmd_name=$$(basename "$$(dirname "$$alias_md")"); \
+			echo "  ✓ Antigravity:  /$$cmd_name -> $$alias_md"; \
+		fi; \
+	done
 
 update-conf:
 	@if [ -f "$(SKILLS_CONF)" ]; then \
@@ -124,8 +153,13 @@ status:
 		find "$(PI_PROMPTS_DIR)" -maxdepth 1 -type l -exec ls -l {} + | awk '{print "  " $$9 " -> " $$11}'; \
 	fi
 	@echo "Antigravity Skills (~/.gemini/skills):"
-	@if [ -d "$(GEMINI_DIR)/skills/adr" ]; then \
-		echo "  /adr available via $(GEMINI_DIR)/skills/adr"; \
+	@if [ -d "$(GEMINI_DIR)/skills" ]; then \
+		for alias_md in "$(GEMINI_DIR)/skills"/*/SKILL.md; do \
+			if [ -e "$$alias_md" ] && grep -q "generated:alias-skill" "$$alias_md" 2>/dev/null; then \
+				cmd_name=$$(basename "$$(dirname "$$alias_md")"); \
+				echo "  /$$cmd_name available via $(GEMINI_DIR)/skills/$$cmd_name"; \
+			fi; \
+		done; \
 	fi
 
 doctor:

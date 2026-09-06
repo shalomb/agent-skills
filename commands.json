@@ -1,0 +1,102 @@
+{
+  "$schema": "./tools/commands.schema.json",
+  "commands": [
+    {
+      "name": "adr",
+      "skill": "architecture-decision-records",
+      "title": "Architecture Decision Records",
+      "description": "Create, update, or review an Architecture Decision Record (ADR)",
+      "default_action": "creating or reviewing an Architecture Decision Record",
+      "instructions": [
+        "Enforce the 5 Core Tenets:\n   - **Intent over Mechanism:** Domain capability and architectural invariants over tool brand names.\n   - **Reification over Tribal Memory:** Mechanically enforceable via explicit types, module boundaries, automated CI fitness functions (e.g., ArchUnit, import linter rules), contract tests, or alarms.\n   - **Honest Trade-offs & Real Alternatives:** Zero free lunches; evaluate genuine runners-up and state why they were rejected.\n   - **Advice Process over Gatekeepers:** Autonomous team ownership with transparent alignment (`Consulted` and `Informed`).\n   - **Reversibility & Immutability:** Two-way doors with explicit revisit criteria; immutable accepted history.",
+        "Structure the record using the 8-row Tabular Y-Statement, prioritized Decision Drivers (`DRV-01`, `DRV-02`, etc.), and the Multi-Criteria Comparison Matrix.",
+        "Pass the Uninformed Reader Test (understandable in 3 minutes) and guard against the 6 Anti-Patterns.",
+        "Fulfill the user's specific request: drafting a new ADR or reviewing an existing one."
+      ]
+    },
+    {
+      "name": "review",
+      "skill": "bart-adversarial-reviewer",
+      "title": "Bart Adversarial Code Reviewer",
+      "description": "Critically review code, diffs, or pull requests for bugs, edge cases, and design flaws",
+      "default_action": "critically reviewing code or a pull request",
+      "instructions": [
+        "Perform an adversarial code review looking for bugs, edge cases, correctness failures, lazy shortcuts, and pattern violations.",
+        "Check whether the target repository defines its own review agent via find-repo-agents.sh.",
+        "Scrutinize tests, verify real failure modes, and evaluate CI results before providing a clear quality assessment and merge decision."
+      ]
+    },
+    {
+      "name": "humanize",
+      "skill": "ai-text-humanizer",
+      "title": "AI Text Humanizer",
+      "description": "Review and remove signs of AI-generated writing from text, ADRs, or docs",
+      "default_action": "reviewing and humanizing text",
+      "instructions": [
+        "Scan for AI-isms, inflated vocabulary, formulaic structure, and promotional filler documented in references/patterns.md.",
+        "Rewrite problematic sections with natural, direct language while preserving core meaning and voice.",
+        "Conduct a final anti-AI critique pass to ensure the text sounds authentically human."
+      ]
+    },
+    {
+      "name": "c4",
+      "skill": "c4-architecture",
+      "title": "C4 Architecture Diagrams",
+      "description": "Generate software architecture documentation using C4 model Mermaid diagrams",
+      "default_action": "generating C4 architecture diagrams",
+      "instructions": [
+        "Determine the appropriate C4 abstraction level (C4Context, C4Container, C4Component, C4Deployment) based on the audience.",
+        "Analyze the codebase structure and dependencies to accurately map containers, components, and relationships.",
+        "Generate valid Mermaid C4 diagrams with explanatory architectural notes."
+      ]
+    },
+    {
+      "name": "commit",
+      "skill": "git-commit-formatter",
+      "title": "Atomic Commit Protocol",
+      "description": "Structure and format git commits following the Atomic Commit Protocol (ACP)",
+      "default_action": "formatting and staging an atomic commit",
+      "instructions": [
+        "Enforce the Atomic Commit Protocol (ACP): every commit must be a self-contained, tested, indivisible unit of work.",
+        "Verify that implementation and tests are together, tests pass, and code quality checks are satisfied.",
+        "Format commit messages strictly adhering to Conventional Commits format (`type(scope): subject`)."
+      ]
+    },
+    {
+      "name": "standup",
+      "skill": "daily-standup",
+      "title": "Daily Standup Planner",
+      "description": "Turn meeting transcripts into actionable daily plans, decisions, and issue updates",
+      "default_action": "processing a standup meeting transcript",
+      "instructions": [
+        "Extract key updates, blockers, decisions, and action items from the meeting transcript or discussion.",
+        "Correlate updates with open GitHub issues, project items, or tracking boards.",
+        "Generate a clear, sequenced execution plan for the day with assigned ownership."
+      ]
+    },
+    {
+      "name": "status",
+      "skill": "daily-status",
+      "title": "Daily Status Reporter",
+      "description": "Generate a factual summary of recent git commits, PRs, and assigned issues",
+      "default_action": "gathering and reporting recent activity",
+      "instructions": [
+        "Gather activity strictly from git logs, GitHub PRs/issues, and project tracking systems.",
+        "Prioritize factual recall over speculation: every line must correspond to verified system output.",
+        "Format the report into a dated summary suitable for logging to ~/projects/dailies/."
+      ]
+    },
+    {
+      "name": "bdd",
+      "skill": "adzic-bdd",
+      "title": "Adzic BDD Specification",
+      "description": "Apply Gojko Adzic Specification by Example principles to feature files and user stories",
+      "default_action": "refining BDD specifications and feature files",
+      "instructions": [
+        "Apply Gojko Adzic's Specification by Example principles to Gherkin feature files.",
+        "Evaluate and optimize scenarios using the Adzic Index.",
+        "Ensure business-readable acceptance criteria focused on behavior rather than UI interactions."
+      ]
+    }
+  ]
+}

@@ -1,12 +1,12 @@
 /**
- * ADR Command Extension for Pi
- * Registers `/adr` to create, update, or review Architecture Decision Records.
+ * Architecture Decision Records Command Extension for Pi
+ * Registers `/adr` to create, update, or review an architecture decision record (adr).
  */
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 export default function (pi: ExtensionAPI) {
   pi.registerCommand("adr", {
-    description: "Create or review an Architecture Decision Record (ADR)",
+    description: "Create, update, or review an Architecture Decision Record (ADR)",
     handler: async (args, ctx) => {
       const query = args.trim();
       const message = query
@@ -15,7 +15,7 @@ export default function (pi: ExtensionAPI) {
 
       if (!ctx.isIdle()) {
         pi.sendUserMessage(message, { deliverAs: "followUp" });
-        ctx.ui.notify("ADR task queued as follow-up", "info");
+        ctx.ui.notify("Architecture Decision Records task queued as follow-up", "info");
       } else {
         pi.sendUserMessage(message);
       }

@@ -6,40 +6,26 @@ A personal collection of 27 reusable AI agent skills for various task domains. T
 
 ## Quick Start
 
-### Install Skills to Your Agent
+### Quick Install (Automated Symlinks & Slash Commands)
 
-Choose your agent platform and copy skills to the appropriate directory:
+Run `make install` to compile slash commands and establish live symlinks to this repository across Claude Code, Pi, and Antigravity / Gemini CLI:
 
-**Claude Code**
 ```bash
-# Copy individual skills to Claude Code directory
-cp -r skills/pdf ~/.claude/skills/
-cp -r skills/github-cli ~/.claude/skills/
-cp -r skills/jira ~/.claude/skills/
-
-# Or copy all skills at once
-cp -r skills/* ~/.claude/skills/
+make install
 ```
 
-**Copilot CLI**
+To audit active links and registered commands:
 ```bash
-cp -r skills/* ~/.copilot/skills/
+make status
 ```
 
-**Pi (Anthropic's coding agent)**
-```bash
-cp -r skills/* ~/.pi/agent/skills/
-```
+See [docs/reference/slash-commands.md](docs/reference/slash-commands.md) for details on defining and compiling custom commands.
 
-**Kiro**
-```bash
-cp -r skills/* ~/.kiro/skills/
-```
+---
 
-**Gemini Code Assist**
-```bash
-cp -r skills/* ~/.gemini/skills/
-```
+### Manual Installation (Copying Files)
+
+Alternatively, copy skills manually to your agent platform's directory:
 
 ### Verify Installation
 
