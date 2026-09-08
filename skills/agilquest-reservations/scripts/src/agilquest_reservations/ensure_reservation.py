@@ -12,10 +12,7 @@ Usage:
 
 import sys
 import json
-import subprocess
-import time
 from datetime import datetime, timedelta
-from pathlib import Path
 
 try:
     from playwright.sync_api import sync_playwright
@@ -23,50 +20,13 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-from agilquest_reservations.lib.browser import (
-    APP_LAUNCHER, launch_headless, launch_headed, verify_auth,
-    get_state_dir, get_chrome_path,
-)
-from agilquest_reservations.lib.agilquest import (
-    RESERVATIONS_URL, get_reservations, find_existing, stage, submit_with_retries,
-)
+from agilquest_reservations.lib.browser import launch_headless, verify_auth, trigger_reauth_and_wait
+from agilquest_reservations.lib.agilquest import get_reservations, find_existing, stage, submit_with_retries
 from agilquest_reservations.lib.logging import log_result
 
 PRIMARY_ASSET = "343"
 DEFAULT_START = "09:00 AM"
 DEFAULT_END = "05:00 PM"
-
-
-def trigger_reauth_and_wait() -> bool:
-    """Launch setup_auth.py in a Terminal window, then poll headlessly for up to 5 minutes."""
-    scripts_dir = Path(__file__).parent.parent.parent
-    print("\nSession invalid — opening Terminal to run setup_auth.py...", file=sys.stderr)
-    subprocess.Popen([
-        "/usr/bin/osascript", "-e",
-        f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/agilquest_reservations/setup_auth.py"',
-    ])
-    print("Waiting up to 5 minutes for SSO to complete...", file=sys.stderr)
-
-    deadline = time.time() + 300
-    while time.time() < deadline:
-        time.sleep(10)
-        try:
-            with sync_playwright() as p:
-                browser = launch_headless(p)
-                try:
-                    page = browser.new_page()
-                    page.goto(RESERVATIONS_URL, wait_until="commit", timeout=15000)
-                    time.sleep(3)
-                    if "login.agilquest.com" in page.url and "microsoftonline" not in page.url:
-                        print("Session restored.", file=sys.stderr)
-                        return True
-                finally:
-                    browser.close()
-        except Exception:
-            pass  # profile locked by setup_auth — keep polling
-
-    print("Re-auth timed out after 5 minutes.", file=sys.stderr)
-    return False
 
 
 def book_primary(page, target: datetime) -> dict:
@@ -88,7 +48,7 @@ def run_checks() -> dict:
             page = browser.new_page()
 
             print("Checking auth...", file=sys.stderr)
-            if not verify_auth(page):
+            if not verify_auth(page, context=browser):
                 return {"status": "auth_required"}
 
             print(f"Fetching reservations for {target_str}...", file=sys.stderr)
@@ -120,7 +80,8 @@ def main():
     result = run_checks()
 
     if result["status"] == "auth_required":
-        reauthed = trigger_reauth_and_wait()
+        with sync_playwright() as p:
+            reauthed = trigger_reauth_and_wait(p)
         if not reauthed:
             r = {"status": "error", "message": "Re-auth failed or timed out"}
             log_result(r)

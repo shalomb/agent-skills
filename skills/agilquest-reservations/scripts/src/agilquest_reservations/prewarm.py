@@ -53,7 +53,7 @@ def warm_chrome():
         ctx = launch_headless(p)
         try:
             page = ctx.new_page()
-            ok = establish_session(page)
+            ok = establish_session(page, context=ctx)
             if ok:
                 print("  Chrome warm — launcher→Agilquest session confirmed.", file=sys.stderr)
             else:

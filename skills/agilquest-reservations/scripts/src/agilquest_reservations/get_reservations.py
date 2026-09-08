@@ -24,7 +24,7 @@ def main():
         try:
             page = browser.new_page()
             print("Checking auth...", file=sys.stderr)
-            if not verify_auth(page):
+            if not verify_auth(page, context=browser):
                 print("Session invalid — run: aq setup-auth", file=sys.stderr)
                 sys.exit(1)
             reservations = get_reservations(page)

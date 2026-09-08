@@ -3,7 +3,9 @@
 Book a workspace reservation on Agilquest with fallback assets.
 
 Tries assets in order, moving to the next on asset_unavailable.
-On auth failure, launches setup_auth.py in a Terminal via osascript.
+On auth failure, logs a hint to run `aq setup-auth` (does not auto-launch —
+this runs unattended at 00:01, and checkin_and_book.py's 09:00/14:00 jobs
+already cover interactive reauth).
 
 Usage:
   aq book [DATE] [options]
@@ -24,11 +26,8 @@ Cron:
 """
 
 import sys
-import json
-import subprocess
 import time
 from datetime import datetime, timedelta
-from pathlib import Path
 
 try:
     from playwright.sync_api import sync_playwright
@@ -65,12 +64,15 @@ def humanize_date(d: datetime) -> str:
 
 
 def trigger_reauth():
-    scripts_dir = Path(__file__).parent.parent.parent
-    print("Session invalid — opening Terminal to run setup_auth.py...", file=sys.stderr)
-    subprocess.Popen([
-        "/usr/bin/osascript", "-e",
-        f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/agilquest_reservations/setup_auth.py"',
-    ])
+    """Log a reauth hint — does NOT auto-launch a Terminal.
+
+    This runs both from the unattended 00:01 cron job and from `aq book`
+    run by hand; a popped-up window is useless at midnight (nobody's
+    there) and redundant when run interactively (you're already at a
+    terminal). checkin_and_book.py's 09:00/14:00 jobs are the ones that
+    still auto-launch, since you're plausibly at your desk then.
+    """
+    print("Session invalid — run: aq setup-auth", file=sys.stderr)
 
 
 def book_with_fallbacks(
@@ -95,11 +97,11 @@ def book_with_fallbacks(
             page = browser.new_page()
 
             print("Checking auth...", file=sys.stderr)
-            if not verify_auth(page):
+            if not verify_auth(page, context=browser):
                 trigger_reauth()
                 raise RuntimeError(
-                    "Session invalid — complete SSO in the Terminal window that just opened. "
-                    "ensure_reservation.py at 14:00 will rebook."
+                    "Session invalid — run `aq setup-auth`. "
+                    "checkin_and_book.py at 09:00 or ensure_reservation.py at 14:00 will rebook."
                 )
 
             # Load all reservations once — used for idempotency across the fallback chain
@@ -128,8 +130,8 @@ def book_with_fallbacks(
                     if msg == "auth_required":
                         trigger_reauth()
                         raise RuntimeError(
-                            "Session expired mid-run — complete SSO in the Terminal window. "
-                            "ensure_reservation.py at 14:00 will rebook."
+                            "Session expired mid-run — run `aq setup-auth`. "
+                            "checkin_and_book.py at 09:00 or ensure_reservation.py at 14:00 will rebook."
                         )
                     if msg.startswith("booking_window_closed:"):
                         raise

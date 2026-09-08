@@ -32,52 +32,49 @@ from agilquest_reservations.book_reservation import (
 )
 from agilquest_reservations.checkin_and_book import (
     DEFAULT_ASSETS as CHECKIN_DEFAULT_ASSETS,
-    trigger_reauth,
-    run_checkin,
-    check_book_ahead_needed,
+    run_checkin_and_book,
     book_ahead,
 )
-from agilquest_reservations.lib.browser import launch_headless, verify_auth
+from agilquest_reservations.lib.browser import trigger_reauth_and_wait
 from agilquest_reservations.lib.cache import load_reservations
 from agilquest_reservations.lib.status import render_status, STATUS_GLYPH
 
 
 def cmd_checkin(args) -> int:
     """`aq checkin` — check in to today's reservation, then ensure next
-    week's reservation exists, booking it if missing."""
-    checkin_result = None
-    book_result = None
-    needs_booking = False
+    week's reservation exists, booking it if missing.
 
+    Shares run_checkin_and_book()/trigger_reauth_and_wait() with the 09:00
+    cron entry point (checkin_and_book.py) rather than duplicating the
+    auth-retry logic here.
+    """
     from playwright.sync_api import sync_playwright
 
-    with sync_playwright() as p:
-        browser = launch_headless(p)
-        try:
-            page = browser.new_page()
-            print("Checking auth...", file=sys.stderr)
-            if not verify_auth(page):
-                trigger_reauth()
-                log_result({
-                    "status": "error",
-                    "message": "Session invalid — complete SSO in the Terminal window that just opened.",
-                })
-                return 1
+    outcome = run_checkin_and_book(args)
 
-            if not args.skip_checkin:
-                print("\n--- Check In ---", file=sys.stderr)
-                checkin_result = run_checkin(page)
+    if outcome is None:
+        with sync_playwright() as p:
+            reauthed = trigger_reauth_and_wait(p)
+        if not reauthed:
+            log_result({
+                "status": "error",
+                "message": "Session invalid — run `aq setup-auth`.",
+            })
+            return 1
+        outcome = run_checkin_and_book(args)
+        if outcome is None:
+            log_result({
+                "status": "error",
+                "message": "Session still invalid after re-auth — run `aq setup-auth`.",
+            })
+            return 1
 
-            if not args.skip_book:
-                print("\n--- Book Ahead ---", file=sys.stderr)
-                book_result = check_book_ahead_needed(page, args.assets)
-                needs_booking = book_result is None
-        finally:
-            browser.close()
+    checkin_result = outcome["checkin_result"]
+    book_result = outcome["book_result"]
 
     # book_ahead() opens its own browser context — only call it once ours
     # above has released the persistent-profile lock.
-    if needs_booking:
+    if outcome["needs_booking"]:
         book_result = book_ahead(args.assets, args.start, args.end)
 
     result = {"status": "ok", "checkin": checkin_result, "book_ahead": book_result}
