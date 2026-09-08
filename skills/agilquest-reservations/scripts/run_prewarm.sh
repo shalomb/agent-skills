@@ -5,7 +5,7 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/prewarm-$(date +%Y-%m-%d).log"
 exec >> "$LOG_FILE" 2>&1
 
-set -euo pipefail
+set -uo pipefail
 echo "=== $(date '+%Y-%m-%dT%H:%M:%S') ==="
 
 # Hold machine awake for 10 minutes (23:51–00:01) so the 23:57 booking
@@ -16,16 +16,12 @@ nohup caffeinate -i -t 600 &
 CAFFEINATE_PID=$!
 echo "caffeinate pid: $CAFFEINATE_PID"
 
-# Wait for OS network to be up before even trying Chrome
-echo "Waiting for network..."
-for i in $(seq 1 30); do
-    if dig @8.8.8.8 +short +time=3 login.agilquest.com | grep -q "\."; then
-        echo "Network ready after ${i}s"
-        break
-    fi
-    sleep 2
-done
+source "$(dirname "$0")/lib_cron_preamble.sh"
+wait_for_network
+warn_if_chrome_contended
 
 cd "$(dirname "$0")"
 uv run src/agilquest_reservations/prewarm.py
-echo "Exit: $?"
+STATUS=$?
+echo "Exit: $STATUS"
+exit "$STATUS"

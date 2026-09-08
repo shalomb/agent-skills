@@ -5,34 +5,15 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/checkin-and-book-$(date +%Y-%m-%d).log"
 exec >> "$LOG_FILE" 2>&1
 
-set -euo pipefail
+set -uo pipefail
 echo "=== $(date '+%Y-%m-%dT%H:%M:%S') ==="
 
-# Wait for network — machine may have just woken from sleep
-echo "Waiting for network..."
-for i in $(seq 1 30); do
-  if dig @8.8.8.8 +short +time=3 login.agilquest.com | grep -q "\."; then
-    echo "Network ready after ${i}s"
-    break
-  fi
-  sleep 2
-done
-
-# Clear any stale Chrome singleton lock from a previous run
-LOCK="$HOME/.local/state/agent-skills/agilquest-reservations/user_data/SingletonLock"
-if [ -L "$LOCK" ]; then
-  LOCK_PID=$(readlink "$LOCK" | grep -oE '[0-9]+$' || true)
-  if [ -n "$LOCK_PID" ] && ! kill -0 "$LOCK_PID" 2>/dev/null; then
-    echo "Removing stale SingletonLock (pid $LOCK_PID gone)"
-    rm -f "$LOCK"
-  elif [ -n "$LOCK_PID" ]; then
-    echo "WARNING: Chrome pid $LOCK_PID still alive — killing"
-    kill "$LOCK_PID" 2>/dev/null || true
-    sleep 2
-    rm -f "$LOCK"
-  fi
-fi
+source "$(dirname "$0")/lib_cron_preamble.sh"
+wait_for_network
+warn_if_chrome_contended
 
 cd "$(dirname "$0")"
 uv run src/agilquest_reservations/checkin_and_book.py "$@"
-echo "Exit: $?"
+STATUS=$?
+echo "Exit: $STATUS"
+exit "$STATUS"
