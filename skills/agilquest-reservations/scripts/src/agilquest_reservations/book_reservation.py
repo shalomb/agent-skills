@@ -19,10 +19,11 @@ Options:
   --prestage                       Stage form now, sleep until 23:59:58, then submit
 
 Cron:
-  23:51  run_prewarm.sh
-  00:01  run_booking.sh
-  14:00  run_ensure.sh
-  07:24  run_prewarm.sh
+  23:51  run_aq.sh prewarm
+  00:01  run_aq.sh book
+  09:00  run_aq.sh checkin
+  14:00  run_aq.sh ensure
+  07:24  run_aq.sh prewarm
 """
 
 import sys

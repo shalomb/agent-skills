@@ -5,6 +5,13 @@ MS app launcher before the 23:57 booking job.
 
 Runs at 23:51 — gives Chrome 6 minutes with warm TCP/TLS connections
 and a proven launcher→samlsuccess redirect path before booking fires.
+
+Usage:
+  aq prewarm
+  uv run src/agilquest_reservations/prewarm.py
+
+Cron:
+  23:51 / 07:24  run_aq.sh prewarm
 """
 
 import sys

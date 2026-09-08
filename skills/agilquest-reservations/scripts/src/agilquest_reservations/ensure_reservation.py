@@ -7,7 +7,11 @@ On session failure, launches setup_auth.py in a Terminal via osascript
 and waits up to 5 minutes for the user to complete SSO, then retries.
 
 Usage:
+  aq ensure
   uv run src/agilquest_reservations/ensure_reservation.py
+
+Cron:
+  14:00  run_aq.sh ensure
 """
 
 import sys
@@ -76,24 +80,19 @@ def run_checks() -> dict:
             browser.close()
 
 
-def main():
-    result = run_checks()
+def report(result: dict) -> int:
+    """Print result as JSON + a one-line RESULT summary, log on failure.
 
-    if result["status"] == "auth_required":
-        with sync_playwright() as p:
-            reauthed = trigger_reauth_and_wait(p)
-        if not reauthed:
-            r = {"status": "error", "message": "Re-auth failed or timed out"}
-            log_result(r)
-            sys.exit(1)
-        result = run_checks()
-
+    Shared by `aq ensure` (cli.py) and this file's own __main__ block, so
+    both report identically — the auth-retry loop around run_checks() is
+    the only part that differs between the two callers.
+    """
     print(json.dumps(result, indent=2))
 
     reservation = result.get("reservation")
     if result["status"] != "ok" or not reservation:
         log_result({**result, "message": result.get("message", "No confirmed reservation for target date")})
-        sys.exit(1)
+        return 1
 
     asset_id = (reservation.get("asset_href", "") or "").split("/asset/")[-1] or reservation.get("asset", "")
     action = "booked" if result.get("booking_attempted") else "already_exists"
@@ -101,6 +100,21 @@ def main():
         f"RESULT: {action} asset={asset_id} date={result['target_date']} id={reservation.get('id', '')}",
         file=sys.stderr,
     )
+    return 0
+
+
+def main():
+    result = run_checks()
+
+    if result["status"] == "auth_required":
+        with sync_playwright() as p:
+            reauthed = trigger_reauth_and_wait(p)
+        if not reauthed:
+            log_result({"status": "error", "message": "Re-auth failed or timed out"})
+            sys.exit(1)
+        result = run_checks()
+
+    sys.exit(report(result))
 
 
 if __name__ == "__main__":
