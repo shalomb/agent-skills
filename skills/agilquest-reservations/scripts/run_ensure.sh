@@ -5,8 +5,15 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="$LOG_DIR/ensure-$(date +%Y-%m-%d).log"
 exec >> "$LOG_FILE" 2>&1
 
-set -euo pipefail
+set -uo pipefail
 echo "=== $(date '+%Y-%m-%dT%H:%M:%S') ==="
+
+source "$(dirname "$0")/lib_cron_preamble.sh"
+wait_for_network
+warn_if_chrome_contended
+
 cd "$(dirname "$0")"
 uv run src/agilquest_reservations/ensure_reservation.py
-echo "Exit: $?"
+STATUS=$?
+echo "Exit: $STATUS"
+exit "$STATUS"
