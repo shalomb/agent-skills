@@ -13,9 +13,46 @@ SUBMIT_RETRIES = 3
 RETRY_DELAY_S = 5
 
 
+class SessionLostError(RuntimeError):
+    """Raised when a page that should be authenticated shows the LOG IN
+    screen instead — the session was lost (or never became live) between
+    establish_session() succeeding and this read.
+
+    This exists because the previous behaviour — returning [] — made a lost
+    session indistinguishable from "you genuinely have no reservations",
+    which let ensure_reservation.py silently attempt a rebook instead of
+    surfacing the real fault (features/auth_and_session.md, bug #4).
+    """
+
+
+def _bounced_to_login(page) -> bool:
+    """True if Agilquest served its LOG IN screen instead of the app.
+
+    This happens when a request reaches the app before the SPA's token
+    exchange has finished (bug #3) — the session the launcher minted gets
+    discarded and the very next navigation is treated as anonymous.
+    """
+    try:
+        body = page.inner_text("body")
+    except Exception:
+        return False
+    return "LOG IN" in body and "Upcoming Reservations" not in body
+
+
 def get_reservations(page) -> list[dict]:
-    """Scrape the active reservations table. Returns list of reservation dicts."""
+    """Scrape the active reservations table. Returns list of reservation dicts.
+
+    Raises SessionLostError if the session was lost — never returns []
+    to mean "not authenticated". An empty list from here means what it
+    says: a valid session with zero active reservations.
+    """
     page.goto(RESERVATIONS_URL, wait_until="domcontentloaded", timeout=30000)
+    if _bounced_to_login(page):
+        raise SessionLostError(
+            "Authentication lost: Agilquest returned the login screen "
+            "instead of the reservations table. Likely navigated before "
+            "the SPA's token exchange completed — see wait_for_session()."
+        )
     reservations = []
     try:
         page.wait_for_selector("table tbody tr", timeout=10000)

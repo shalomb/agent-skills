@@ -14,7 +14,10 @@ reservation is booked.
    week (today + 7 days). If not, books it via the same asset-fallback
    chain and retries as `aq book` / book_reservation.py.
 
-On auth failure, launches setup_auth.py in a Terminal via osascript.
+On auth failure, launches setup_auth.py in a Terminal via osascript and
+waits up to 5 minutes for SSO to complete, then retries in place —
+deliberately, unlike book_reservation.py's unattended 00:01 run: this job
+fires at 09:00, when you're plausibly at your desk to complete SSO.
 
 Usage:
   aq checkin [options]
@@ -28,14 +31,12 @@ Options:
   --end            HH:MM AM/PM           Passed through to book_reservation.py
 
 Cron:
-  Not yet scheduled — proposed 09:00 run_checkin_and_book.sh (not added to
-  crontab; existing jobs are 23:51/07:24 prewarm, 00:01 book, 14:00 ensure).
+  09:00  run_checkin_and_book.sh
+  (also: 23:51/07:24 prewarm, 00:01 book, 14:00 ensure)
 """
 
 import sys
-import subprocess
 from datetime import datetime, timedelta
-from pathlib import Path
 
 try:
     from playwright.sync_api import sync_playwright
@@ -43,7 +44,7 @@ except ImportError:
     print("Error: playwright not installed. Run: uv sync", file=sys.stderr)
     sys.exit(1)
 
-from agilquest_reservations.lib.browser import launch_headless, verify_auth
+from agilquest_reservations.lib.browser import launch_headless, verify_auth, trigger_reauth_and_wait
 from agilquest_reservations.lib.agilquest import get_reservations, find_existing, find_today, check_in
 from agilquest_reservations.lib.logging import log_result
 from agilquest_reservations.book_reservation import book_with_fallbacks
@@ -52,15 +53,6 @@ DEFAULT_ASSETS = "343,257,14006,14005"
 DEFAULT_START = "09:00 AM"
 DEFAULT_END = "05:00 PM"
 LOOK_AHEAD_DAYS = 7
-
-
-def trigger_reauth():
-    scripts_dir = Path(__file__).parent.parent.parent
-    print("Session invalid — opening Terminal to run setup_auth.py...", file=sys.stderr)
-    subprocess.Popen([
-        "/usr/bin/osascript", "-e",
-        f'tell application "Terminal" to do script "cd {scripts_dir} && uv run src/agilquest_reservations/setup_auth.py"',
-    ])
 
 
 def run_checkin(page) -> dict:
@@ -146,6 +138,43 @@ def book_ahead(assets: str, start_time: str, end_time: str) -> dict:
     }
 
 
+def run_checkin_and_book(args) -> dict | None:
+    """Run the auth check, check-in, and book-ahead-needed steps.
+
+    Returns None if auth failed (caller decides how to recover), else a
+    dict with checkin_result/book_result/needs_booking.
+    """
+    checkin_result = None
+    book_result = None
+    needs_booking = False
+
+    with sync_playwright() as p:
+        browser = launch_headless(p)
+        try:
+            page = browser.new_page()
+
+            print("Checking auth...", file=sys.stderr)
+            if not verify_auth(page, context=browser):
+                return None
+
+            if not args.skip_checkin:
+                print("\n--- Check In ---", file=sys.stderr)
+                checkin_result = run_checkin(page)
+
+            if not args.skip_book:
+                print("\n--- Book Ahead ---", file=sys.stderr)
+                book_result = check_book_ahead_needed(page, args.assets)
+                needs_booking = book_result is None
+        finally:
+            browser.close()
+
+    return {
+        "checkin_result": checkin_result,
+        "book_result": book_result,
+        "needs_booking": needs_booking,
+    }
+
+
 def main():
     import argparse
 
@@ -159,38 +188,32 @@ def main():
     parser.add_argument("--end", default=DEFAULT_END)
     args = parser.parse_args()
 
-    checkin_result = None
-    book_result = None
-    needs_booking = False
+    outcome = run_checkin_and_book(args)
 
-    with sync_playwright() as p:
-        browser = launch_headless(p)
-        try:
-            page = browser.new_page()
+    if outcome is None:
+        with sync_playwright() as p:
+            reauthed = trigger_reauth_and_wait(p)
+        if not reauthed:
+            log_result({
+                "status": "error",
+                "message": "Session invalid — run `aq setup-auth`. "
+                           "ensure_reservation.py at 14:00 will rebook.",
+            })
+            sys.exit(1)
+        outcome = run_checkin_and_book(args)
+        if outcome is None:
+            log_result({
+                "status": "error",
+                "message": "Session still invalid after re-auth — run `aq setup-auth`.",
+            })
+            sys.exit(1)
 
-            print("Checking auth...", file=sys.stderr)
-            if not verify_auth(page):
-                trigger_reauth()
-                log_result({
-                    "status": "error",
-                    "message": "Session invalid — complete SSO in the Terminal window that just opened.",
-                })
-                sys.exit(1)
-
-            if not args.skip_checkin:
-                print("\n--- Check In ---", file=sys.stderr)
-                checkin_result = run_checkin(page)
-
-            if not args.skip_book:
-                print("\n--- Book Ahead ---", file=sys.stderr)
-                book_result = check_book_ahead_needed(page, args.assets)
-                needs_booking = book_result is None
-        finally:
-            browser.close()
+    checkin_result = outcome["checkin_result"]
+    book_result = outcome["book_result"]
 
     # book_reservation.py launches its own browser against the same
     # persistent profile — only call it once ours has released the lock.
-    if needs_booking:
+    if outcome["needs_booking"]:
         book_result = book_ahead(args.assets, args.start, args.end)
 
     result = {
