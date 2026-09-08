@@ -14,6 +14,10 @@ Then run from anywhere:
   aq status                Today's status + 14-day calendar. Reads the
                            local cache only — no browser, instant.
   aq setup-auth            One-time/renewed interactive SSO login.
+  aq ensure                Daily health-check: confirm the +7-day
+                           reservation exists, booking it if missing.
+  aq prewarm               Seed DNS + warm Chrome's launcher path
+                           before the midnight booking job.
 
 Run `aq <command> --help` for a command's options.
 """
@@ -126,6 +130,37 @@ def cmd_setup_auth(args) -> int:
     return 0
 
 
+def cmd_ensure(args) -> int:
+    """`aq ensure` — daily 14:00 health-check: confirm the +7-day
+    reservation exists, booking it if missing. Retries once through
+    trigger_reauth_and_wait() on session failure, same as `aq checkin`."""
+    from agilquest_reservations.ensure_reservation import run_checks, report
+
+    result = run_checks()
+    if result["status"] == "auth_required":
+        from playwright.sync_api import sync_playwright
+
+        with sync_playwright() as p:
+            reauthed = trigger_reauth_and_wait(p)
+        if not reauthed:
+            log_result({"status": "error", "message": "Re-auth failed or timed out"})
+            return 1
+        result = run_checks()
+
+    return report(result)
+
+
+def cmd_prewarm(args) -> int:
+    """`aq prewarm` — seed OS DNS cache and warm Chrome's network stack
+    via the MS app launcher, ahead of the midnight booking job."""
+    from agilquest_reservations.prewarm import DOMAINS, seed_dns, warm_chrome
+
+    seed_dns(DOMAINS)
+    warm_chrome()
+    print("Pre-warm complete.", file=sys.stderr)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="aq",
@@ -161,6 +196,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_auth = sub.add_parser("setup-auth", help="Interactive SSO login (one-time, or when sessions expire)")
     p_auth.set_defaults(func=cmd_setup_auth)
+
+    p_ensure = sub.add_parser("ensure", help="Confirm the +7-day reservation exists, booking it if missing")
+    p_ensure.set_defaults(func=cmd_ensure)
+
+    p_prewarm = sub.add_parser("prewarm", help="Seed DNS + warm Chrome's launcher path")
+    p_prewarm.set_defaults(func=cmd_prewarm)
 
     return parser
 

@@ -31,8 +31,9 @@ Options:
   --end            HH:MM AM/PM           Passed through to book_reservation.py
 
 Cron:
-  09:00  run_checkin_and_book.sh
-  (also: 23:51/07:24 prewarm, 00:01 book, 14:00 ensure)
+  09:00  run_aq.sh checkin
+  (also: 23:51/07:24 run_aq.sh prewarm, 00:01 run_aq.sh book,
+   14:00 run_aq.sh ensure)
 """
 
 import sys
