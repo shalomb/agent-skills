@@ -29,28 +29,11 @@ This reference provides the translations and flags for converting traditional PO
 | `grep -l "pattern" .` | `rg -l "pattern"` | Print only filenames with matches |
 | `grep -r "pattern" . --no-ignore` | `rg -u "pattern"` | Unrestricted (ignore `.gitignore`) |
 
-## Text Replacement: `sed` → `sd` (or `sg`)
+## Text Replacement: `sg` (ast-grep)
 
-`sd` uses standard regex (not POSIX basic regex) and treats inputs as raw strings by default, making it much safer and easier than `sed` for code refactoring. For structural refactoring, prefer `sg` (ast-grep).
-
-| Traditional `sed` | Modern `sd` | Description |
-|---|---|---|
-| `sed -i 's/old/new/g' file` | `sd 'old' 'new' file` | In-place replacement |
-| `sed 's/old/new/g' file` | `sd -p 'old' 'new' file` | Preview replacement (stdout) |
-| `sed -i 's/regex/new/g' file` | `sd -s 'regex' 'new' file` | Literal string replacement (no regex) |
+Standard regex replacements via `sed` are error-prone and dangerous for code refactoring. For codebase-wide structural refactoring, prefer `sg` (ast-grep).
 
 *Note: For complex refactoring across multiple files, prefer `ast-grep` (`sg run -p 'pattern' -r 'replacement'`).*
-
-## Listing Files: `ls` → `eza`
-
-`eza` is a modern replacement for `ls` with better defaults, git status integration, and colors.
-
-| Traditional `ls` | Modern `eza` | Description |
-|---|---|---|
-| `ls -la` | `eza -la` | List all files with details |
-| `ls -R` | `eza -R` | Recurse into directories |
-| `ls -la` | `eza -la --git` | Include git status columns |
-| `tree` | `eza --tree` | Print as a tree |
 
 ## JSON Processing: `grep`/`awk` → `jq`
 
@@ -60,6 +43,15 @@ Never use `grep`, `sed`, or `awk` to parse JSON. Always use `jq`.
 |---|---|---|
 | `grep '"name":' file.json` | `jq '.name' file.json` | Extract top-level field |
 | `cat file.json \| python -m json.tool` | `jq '.' file.json` | Pretty-print JSON |
+
+## YAML Processing: `grep`/`awk` → `yq`
+
+Never use `grep`, `sed`, or `awk` to parse YAML. Always use `yq`.
+
+| Traditional | Modern `yq` | Description |
+|---|---|---|
+| `grep 'name:' file.yaml` | `yq '.name' file.yaml` | Extract top-level field |
+| `cat file.yaml` | `yq '.' file.yaml` | Pretty-print YAML |
 
 ## API Testing: `curl` → `httpie` (`http`)
 

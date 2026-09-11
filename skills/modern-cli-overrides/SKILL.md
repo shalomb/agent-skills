@@ -3,9 +3,9 @@ name: modern-cli-overrides
 description: >
   Use this skill to upgrade and enforce the use of modern Rust/Go CLI equivalents 
   over traditional POSIX coreutils. Trigger this whenever you are about to use 
-  grep, find, sed, awk, or ls in a shell command. You MUST read this skill to 
-  learn the syntax for rg (ripgrep), fd, sd, sg (ast-grep), eza, and jq, which 
-  are significantly faster, safer, and better suited for codebases.
+  grep, find, awk, or curl in a shell command. You MUST read this skill to 
+  learn the syntax for rg (ripgrep), fd, sg (ast-grep), jq, yq, and httpie, which 
+  are significantly faster, safer, and better suited for codebases. Must always apply!
 ---
 
 # Modern CLI Overrides
@@ -28,22 +28,19 @@ When generating shell commands or writing scripts, apply the following tool subs
 *   **DO NOT USE:** `find . -name "*.py"`
 *   **USE:** `fd -e py`
 
-### 3. Use `sd` or `sg` instead of `sed`
-*   `sed` escaping is error-prone and dangerous for code refactoring.
-*   For simple string/regex replacement, use `sd`. 
-*   **DO NOT USE:** `sed -i 's/old/new/g' file`
-*   **USE:** `sd 'old' 'new' file`
+### 3. Use `sg` (ast-grep) for codebase-wide refactoring
+*   Standard regex replacements (`sed`) are dangerous for code refactoring.
 *   For codebase-wide structural refactoring, use `sg` (ast-grep). See the `ast-grep` skill.
 
-### 4. Use `eza` instead of `ls`
-*   `eza` provides better defaults and git status integration.
-*   **DO NOT USE:** `ls -la`
-*   **USE:** `eza -la --git`
-
-### 5. Use `jq` instead of `grep`/`awk` for JSON
+### 4. Use `jq` instead of `grep`/`awk` for JSON
 *   Never attempt to parse or extract values from JSON files using text-processing tools.
 *   **DO NOT USE:** `grep '"key":' file.json | awk '{print $2}'`
 *   **USE:** `jq '.key' file.json`
+
+### 5. Use `yq` instead of `grep`/`awk` for YAML
+*   Never attempt to parse or extract values from YAML files using text-processing tools.
+*   **DO NOT USE:** `grep 'key:' file.yaml`
+*   **USE:** `yq '.key' file.yaml`
 
 ### 6. Use `httpie` (`http`) instead of `curl`
 *   `curl` syntax for JSON payloads is tedious and error-prone. `httpie` provides intuitive syntax, automatic JSON parsing, and avoids escaping hell.
