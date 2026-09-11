@@ -1,88 +1,53 @@
 # Humanizer Patterns
 
-This reference documents the 25 patterns identified in Wikipedia's "Signs of AI writing" guide, which are common indicators of AI-generated text.
+This reference documents 32 common indicators of AI-generated text, combining Wikipedia's "Signs of AI writing" guide with strict technical writing standards.
 
-## CONTENT PATTERNS
+## CONTENT
 
-### 1. Undue Emphasis on Significance, Legacy, and Broader Trends
-**Words to watch:** stands/serves as, is a testament/reminder, a vital/significant/crucial/pivotal/key role/moment, underscores/highlights its importance/significance, reflects broader, symbolizing its ongoing/enduring/lasting, contributing to the, setting the stage for, marking/shaping the, represents/marks a shift, key turning point, evolving landscape, focal point, indelible mark, deeply rooted
+1. **Puffery / Undue Emphasis**: "pivotal moment", "testament to", "stands/serves as", "evolving landscape", "setting the stage for". Cut puffery, state what happened.
+2. **Name-dropping / Media Coverage**: Listing media outlets without context, "written by a leading expert", "active social media presence". Pick one, say what was said.
+3. **Superficial -ing phrases**: "highlighting...", "ensuring...", "reflecting...", "showcasing...", "fostering...". Delete or expand with real sources.
+4. **Promotional language**: "nestled", "vibrant", "breathtaking", "groundbreaking", "renowned", "stunning", "must-visit". Use neutral descriptions.
+5. **Vague attributions**: "Experts believe", "Industry reports suggest", "Some critics argue". Name the source or delete.
+6. **Formulaic challenges**: "Despite challenges... continues to thrive." Replace with specific facts.
 
-### 2. Undue Emphasis on Notability and Media Coverage
-**Words to watch:** independent coverage, local/regional/national media outlets, written by a leading expert, active social media presence
+## LANGUAGE
 
-### 3. Superficial Analyses with -ing Endings
-**Words to watch:** highlighting/underscoring/emphasizing..., ensuring..., reflecting/symbolizing..., contributing to..., cultivating/fostering..., encompassing..., showcasing...
+7. **AI vocabulary**: Additionally, crucial, delve, enduring, enhance, fostering, garner, interplay, intricate, landscape (abstract), pivotal, showcase, tapestry (abstract), testament, underscore, vibrant. Replace with plain words.
+8. **Fancy ways to say "is" (Copula Avoidance)**: "serves as", "stands as", "boasts", "features". Just say "is" or "has".
+9. **"Not just X, but Y" (Negative Parallelisms)**: State the point directly instead.
+10. **Rule of three**: Forcing ideas into groups of three. Use the natural number.
+11. **Synonym cycling**: Protagonist, main character, central figure, hero all in one paragraph. Pick one, repeat it.
+12. **False ranges**: "from X to Y" where X and Y aren't on a meaningful scale. List topics directly.
 
-### 4. Promotional and Advertisement-like Language
-**Words to watch:** boasts a, vibrant, rich (figurative), profound, enhancing its, showcasing, exemplifies, commitment to, natural beauty, nestled, in the heart of, groundbreaking (figurative), renowned, breathtaking, must-visit, stunning
+## STYLE
 
-### 5. Vague Attributions and Weasel Words
-**Words to watch:** Industry reports, Observers have cited, Experts argue, Some critics argue, several sources/publications (when few cited)
+13. **Em dash overuse**: Avoid em dashes entirely. Use periods or commas only (no parentheses, no en dashes, no hyphen-as-dash substitutes). If a thought needs separation, end the sentence or use a comma.
+14. **Colon overuse**: Colons are fine before a list or example. Not as mid-sentence connectors. Rewrite to let the point stand on its own without comparison framing.
+15. **Boldface overuse**: Don't bold every proper noun or acronym.
+16. **Inline-header lists**: The tell is a bold label and colon that restates the line: "**Performance:** Performance improved...". Convert those to prose.
+17. **Title case headings**: Use sentence case.
+18. **Decorative emojis**: Remove from headings and bullets.
+19. **Curly quotes**: Replace with straight quotes.
 
-### 6. Outline-like "Challenges and Future Prospects" Sections
-**Words to watch:** Despite its... faces several challenges..., Despite these challenges, Challenges and Legacy, Future Outlook
+## COMMUNICATION ARTIFACTS
 
-## LANGUAGE AND GRAMMAR PATTERNS
+20. **Chatbot phrases**: "I hope this helps!", "Let me know if...", "Of course!", "Certainly!", "Found the smoking gun!" Remove.
+21. **Cutoff disclaimers**: "While specific details are limited...", "As of my last update". Find sources or remove.
+22. **Sycophantic tone**: "Great question! You're absolutely right!" Respond directly.
 
-### 7. Overused "AI Vocabulary" Words
-**High-frequency AI words:** Additionally, align with, crucial, delve, emphasizing, enduring, enhance, fostering, garner, highlight (verb), interplay, intricate/intricacies, key (adjective), landscape (abstract noun), pivotal, showcase, tapestry (abstract noun), testament, underscore (verb), valuable, vibrant
+## FILLER
 
-### 8. Avoidance of "is"/"are" (Copula Avoidance)
-**Words to watch:** serves as/stands as/marks/represents [a], boasts/features/offers [a]
+23. **Filler phrases**: "In order to" becomes "To". "Due to the fact that" becomes "Because". "It is important to note that" gets deleted.
+24. **Excessive hedging**: "could potentially possibly be argued that it might" becomes "may".
+25. **Generic conclusions**: "The future looks bright." State specific plans or facts.
+26. **Hyphenated word pair overuse**: "third-party", "cross-functional", "client-facing", "data-driven". Use only when strictly necessary, prefer plain English.
 
-### 9. Negative Parallelisms
-**Problem:** Constructions like "Not only...but..." or "It's not just about..., it's..." are overused.
+## JARGON & PLAIN SPEECH
 
-### 10. Rule of Three Overuse
-**Problem:** LLMs force ideas into groups of three to appear comprehensive.
-
-### 11. Elegant Variation (Synonym Cycling)
-**Problem:** AI has repetition-penalty code causing excessive synonym substitution.
-
-### 12. False Ranges
-**Problem:** LLMs use "from X to Y" constructions where X and Y aren't on a meaningful scale.
-
-## STYLE PATTERNS
-
-### 13. Em Dash Overuse
-**Problem:** LLMs use em dashes (—) more than humans, mimicking "punchy" sales writing.
-
-### 14. Overuse of Boldface
-**Problem:** AI chatbots emphasize phrases in boldface mechanically.
-
-### 15. Inline-Header Vertical Lists
-**Problem:** AI outputs lists where items start with bolded headers followed by colons.
-
-### 16. Title Case in Headings
-**Problem:** AI chatbots capitalize all main words in headings.
-
-### 17. Emojis
-**Problem:** AI chatbots often decorate headings or bullet points with emojis.
-
-### 18. Curly Quotation Marks
-**Problem:** ChatGPT uses curly quotes ("...") instead of straight quotes ("...").
-
-## COMMUNICATION PATTERNS
-
-### 19. Collaborative Communication Artifacts
-**Words to watch:** I hope this helps, Of course!, Certainly!, You're absolutely right!, Would you like..., let me know, here is a...
-
-### 20. Knowledge-Cutoff Disclaimers
-**Words to watch:** as of [date], Up to my last training update, While specific details are limited/scarce..., based on available information...
-
-### 21. Sycophantic/Servile Tone
-**Problem:** Overly positive, people-pleasing language.
-
-## FILLER AND HEDGING
-
-### 22. Filler Phrases
-**Examples:** "In order to", "Due to the fact that", "At this point in time", "In the event that", "The system has the ability to", "It is important to note that".
-
-### 23. Excessive Hedging
-**Problem:** Over-qualifying statements (e.g., "could potentially possibly be argued").
-
-### 24. Generic Positive Conclusions
-**Problem:** Vague upbeat endings (e.g., "the future looks bright", "exciting times lie ahead").
-
-### 25. Hyphenated Word Pair Overuse
-**Words to watch:** third-party, cross-functional, client-facing, data-driven, decision-making, well-known, high-quality, real-time, long-term, end-to-end
+27. **Abstract metaphor nouns**: Substrate, wedge, vector, locus, vantage, nexus, primitive (as noun), harness (as metaphor), surface (as in "API surface"), bedrock, scaffolding (as metaphor), modality, paradigm, gold-plating, ratchet (as metaphor), evacuate (for moving code), endgame, north star, flywheel. Pick the concrete word.
+28. **Say what it does, not how it feels**: Ask what the sentence tells the reader to do or know, then write that. If you can't restate it as a concrete instruction, fact, or number, cut it.
+29. **Shorten or split dense sentences**: If the reader has to backtrack to parse a sentence, break it in two or drop clauses. One idea per sentence.
+30. **Active voice**: Catch "is/are/was/were + past participle" and name the actor. Passive is fine only when the actor is unknown or genuinely doesn't matter.
+31. **Cut adverbs, or use a stronger verb**: "runs quickly" becomes "is fast" or the number. "significantly improves" becomes the measured delta. An adverb propping up a weak verb means the verb is wrong.
+32. **Prefer the plain word**: "utilize" becomes "use", "leverage" becomes "use", "facilitate" becomes "help", "numerous" becomes "many", "in the event that" becomes "if". The fancier synonym is rarely clearer.
