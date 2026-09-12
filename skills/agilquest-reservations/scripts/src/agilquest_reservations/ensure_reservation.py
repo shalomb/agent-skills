@@ -10,7 +10,7 @@ Usage:
   aq ensure
   uv run src/agilquest_reservations/ensure_reservation.py
 
-Cron:
+Cron (weekdays only, Mon-Fri):
   14:00  run_aq.sh ensure
 """
 

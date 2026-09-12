@@ -18,12 +18,12 @@ Options:
   --end      HH:MM AM/PM           End time   (default: 05:00 PM)
   --prestage                       Stage form now, sleep until 23:59:58, then submit
 
-Cron:
-  23:51  run_aq.sh prewarm
+Cron (weekdays only, Mon-Fri):
   00:01  run_aq.sh book
   09:00  run_aq.sh checkin
   14:00  run_aq.sh ensure
-  07:24  run_aq.sh prewarm
+  (23:55 Sun-Thu: bare `caffeinate` keeps the machine awake for 00:01 book —
+   see crontab, no `aq`/prewarm involved)
 """
 
 import sys

@@ -16,8 +16,6 @@ Then run from anywhere:
   aq setup-auth            One-time/renewed interactive SSO login.
   aq ensure                Daily health-check: confirm the +7-day
                            reservation exists, booking it if missing.
-  aq prewarm               Seed DNS + warm Chrome's launcher path
-                           before the midnight booking job.
 
 Run `aq <command> --help` for a command's options.
 """
@@ -150,17 +148,6 @@ def cmd_ensure(args) -> int:
     return report(result)
 
 
-def cmd_prewarm(args) -> int:
-    """`aq prewarm` — seed OS DNS cache and warm Chrome's network stack
-    via the MS app launcher, ahead of the midnight booking job."""
-    from agilquest_reservations.prewarm import DOMAINS, seed_dns, warm_chrome
-
-    seed_dns(DOMAINS)
-    warm_chrome()
-    print("Pre-warm complete.", file=sys.stderr)
-    return 0
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="aq",
@@ -199,9 +186,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_ensure = sub.add_parser("ensure", help="Confirm the +7-day reservation exists, booking it if missing")
     p_ensure.set_defaults(func=cmd_ensure)
-
-    p_prewarm = sub.add_parser("prewarm", help="Seed DNS + warm Chrome's launcher path")
-    p_prewarm.set_defaults(func=cmd_prewarm)
 
     return parser
 
