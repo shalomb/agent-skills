@@ -408,6 +408,51 @@ class TestProfileLock:
         assert cleared, "launch_headless() did not clear the stale lock"
 
 
+class TestChromeVersionDrift:
+    """Bug #5 (features/auth_and_session.md): a system Chrome that
+    auto-updates ahead of what the installed playwright package's CDP
+    client supports produces a hang that looks exactly like a network
+    fault. Fix: launch Playwright's own bundled, version-matched
+    Chromium by default; only use a system install if CHROME_PATH is
+    explicitly set."""
+
+    def test_no_override_means_use_playwrights_bundled_chromium(self, monkeypatch):
+        from agilquest_reservations.lib.browser import get_chrome_path
+
+        monkeypatch.delenv("CHROME_PATH", raising=False)
+        assert get_chrome_path() is None
+
+    def test_explicit_override_is_still_honoured(self, monkeypatch):
+        from agilquest_reservations.lib.browser import get_chrome_path
+
+        monkeypatch.setenv("CHROME_PATH", "/opt/custom/chrome")
+        assert get_chrome_path() == "/opt/custom/chrome"
+
+    def test_persistent_context_passes_none_through_by_default(self, monkeypatch, profile_dir):
+        """The regression that matters: nothing downstream must
+        hardcode a system Chrome path — executable_path=None has to
+        reach launch_persistent_context() so Playwright picks its own
+        bundled build."""
+        from agilquest_reservations.lib import browser
+
+        monkeypatch.delenv("CHROME_PATH", raising=False)
+        monkeypatch.setattr(browser, "get_state_dir", lambda: profile_dir.parent)
+
+        captured = {}
+
+        class FakeChromium:
+            def launch_persistent_context(self, **kw):
+                captured.update(kw)
+                return FakeContext()
+
+        class FakeP:
+            chromium = FakeChromium()
+
+        browser.launch_headless(FakeP())
+
+        assert captured.get("executable_path") is None
+
+
 class TestReauthLaunch:
     """Guards the path arithmetic in trigger_reauth_and_wait().
 

@@ -30,14 +30,28 @@ def get_state_dir() -> Path:
     return d
 
 
-def get_chrome_path() -> str:
-    if env := os.getenv("CHROME_PATH"):
-        return env
-    return (
-        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-        if sys.platform == "darwin"
-        else "/usr/bin/google-chrome"
-    )
+def get_chrome_path() -> str | None:
+    """Explicit override only — normally None, so launch_persistent_context()
+    uses Playwright's own bundled Chromium instead of a system install.
+
+    Real Google Chrome auto-updates itself on its own schedule, completely
+    outside Playwright's control or this project's uv.lock. Playwright's
+    CDP client is only tested against the specific Chromium build its own
+    package version bundles; letting a system Chrome drift ahead of that
+    (observed live: Chrome silently updated to 153.0.8010.36 against
+    playwright==1.62.0's expected 151.0.7922.34) causes protocol-level
+    breakage that looks exactly like a network hang — see
+    features/auth_and_session.md, "Chrome/Playwright version drift".
+    Confirmed by reproducing the hang against real Chrome 153 and then
+    getting a clean, sub-second launcher redirect against the SAME
+    real production profile using Playwright's bundled Chromium instead.
+
+    Set CHROME_PATH to force a specific executable anyway (e.g. to
+    reproduce a version-drift bug on purpose, or test against a Chrome
+    channel Playwright doesn't ship) — but this is now an explicit,
+    deliberate opt-out, not the default.
+    """
+    return os.getenv("CHROME_PATH") or None
 
 
 def clear_singleton_lock(profile_dir: Path) -> None:
@@ -81,6 +95,9 @@ def _persistent_context(p, headless: bool, extra_args: list[str] | None = None) 
     profile_dir.mkdir(parents=True, exist_ok=True)
     clear_singleton_lock(profile_dir)
     args = ["--disable-gpu", "--no-sandbox"] + (extra_args or [])
+    # executable_path=None (the default — see get_chrome_path()) makes
+    # Playwright launch its own bundled, version-matched Chromium rather
+    # than a system Chrome that can silently drift out of CDP compatibility.
     return p.chromium.launch_persistent_context(
         user_data_dir=str(profile_dir),
         headless=headless,
@@ -138,10 +155,23 @@ def needs_interactive_login(page) -> bool:
     the bug that made every cron job report false auth failures (bug #1).
     The only reliable signal that a human is genuinely required is the
     presence of the credential input itself.
+
+    A still-navigating page (the SAML chain keeps moving client-side
+    after domcontentloaded fires) tears down its execution context out
+    from under a racing query_selector() call — Playwright raises
+    "Execution context was destroyed, most likely because of a
+    navigation" rather than returning null. That is not evidence of a
+    login form; it is evidence the page hasn't settled yet, which is
+    exactly what current_url() already tolerates the same way for the
+    same reason (bug #1's fix). Surfaced live once Chrome/Playwright
+    version drift (bug #5) stopped hiding it behind a 30s stall.
     """
-    return page.query_selector(
-        "input[name='loginfmt'], #i0116, input[type='password']"
-    ) is not None
+    try:
+        return page.query_selector(
+            "input[name='loginfmt'], #i0116, input[type='password']"
+        ) is not None
+    except Exception:
+        return False
 
 
 def is_on_agilquest(page) -> bool:

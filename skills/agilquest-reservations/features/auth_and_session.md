@@ -155,6 +155,44 @@ attempts to rebook — masking the real fault.
 **Fix:** detect the `LOG IN` screen explicitly and raise, rather than returning
 an empty list.
 
+### Bug #5 — Chrome/Playwright version drift masquerades as a network hang
+
+Symptom: `page.goto(APP_LAUNCHER, ...)` hangs the full 30s with what looks
+like zero response — same call log, same message
+(`Page.goto: Timeout 30000ms exceeded.`), every attempt, 100% reproducible
+in some sessions and 100% absent in others. `curl` to the identical URL:
+instant, every time. Looks exactly like a network/DNS/proxy fault — it
+is not. A `chrome://net-export` capture during a live hang showed the
+server returning its `302 Found` in well under 300ms every time; the
+request then sat inside Chrome's own `URL_REQUEST_DELEGATE_RECEIVED_REDIRECT`
+hook — the layer a CDP client (Playwright) gates a redirect on — for the
+entire ~30s until Playwright's own client-side timeout cancelled it.
+Zero events were logged on that request for the whole stall.
+
+Cause: `_persistent_context()` launched Chrome via `executable_path=`
+pointed at the real, installed Google Chrome, which auto-updates itself
+on its own schedule — completely outside Playwright's control or this
+project's `uv.lock`. Playwright's CDP client is only validated against
+the specific Chromium build its own package version bundles. Confirmed
+live: real Chrome had silently updated to `153.0.8010.36`, while
+`playwright==1.62.0` (the latest release — nothing newer to upgrade to)
+expects `151.0.7922.34`. Proof: the SAME real, authenticated production
+profile — copied so as not to disturb the live one — went from
+`0/many, 30s timeout every time` against real Chrome 153 to
+`immediate, sub-second success` against Playwright's own bundled
+Chromium 151, with no other change.
+
+**Fix:** `get_chrome_path()` now returns `None` unless `CHROME_PATH` is
+explicitly set, so `launch_persistent_context()` uses Playwright's own
+bundled, version-matched Chromium by default instead of a system
+install. `CHROME_PATH` remains available as a deliberate override (e.g.
+to reproduce this exact bug on purpose, or test a Chrome channel
+Playwright doesn't ship). One-time setup: `uv run playwright install
+chromium` (see `SKILL.md`). This removes the drift vector rather than
+merely detecting it — a system Chrome has no version contract with
+Playwright at all, so this class of failure could otherwise recur
+indefinitely on any long-lived machine.
+
 ### Not a bug — `.parent` depth in `trigger_reauth_and_wait()`
 
 ```python
