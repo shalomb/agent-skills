@@ -113,32 +113,39 @@ class TestSharedLockClearing:
 
 
 # --------------------------------------------------------------------------
-# Rule: a genuine login prompt and a mid-exchange page are never confused
+# Rule: setup_auth.py never assumes "no password form" means "automatic" —
+# it always gives a human the same wait, whatever kind of interstitial
+# Entra shows.
+#
+# main() used to branch three ways: is_on_agilquest() -> done;
+# needs_interactive_login() -> wait for you; neither -> assume automatic
+# and skip the wait entirely. That third branch was reached by ANY
+# non-password interstitial — a "stay signed in?" prompt, an account
+# picker, or a FIDO2/WebAuthn challenge (security key, Windows Hello,
+# passkey) all fail needs_interactive_login()'s password-field check the
+# same way a genuine mid-exchange pause does. Confirmed live: an MFA
+# decision screen and a /fido/get WebAuthn prompt both closed the browser
+# on someone mid-choice, because main() decided nothing needed waiting
+# for. Fixed by removing the guess entirely — this script is always
+# interactive (a human launched it and is at the keyboard), so anything
+# short of already being on Agilquest gets the same 5-minute wait.
 # --------------------------------------------------------------------------
 
-class TestLoginPromptDetection:
+class TestNeverAssumesAutomaticCompletion:
 
-    def test_prompts_when_entra_shows_a_real_login_form(self, expired_context):
-        from agilquest_reservations.setup_auth import needs_interactive_login
-
-        page = expired_context.new_page()
-        page.goto("https://launcher.myapps.microsoft.com/api/signin/x",
-                  wait_until="domcontentloaded")
-
-        assert needs_interactive_login(page) is True
-
-    def test_does_not_prompt_during_an_automatic_mid_exchange_pause(self, authed_context):
-        from agilquest_reservations.setup_auth import needs_interactive_login
-
-        page = authed_context.new_page()
-        page.goto("https://launcher.myapps.microsoft.com/api/signin/x",
-                  wait_until="commit")  # stale reported URL, no real form
-
-        assert needs_interactive_login(page) is False
-
-    def test_setup_auth_reuses_the_shared_login_detector(self):
-        """Must not reimplement the URL-substring check that caused bug #1."""
+    def test_does_not_import_needs_interactive_login(self):
+        """Regression guard for the three-way branch itself: if this name
+        reappears in setup_auth's namespace, the old "maybe it's automatic"
+        guess has likely come back too. FakePage/FakeContext model only
+        a password-form-or-not distinction (see conftest.py), which is
+        exactly the axis this bug lived on — a live FIDO/MFA/account-picker
+        page is exercised by the opt-in integration suite
+        (test_auth_session_integration.py), not reproducible here without
+        a fixture that would just re-encode the same either/or assumption
+        this fix removes."""
         import agilquest_reservations.setup_auth as setup_auth_module
-        from agilquest_reservations.lib.browser import needs_interactive_login as shared_fn
 
-        assert setup_auth_module.needs_interactive_login is shared_fn
+        assert not hasattr(setup_auth_module, "needs_interactive_login"), (
+            "setup_auth.py should not special-case password-form detection — "
+            "any non-Agilquest page gets the same wait, no exceptions"
+        )

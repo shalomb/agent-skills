@@ -182,16 +182,45 @@ profile — copied so as not to disturb the live one — went from
 `immediate, sub-second success` against Playwright's own bundled
 Chromium 151, with no other change.
 
-**Fix:** `get_chrome_path()` now returns `None` unless `CHROME_PATH` is
-explicitly set, so `launch_persistent_context()` uses Playwright's own
-bundled, version-matched Chromium by default instead of a system
-install. `CHROME_PATH` remains available as a deliberate override (e.g.
-to reproduce this exact bug on purpose, or test a Chrome channel
-Playwright doesn't ship). One-time setup: `uv run playwright install
-chromium` (see `SKILL.md`). This removes the drift vector rather than
-merely detecting it — a system Chrome has no version contract with
-Playwright at all, so this class of failure could otherwise recur
-indefinitely on any long-lived machine.
+**Fix (originally):** `get_chrome_path()` returned `None` unless
+`CHROME_PATH` was explicitly set, so `launch_persistent_context()` used
+Playwright's own bundled, version-matched Chromium by default instead of
+a system install. This removed the drift vector rather than merely
+detecting it — a system Chrome has no version contract with Playwright
+at all, so this class of failure could otherwise recur indefinitely on
+any long-lived machine.
+
+**Reverted — a worse, EDR-related problem replaced it.** On this machine
+(a Microsoft-Defender-for-Endpoint-managed corporate Mac), the bundled
+Chromium is a freshly-downloaded, unsigned binary under
+`~/Library/Caches/ms-playwright/`. Defender's real-time protection is
+centrally managed (`real_time_protection_enabled: true [managed]` per
+`mdatp health` — not disable-able locally) and its Lua-based
+signature-scanning engine actively evaluates these binaries at process
+startup: `microsoft_defender.log` showed repeated
+`ExecuteLuaScript() failed ... SIGNATURE_TYPE_MACHOHSTR_EXT` entries
+against the exact `chrome-headless-shell`/`Google Chrome for Testing`
+files, timed to coincide with two separate live failures — a headed
+`setup_auth.py` session killed ~10s after launch, once while genuinely
+mid-interactive-MFA-decision (the browser vanished, launchd's own log
+showed `Killed: 9` / `SIGKILL` on Chrome's helper "after host exited",
+meaning the main Chrome process died first). Crucially this is NOT a
+formal malware verdict: `mdatp threat list` showed no threats, an
+explicit `mdatp scan custom` on the app bundle found 0/327 threats, and
+the file was never quarantined or removed from disk — a bare
+launch-and-hold-open test survived a full 20s moments later. The
+evidence points to an intermittent startup race between Defender's
+scanner and Chrome's own init sequence on an unsigned binary, not a
+deliberate block. Real, installed Chrome is already signed and trusted
+by Defender, so it never hits this race.
+
+**Current fix:** `get_chrome_path()` defaults to system Chrome again
+(`CHROME_PATH` still overrides). The version-drift risk this bug
+originally fixed is real but is, on this machine, rarer in practice than
+the EDR race — accepted as the lesser of two intermittent failure modes
+until Defender's managed policy can allowlist
+`~/Library/Caches/ms-playwright/` (a request to IT/security, not a code
+change) makes the original fix safe to reinstate.
 
 ### Not a bug — `.parent` depth in `trigger_reauth_and_wait()`
 

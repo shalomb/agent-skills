@@ -409,18 +409,33 @@ class TestProfileLock:
 
 
 class TestChromeVersionDrift:
-    """Bug #5 (features/auth_and_session.md): a system Chrome that
-    auto-updates ahead of what the installed playwright package's CDP
-    client supports produces a hang that looks exactly like a network
-    fault. Fix: launch Playwright's own bundled, version-matched
-    Chromium by default; only use a system install if CHROME_PATH is
-    explicitly set."""
+    """Bug #5 (features/auth_and_session.md) and its reversal.
 
-    def test_no_override_means_use_playwrights_bundled_chromium(self, monkeypatch):
+    A system Chrome that auto-updates ahead of what the installed
+    playwright package's CDP client supports produces a hang that looks
+    exactly like a network fault. The fix — launch Playwright's own
+    bundled, version-matched Chromium by default — was ITSELF reverted
+    after a worse, EDR-related problem surfaced on a managed corporate
+    Mac: Microsoft Defender's real-time protection (centrally managed,
+    not locally disable-able) intermittently races the startup of
+    freshly-downloaded, unsigned binaries under
+    ~/Library/Caches/ms-playwright/, confirmed live killing a headed
+    setup_auth.py session mid-interactive-MFA on two separate attempts.
+    Real, installed Chrome is already signed and trusted, so it doesn't
+    hit this race — see get_chrome_path()'s docstring for the full
+    evidence trail (both ways).
+
+    Net: get_chrome_path() defaults to system Chrome again. CHROME_PATH
+    remains available to force a different executable (e.g. Playwright's
+    bundled Chromium specifically, to reproduce bug #5 on purpose)."""
+
+    def test_no_override_means_system_chrome(self, monkeypatch):
         from agilquest_reservations.lib.browser import get_chrome_path
 
         monkeypatch.delenv("CHROME_PATH", raising=False)
-        assert get_chrome_path() is None
+        path = get_chrome_path()
+        assert path is not None
+        assert "Chrome" in path or "chrome" in path
 
     def test_explicit_override_is_still_honoured(self, monkeypatch):
         from agilquest_reservations.lib.browser import get_chrome_path
@@ -428,11 +443,13 @@ class TestChromeVersionDrift:
         monkeypatch.setenv("CHROME_PATH", "/opt/custom/chrome")
         assert get_chrome_path() == "/opt/custom/chrome"
 
-    def test_persistent_context_passes_none_through_by_default(self, monkeypatch, profile_dir):
-        """The regression that matters: nothing downstream must
-        hardcode a system Chrome path — executable_path=None has to
-        reach launch_persistent_context() so Playwright picks its own
-        bundled build."""
+    def test_persistent_context_passes_system_chrome_through_by_default(
+        self, monkeypatch, profile_dir
+    ):
+        """The regression that matters: launch_persistent_context() must
+        actually receive get_chrome_path()'s value as executable_path,
+        not silently drop it — that silent-drop is exactly how this
+        project ended up running an unpinned Chrome in the first place."""
         from agilquest_reservations.lib import browser
 
         monkeypatch.delenv("CHROME_PATH", raising=False)
@@ -450,7 +467,7 @@ class TestChromeVersionDrift:
 
         browser.launch_headless(FakeP())
 
-        assert captured.get("executable_path") is None
+        assert captured.get("executable_path") == browser.get_chrome_path()
 
 
 class TestReauthLaunch:

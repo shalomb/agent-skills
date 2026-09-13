@@ -30,28 +30,43 @@ def get_state_dir() -> Path:
     return d
 
 
-def get_chrome_path() -> str | None:
-    """Explicit override only — normally None, so launch_persistent_context()
-    uses Playwright's own bundled Chromium instead of a system install.
+def get_chrome_path() -> str:
+    """Reverted back to defaulting to the real, installed system Chrome —
+    see features/auth_and_session.md, "Chrome/Playwright version drift"
+    (bug #5) and its reversal note.
 
-    Real Google Chrome auto-updates itself on its own schedule, completely
-    outside Playwright's control or this project's uv.lock. Playwright's
-    CDP client is only tested against the specific Chromium build its own
-    package version bundles; letting a system Chrome drift ahead of that
-    (observed live: Chrome silently updated to 153.0.8010.36 against
-    playwright==1.62.0's expected 151.0.7922.34) causes protocol-level
-    breakage that looks exactly like a network hang — see
-    features/auth_and_session.md, "Chrome/Playwright version drift".
-    Confirmed by reproducing the hang against real Chrome 153 and then
-    getting a clean, sub-second launcher redirect against the SAME
-    real production profile using Playwright's bundled Chromium instead.
+    Bug #5 found that a system Chrome auto-updating ahead of what the
+    installed playwright package's CDP client supports produces a launcher
+    hang that looks exactly like a network fault, and switched the default
+    to Playwright's own bundled Chromium to remove that drift vector.
 
-    Set CHROME_PATH to force a specific executable anyway (e.g. to
-    reproduce a version-drift bug on purpose, or test against a Chrome
-    channel Playwright doesn't ship) — but this is now an explicit,
-    deliberate opt-out, not the default.
+    That default was itself reverted after a SEPARATE, worse problem
+    surfaced on this machine: Microsoft Defender for Endpoint's real-time
+    protection (a `[managed]`, centrally-controlled policy — not something
+    disable-able locally) actively scans freshly-downloaded, unsigned
+    binaries under `~/Library/Caches/ms-playwright/` (confirmed live in
+    `microsoft_defender.log`: repeated `ExecuteLuaScript() failed` /
+    `SIGNATURE_TYPE_MACHOHSTR_EXT` entries against the exact
+    chrome-headless-shell/Chrome-for-Testing binaries). This does not
+    register as a formal threat detection (`mdatp threat list` shows none,
+    an explicit `mdatp scan custom` finds 0/327 threats, the file is never
+    quarantined) but intermittently races Chrome's own startup — observed
+    live killing `setup_auth.py`'s headed browser ~10s after launch,
+    mid-interactive-MFA, on two separate real attempts, while a bare
+    launch-and-wait test survived a full 20s moments later. Real Chrome is
+    already signed and trusted, so it does not hit this race at all.
+
+    Net effect: the version-drift risk bug #5 fixed is real but rarer in
+    practice than this EDR race turned out to be, on this machine. Set
+    CHROME_PATH to override with a different executable if needed.
     """
-    return os.getenv("CHROME_PATH") or None
+    if env := os.getenv("CHROME_PATH"):
+        return env
+    return (
+        "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+        if sys.platform == "darwin"
+        else "/usr/bin/google-chrome"
+    )
 
 
 def clear_singleton_lock(profile_dir: Path) -> None:
