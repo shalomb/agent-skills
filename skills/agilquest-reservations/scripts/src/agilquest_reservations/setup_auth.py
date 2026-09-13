@@ -24,7 +24,7 @@ except ImportError:
     sys.exit(1)
 
 from agilquest_reservations.lib.browser import (
-    APP_LAUNCHER, get_state_dir, get_chrome_path, launch_headed,
+    APP_LAUNCHER, get_state_dir, launch_headed,
     is_on_agilquest, current_url, needs_interactive_login, wait_for_session,
     clear_singleton_lock,
 )
@@ -55,10 +55,8 @@ def wait_for_authenticated_session(page, context, timeout: int = 30) -> bool:
 
 
 def main():
-    chrome_path = get_chrome_path()
     state_dir = get_state_dir()
 
-    print(f"Chrome:  {chrome_path}", flush=True)
     print(f"Storage: {state_dir}", flush=True)
     print(flush=True)
 
@@ -66,6 +64,11 @@ def main():
 
     with sync_playwright() as p:
         browser = launch_headed(p)
+        # browser.version is only known once launched — print it (rather
+        # than a pre-launch executable path) since Chrome/CDP version drift
+        # is the diagnostic that actually matters now Playwright launches
+        # its own bundled Chromium by default (see get_chrome_path()).
+        print(f"Chrome:  {browser.browser.version if browser.browser else 'unknown'}", flush=True)
         try:
             # launch_persistent_context() already opens one tab (Chrome
             # always starts a window with a tab) — calling new_page() would

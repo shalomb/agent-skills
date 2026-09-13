@@ -13,14 +13,29 @@ Handles Entra SSO authentication (cached for days) and retrieves reservation dat
 
 ## Prerequisites
 
-- Google Chrome or Chromium installed
 - `uv` package manager: `pip install uv` or `brew install uv`
+- Playwright's bundled Chromium installed (one-time): `cd scripts && uv run playwright install chromium`
 - One-time auth setup completed (Step 0)
 - Entra SSO access to Agilquest
 
-## Chrome path configuration
+## Chrome version
 
-The scripts read `CHROME_PATH` from the environment, falling back to platform defaults:
+The scripts launch Playwright's own bundled Chromium by default — NOT
+whatever Chrome happens to be installed on the machine. A real Google
+Chrome install auto-updates on its own schedule, completely outside
+Playwright's control or this project's `uv.lock`; letting it drift ahead
+of the specific Chromium build the installed `playwright` package was
+tested against causes CDP-protocol-level failures that look exactly like
+a network hang (confirmed live: real Chrome silently updated to
+153.0.8010.36 against `playwright==1.62.0`'s expected 151.0.7922.34,
+causing every launcher navigation to stall ~30s inside Chrome's
+redirect-delegate hook despite the server responding in under 300ms —
+see `features/auth_and_session.md`, "Chrome/Playwright version drift").
+
+Only set `CHROME_PATH` to deliberately override this (e.g. to test
+against a Chrome channel Playwright doesn't ship, or to reproduce a
+version-drift bug on purpose) — it is an explicit opt-out, not the
+default:
 
 ```bash
 # macOS
@@ -28,9 +43,6 @@ export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 
 # Linux
 export CHROME_PATH="/usr/bin/google-chrome"
-
-# Or set permanently in ~/.config/agent-skills/agilquest-reservations.env:
-# CHROME_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 ```
 
 Browser session stored at: `~/.local/state/agent-skills/agilquest-reservations/user_data/`
