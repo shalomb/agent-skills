@@ -13,29 +13,44 @@ Handles Entra SSO authentication (cached for days) and retrieves reservation dat
 
 ## Prerequisites
 
+- Google Chrome or Chromium installed
 - `uv` package manager: `pip install uv` or `brew install uv`
-- Playwright's bundled Chromium installed (one-time): `cd scripts && uv run playwright install chromium`
 - One-time auth setup completed (Step 0)
 - Entra SSO access to Agilquest
 
 ## Chrome version
 
-The scripts launch Playwright's own bundled Chromium by default — NOT
-whatever Chrome happens to be installed on the machine. A real Google
-Chrome install auto-updates on its own schedule, completely outside
-Playwright's control or this project's `uv.lock`; letting it drift ahead
-of the specific Chromium build the installed `playwright` package was
-tested against causes CDP-protocol-level failures that look exactly like
-a network hang (confirmed live: real Chrome silently updated to
-153.0.8010.36 against `playwright==1.62.0`'s expected 151.0.7922.34,
-causing every launcher navigation to stall ~30s inside Chrome's
-redirect-delegate hook despite the server responding in under 300ms —
-see `features/auth_and_session.md`, "Chrome/Playwright version drift").
+The scripts launch the real, installed system Chrome by default (via
+`CHROME_PATH`, falling back to platform defaults below) — NOT
+Playwright's own bundled Chromium. This is a deliberate reversal of an
+earlier fix; both directions have a real, confirmed failure mode, so
+read both before changing this:
 
-Only set `CHROME_PATH` to deliberately override this (e.g. to test
-against a Chrome channel Playwright doesn't ship, or to reproduce a
-version-drift bug on purpose) — it is an explicit opt-out, not the
-default:
+- **System Chrome auto-updates** on its own schedule, completely outside
+  Playwright's control or this project's `uv.lock`. Letting it drift
+  ahead of the specific Chromium build the installed `playwright`
+  package was tested against causes CDP-protocol-level failures that
+  look exactly like a network hang (confirmed live: real Chrome silently
+  updated to 153.0.8010.36 against `playwright==1.62.0`'s expected
+  151.0.7922.34, causing every launcher navigation to stall ~30s inside
+  Chrome's redirect-delegate hook despite the server responding in
+  under 300ms).
+- **Playwright's bundled Chromium is unsigned** and, on this
+  machine, intermittently killed mid-session by Microsoft Defender for
+  Endpoint's real-time protection (`[managed]` — not disable-able
+  locally) racing its startup — confirmed live killing a headed
+  `setup_auth.py` session mid-interactive-MFA, twice, with no formal
+  threat detection or quarantine logged (`mdatp threat list`: none;
+  explicit `mdatp scan custom`: 0/327 threats). Real Chrome is already
+  signed and trusted, so it never hits this race.
+
+Full evidence trail for both: `features/auth_and_session.md`,
+"Chrome/Playwright version drift" (bug #5) and its reversal note, and
+`get_chrome_path()`'s docstring in `lib/browser.py`.
+
+Set `CHROME_PATH` to override with a specific executable — e.g.
+Playwright's bundled Chromium, to reproduce the version-drift bug on
+purpose, or a Chrome channel not covered by the platform defaults:
 
 ```bash
 # macOS
@@ -43,6 +58,9 @@ export CHROME_PATH="/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 
 # Linux
 export CHROME_PATH="/usr/bin/google-chrome"
+
+# Or set permanently in ~/.config/agent-skills/agilquest-reservations.env:
+# CHROME_PATH=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome
 ```
 
 Browser session stored at: `~/.local/state/agent-skills/agilquest-reservations/user_data/`

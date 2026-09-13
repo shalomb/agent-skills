@@ -25,7 +25,7 @@ except ImportError:
 
 from agilquest_reservations.lib.browser import (
     APP_LAUNCHER, get_state_dir, launch_headed,
-    is_on_agilquest, current_url, needs_interactive_login, wait_for_session,
+    is_on_agilquest, current_url, wait_for_session,
     clear_singleton_lock,
 )
 
@@ -65,9 +65,9 @@ def main():
     with sync_playwright() as p:
         browser = launch_headed(p)
         # browser.version is only known once launched — print it (rather
-        # than a pre-launch executable path) since Chrome/CDP version drift
-        # is the diagnostic that actually matters now Playwright launches
-        # its own bundled Chromium by default (see get_chrome_path()).
+        # than a pre-launch executable path) since Chrome/CDP version
+        # drift is a real, previously-hit failure mode (see
+        # get_chrome_path()'s docstring) worth seeing at a glance.
         print(f"Chrome:  {browser.browser.version if browser.browser else 'unknown'}", flush=True)
         try:
             # launch_persistent_context() already opens one tab (Chrome
@@ -93,14 +93,24 @@ def main():
 
             if is_on_agilquest(page):
                 print("✓ MS SSO completed automatically — session valid.", flush=True)
-            elif not needs_interactive_login(page):
-                # Landed somewhere that isn't yet Agilquest and isn't a real
-                # login form either — the automatic mid-exchange pause.
-                # Nothing to prompt for; fall through to the same wait used
-                # below to confirm the exchange completes.
-                print("✓ MS SSO completing automatically...", flush=True)
             else:
-                print("✓ Browser opened. Please complete Entra SSO login.", flush=True)
+                # Anything short of already being on Agilquest might need
+                # you: a password form, but also a "stay signed in?"
+                # prompt, an account picker, or a FIDO2/WebAuthn challenge
+                # (security key, Windows Hello, passkey) — none of which
+                # show a password field, so they used to be misclassified
+                # as "completing automatically" and given no wait at all.
+                # This script is always interactive (a human launched it
+                # and is at the keyboard, unlike the headless cron entry
+                # points), so there is no upside to guessing "probably
+                # automatic" — always give the same generous wait, whether
+                # or not a credential form is visible. Confirmed live: an
+                # MFA decision screen and a /fido/get WebAuthn prompt both
+                # closed the browser out from under an in-progress choice
+                # before this fix, because neither matches a password
+                # selector.
+                print("✓ Browser opened. Complete Entra SSO if prompted "
+                      "(password, MFA, or a hardware key/passkey check).", flush=True)
                 print_current_url(page)
                 print("  Waiting up to 5 minutes for you to finish...", flush=True)
                 # Don't use page.wait_for_url() here — Entra's login page
