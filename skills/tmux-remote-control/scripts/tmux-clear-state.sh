@@ -121,8 +121,9 @@ clear_orphaned_files() {
         active_panes["$(basename "${sf}")"]=1
     done
 
-    # out.* and ec.* files that aren't referenced by any state file
-    for f in "${STATE_DIR}"/out.* "${STATE_DIR}"/ec.*; do
+    # Scratch files not referenced by any state file.  probe.* holds the
+    # helper-detection result and is orphaned the same way out.*/ec.* are.
+    for f in "${STATE_DIR}"/out.* "${STATE_DIR}"/ec.* "${STATE_DIR}"/probe.*; do
         [[ -e ${f} ]] || continue
 
         # Check if any state file references this file
@@ -184,9 +185,9 @@ list_state() {
         done
     fi
 
-    # Orphaned out/ec files
+    # Orphaned scratch files
     local orphan_count=0
-    for f in "${STATE_DIR}"/out.* "${STATE_DIR}"/ec.*; do
+    for f in "${STATE_DIR}"/out.* "${STATE_DIR}"/ec.* "${STATE_DIR}"/probe.*; do
         [[ -e ${f} ]] || continue
         local referenced=false
         for sf in "${STATE_DIR}"/[0-9]*; do
@@ -197,7 +198,7 @@ list_state() {
         done
         ${referenced} || (( orphan_count++ )) || true
     done
-    (( orphan_count > 0 )) && info "${orphan_count} orphaned out/ec file(s) — run with --orphans to clear"
+    (( orphan_count > 0 )) && info "${orphan_count} orphaned scratch file(s) — run with --orphans to clear"
 
     return 0
 }
