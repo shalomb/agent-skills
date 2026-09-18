@@ -44,6 +44,27 @@ the scripts are at `{SKILLS_DIR}/tmux-remote-control/scripts/`.
 **Never use `./scripts/`** — that resolves against the agent's current working
 directory (the project repo), not the skill directory.
 
+## Pane Rendering
+
+Commands appear in the pane as ordinary shell syntax, one statement per line:
+
+```
+λ (
+  echo building;
+  make --version | head -2;
+  echo done
+)
+building
+GNU Make 4.4.1
+done
+```
+
+`λ` is an alias ending in `time` (a reserved word, so it accepts a subshell as
+a prefix operand and propagates its exit status). Output capture and exit-code
+recording are handled by the alias and a `PROMPT_COMMAND` hook installed once
+per pane — so nothing but the command itself is on the line. The helper is
+injected lazily and re-injected if a pane's shell restarts; no setup required.
+
 ## ⚠️ Critical Limitation: tmux-exec.sh Runs in a Subshell
 
 `tmux-exec.sh` wraps every command in a **new subshell** inside the pane. This means:
@@ -91,12 +112,38 @@ Sends keys and waits for a regex (e.g. a REPL prompt):
 $SKILL_SCRIPTS/tmux-exec.sh -w '>>> ' "1.0" "print('hello')"
 ```
 
+### Detached Mode (`-d`) — REPLs, debuggers, agent CLIs
+Launches a long-lived foreground process without waiting for it to exit and
+without marking the pane busy.  Combine with `-w` to wait until the process
+is actually ready:
+
+```bash
+# launch, confirming the prompt appears
+$SKILL_SCRIPTS/tmux-exec.sh -d -t 20 -w '>>> ' "1.0" 'PYTHON_BASIC_REPL=1 python3 -q'
+
+# then drive it
+$SKILL_SCRIPTS/tmux-exec.sh -w '>>> ' "1.0" "print('hello')"
+```
+
+Use `-d` for anything that takes over the pane and is not expected to return
+(`python3`, `lldb`, `claude`, `sqlite3`).  Without it, shell mode waits
+forever for an exit code the process never produces, and the pane stays
+marked busy.
+
 ### Options
 | Flag | Default | Meaning |
 |------|---------|---------|
 | `-t SEC` | none (wait forever) | Timeout.  On expiry the command is **still running** and the pane is marked busy. |
 | `-w PATTERN` | — | Interactive mode: wait for regex instead of exit-code markers. |
+| `-d` | off | Detached: launch a long-lived process; don't wait, don't mark busy. |
 | `-S PATH` | — | Custom tmux socket. |
+
+> **Prompt patterns and trailing spaces.** tmux strips trailing whitespace
+> from captured lines, so `-w '>>> '` cannot match a *bare* prompt on its own.
+> `tmux-exec.sh` compensates by retrying such patterns anchored to the end of
+> the buffer, so `'>>> '` and `'(gdb) '` work as written.  Note that patterns
+> are regexes: `(gdb)` is a capture group matching `gdb`, so prefer
+> `-w '\(gdb\) '` if you need the parentheses matched literally.
 
 ### Busy-pane protection
 
@@ -160,12 +207,33 @@ $SKILL_SCRIPTS/tmux-list.sh
 
 Use this to find idle panes before executing commands.
 
+## 5. Dispatch (`scripts/tmux-dispatch.sh`)
+
+Paste a brief into a peer pane's input and submit it — for a **different use
+case** than the tools above. Sections 1-4 drive a shell/REPL you own end to
+end (send, wait, collect a result). This is for handing a task to a *peer
+agent* running in another pane and walking away from the completion contract:
+paste the brief, press Enter, and independently verify the outcome later
+yourself — you are not waiting on this command to tell you the peer
+finished.
+
+```bash
+$SKILL_SCRIPTS/tmux-dispatch.sh 0.1 'Please rerun make test and report the diff.'
+$SKILL_SCRIPTS/tmux-dispatch.sh -f /path/to/brief.txt 0.0   # quote/backtick-heavy or multi-line
+```
+
+See `references/orchestrating-peer-agents.md` for the full how-to: why this
+uses paste-buffer instead of `send-keys -l`, how a busy target queues rather
+than drops or force-submits a dispatch, and how to verify a peer's report
+instead of trusting it.
+
 ## Interactive Tool Notes
 
 ### Python REPL
-Always set `PYTHON_BASIC_REPL=1` — the fancy readline REPL breaks send-keys:
+Always set `PYTHON_BASIC_REPL=1` — the fancy readline REPL breaks send-keys.
+Launch with `-d` so the pane isn't left marked busy:
 ```bash
-$SKILL_SCRIPTS/tmux-exec.sh "1.0" 'PYTHON_BASIC_REPL=1 python3 -q'
+$SKILL_SCRIPTS/tmux-exec.sh -d -t 20 -w '>>> ' "1.0" 'PYTHON_BASIC_REPL=1 python3 -q'
 $SKILL_SCRIPTS/tmux-exec.sh -w '>>> ' "1.0" "print('hello')"
 ```
 
