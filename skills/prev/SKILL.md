@@ -1,6 +1,6 @@
 ---
 name: prev
-description: Recall what was just worked on: 3-line factual summary of last completed task and git commit. Short command alias for todo-navigator.
+description: "Recall what was just worked on: 3-line factual summary of last completed task and git commit. Short command alias for todo-navigator."
 ---
 
 # Previous Work Recall (/prev)
