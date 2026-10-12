@@ -13,8 +13,10 @@ import tempfile
 import unittest
 
 from tools.generate_commands import (
+    ALIAS_MARKER,
     format_instructions_list,
     generate_artifacts,
+    install_antigravity_aliases,
     render_antigravity_alias,
     render_claude_command,
     render_pi_extension,
@@ -159,7 +161,8 @@ class TestGenerateCommands(unittest.TestCase):
         self.assertTrue(
             (self.repo_dir / "commands" / "pi" / "prompts" / "test.md").is_file()
         )
-        self.assertTrue((self.repo_dir / "skills" / "test" / "SKILL.md").is_file())
+        # Alias skills must never be written into the shared skills tree
+        self.assertFalse((self.repo_dir / "skills" / "test").exists())
 
         # 2. Check mode should succeed
         res_check = generate_artifacts(config_path, self.repo_dir, check=True)
@@ -176,6 +179,86 @@ class TestGenerateCommands(unittest.TestCase):
         res_resync = generate_artifacts(config_path, self.repo_dir, check=False)
         self.assertEqual(res_resync, 0)
         self.assertEqual(generate_artifacts(config_path, self.repo_dir, check=True), 0)
+
+
+class TestInstallAntigravityAliases(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temp_dir = tempfile.TemporaryDirectory()
+        root = Path(self.temp_dir.name)
+        self.repo_dir = root / "repo"
+        self.target = root / "home" / ".gemini" / "skills"
+        for name in ("test-skill", "other-skill"):
+            d = self.repo_dir / "skills" / name
+            d.mkdir(parents=True)
+            (d / "SKILL.md").write_text(
+                f"---\nname: {name}\ndescription: d\n---\n", encoding="utf-8"
+            )
+        self.data = {
+            "commands": [
+                {
+                    "name": "test",
+                    "skill": "test-skill",
+                    "description": "Run test workflows",
+                },
+                {
+                    "name": "other-skill",  # same name as skill: no alias
+                    "skill": "other-skill",
+                    "description": "Same",
+                },
+                {
+                    "name": "optout",
+                    "skill": "test-skill",
+                    "description": "No alias",
+                    "alias_skill": False,
+                },
+            ]
+        }
+
+    def tearDown(self) -> None:
+        self.temp_dir.cleanup()
+
+    def test_writes_only_aliases_outside_repo(self) -> None:
+        install_antigravity_aliases(self.data, self.repo_dir, self.target)
+        self.assertEqual([p.name for p in self.target.iterdir()], ["test"])
+        alias = self.target / "test" / "SKILL.md"
+        self.assertTrue(alias.is_file())
+        self.assertIn(ALIAS_MARKER, alias.read_text(encoding="utf-8"))
+        self.assertFalse((self.target / "optout").exists())
+        # repo untouched
+        self.assertFalse((self.repo_dir / "skills" / "test").exists())
+
+    def test_idempotent(self) -> None:
+        install_antigravity_aliases(self.data, self.repo_dir, self.target)
+        before = sorted(p.name for p in self.target.iterdir())
+        install_antigravity_aliases(self.data, self.repo_dir, self.target)
+        self.assertEqual(before, sorted(p.name for p in self.target.iterdir()))
+
+    def test_replaces_legacy_symlink_to_repo_skills(self) -> None:
+        self.target.parent.mkdir(parents=True)
+        self.target.symlink_to(self.repo_dir / "skills")
+        install_antigravity_aliases(self.data, self.repo_dir, self.target)
+        self.assertFalse(self.target.is_symlink())
+        self.assertTrue(self.target.is_dir())
+        self.assertFalse((self.repo_dir / "skills" / "test").exists())
+
+    def test_removes_orphan_generated_aliases_only(self) -> None:
+        install_antigravity_aliases(self.data, self.repo_dir, self.target)
+        stale = self.target / "gone"
+        stale.mkdir()
+        (stale / "SKILL.md").write_text(f"x\n{ALIAS_MARKER}\n", encoding="utf-8")
+        user = self.target / "mine"
+        user.mkdir()
+        (user / "SKILL.md").write_text("hand-written", encoding="utf-8")
+        install_antigravity_aliases(self.data, self.repo_dir, self.target)
+        self.assertFalse(stale.exists())
+        self.assertTrue(user.exists())
+
+    def test_alias_does_not_clobber_real_skill(self) -> None:
+        self.data["commands"].append(
+            {"name": "test-skill", "skill": "other-skill", "description": "clash"}
+        )
+        install_antigravity_aliases(self.data, self.repo_dir, self.target)
+        self.assertFalse((self.target / "test-skill").exists())
 
 
 if __name__ == "__main__":

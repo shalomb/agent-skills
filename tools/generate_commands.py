@@ -9,7 +9,8 @@ Target runtimes:
 - Claude Code: commands/claude/<name>.md
 - Pi Extensions: commands/pi/extensions/<name>-command.ts
 - Pi Prompts: commands/pi/prompts/<name>.md
-- Antigravity / Gemini: skills/<name>/SKILL.md (alias skills)
+- Antigravity / Gemini: alias skills installed into the user's agent config
+  (default ~/.gemini/config/skills) via --install-antigravity; never written to the repo
 """
 
 from __future__ import annotations
@@ -242,7 +243,6 @@ def generate_artifacts(
 
     for cmd in data["commands"]:
         name = cmd["name"]
-        skill = cmd["skill"]
         expected_command_names.add(name)
 
         # 1. Claude Code command
@@ -256,12 +256,6 @@ def generate_artifacts(
         # 3. Pi Prompt
         pi_prompt_path = repo_dir / "commands" / "pi" / "prompts" / f"{name}.md"
         expected_files[pi_prompt_path] = render_pi_prompt(cmd)
-
-        # 4. Antigravity alias skill (if applicable)
-        should_alias = cmd.get("alias_skill", True) and (name != skill)
-        if should_alias:
-            alias_path = repo_dir / "skills" / name / "SKILL.md"
-            expected_files[alias_path] = render_antigravity_alias(cmd)
 
     drift_detected = False
 
@@ -278,7 +272,7 @@ def generate_artifacts(
 
         if drift_detected:
             print(
-                "\nRun 'make build-commands' or 'uv run tools/generate_commands.py' to synchronize."
+                "\nRun 'make install' or 'uv run tools/generate_commands.py' to synchronize."
             )
             return 1
 
@@ -342,25 +336,71 @@ def clean_orphans(repo_dir: Path, valid_names: set[str]) -> None:
                 f.unlink()
                 print(f"  - Removed orphan Pi prompt: {f.relative_to(repo_dir)}")
 
-    # 4. Antigravity alias skills
-    skills_dir = repo_dir / "skills"
-    if skills_dir.is_dir():
-        for skill_path in skills_dir.iterdir():
-            if skill_path.is_dir() and skill_path.name not in valid_names:
-                skill_md = skill_path / "SKILL.md"
-                if skill_md.is_file():
-                    content = skill_md.read_text(encoding="utf-8")
-                    if ALIAS_MARKER in content:
-                        # Only delete directory if it only contains SKILL.md
-                        remaining = [
-                            p for p in skill_path.iterdir() if p.name != "SKILL.md"
-                        ]
-                        if not remaining:
-                            skill_md.unlink()
-                            skill_path.rmdir()
-                            print(
-                                f"  - Removed orphan alias skill: {skill_path.relative_to(repo_dir)}"
-                            )
+
+def wants_alias(cmd: dict[str, Any]) -> bool:
+    """Whether a command needs an Antigravity alias skill."""
+    return bool(cmd.get("alias_skill", True)) and cmd["name"] != cmd["skill"]
+
+
+def _is_generated_alias(path: Path) -> bool:
+    skill_md = path / "SKILL.md"
+    if path.is_symlink() or not skill_md.is_file():
+        return False
+    return ALIAS_MARKER in skill_md.read_text(encoding="utf-8")
+
+
+def _remove_generated(path: Path) -> None:
+    (path / "SKILL.md").unlink()
+    path.rmdir()
+
+
+def install_antigravity_aliases(
+    data: dict[str, Any], repo_dir: Path, target: Path
+) -> None:
+    """Write generated alias skills into a real directory outside the repo.
+
+    Aliases carry ALIAS_MARKER. A legacy symlink at target (e.g. to the repo
+    skills dir) is replaced by a real directory. Orphan generated aliases are
+    removed; anything else already in the target is left alone.
+    """
+    skills_src = repo_dir / "skills"
+    if target.is_symlink():
+        target.unlink()
+    target.mkdir(parents=True, exist_ok=True)
+
+    skill_names = {p.name for p in skills_src.iterdir() if p.is_dir()}
+    wanted: dict[str, dict[str, Any]] = {}
+    for cmd in data["commands"]:
+        if not wants_alias(cmd):
+            continue
+        if cmd["name"] in skill_names:
+            print(f"  ! Skipping alias {cmd['name']}: a real skill has that name")
+            continue
+        wanted[cmd["name"]] = cmd
+
+    for name, cmd in wanted.items():
+        alias_dir = target / name
+        if alias_dir.exists() and not _is_generated_alias(alias_dir):
+            print(f"  ! Skipping alias {name}: non-generated entry exists")
+            continue
+        alias_dir.mkdir(exist_ok=True)
+        (alias_dir / "SKILL.md").write_text(
+            render_antigravity_alias(cmd), encoding="utf-8"
+        )
+
+    for entry in target.iterdir():
+        if entry.name not in wanted and _is_generated_alias(entry):
+            _remove_generated(entry)
+            print(f"  - Removed orphan alias skill: {entry}")
+
+
+def uninstall_antigravity_aliases(target: Path) -> None:
+    """Remove generated alias skills from the target dir."""
+    if not target.is_dir() or target.is_symlink():
+        return
+    for entry in target.iterdir():
+        if _is_generated_alias(entry):
+            _remove_generated(entry)
 
 
 def main() -> int:
@@ -390,6 +430,21 @@ def main() -> int:
         help="Remove orphaned command artifacts not defined in commands.json",
     )
 
+    parser.add_argument(
+        "--install-antigravity",
+        nargs="?",
+        const=str(Path.home() / ".gemini" / "config" / "skills"),
+        metavar="DIR",
+        help="Write alias skills into DIR (default ~/.gemini/config/skills)",
+    )
+    parser.add_argument(
+        "--uninstall-antigravity",
+        nargs="?",
+        const=str(Path.home() / ".gemini" / "config" / "skills"),
+        metavar="DIR",
+        help="Remove generated alias skills from DIR",
+    )
+
     args = parser.parse_args()
     repo_dir = args.repo_dir.resolve()
     config_path = (
@@ -398,7 +453,15 @@ def main() -> int:
         else args.config
     )
 
-    return generate_artifacts(config_path, repo_dir, check=args.check, clean=args.clean)
+    if args.uninstall_antigravity:
+        uninstall_antigravity_aliases(Path(args.uninstall_antigravity))
+        return 0
+
+    rc = generate_artifacts(config_path, repo_dir, check=args.check, clean=args.clean)
+    if rc == 0 and args.install_antigravity and not args.check:
+        data = json.loads(config_path.read_text(encoding="utf-8"))
+        install_antigravity_aliases(data, repo_dir, Path(args.install_antigravity))
+    return rc
 
 
 if __name__ == "__main__":
