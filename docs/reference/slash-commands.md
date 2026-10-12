@@ -16,7 +16,7 @@ flowchart TD
     Compiler --> Claude["Claude Code: commands/claude/<name>.md"]
     Compiler --> PiExt["Pi Extension: commands/pi/extensions/<name>-command.ts"]
     Compiler --> PiPrm["Pi Prompt: commands/pi/prompts/<name>.md"]
-    Compiler --> Gemini["Antigravity: skills/<name>/SKILL.md (Alias Skill)"]
+    Compiler --> Gemini["Antigravity: alias skills generated at install time (not in repo)"]
 
     Claude --> ClaudeDeploy["~/.claude/commands/"]
     PiExt --> PiExtDeploy["~/.pi/agent/extensions/"]
@@ -58,7 +58,7 @@ The registry is validated by the JSON Schema at [`tools/commands.schema.json`](.
 | `description` | string | **Yes** | Concise description displayed in agent command autocomplete menus. |
 | `title` | string | No | Display title used in documentation and Pi notification toasts. |
 | `default_action` | string | No | Fallback prompt phrase when the command is invoked without arguments. |
-| `alias_skill` | boolean | No | Whether to generate an Antigravity alias skill in `skills/<name>/SKILL.md` (default: `true` if `name != skill`). |
+| `alias_skill` | boolean | No | Whether to generate an Antigravity alias skill in the install target (default: `true` if `name != skill`). |
 | `instructions` | array / string | No | Core tenets or guidelines embedded in the prompt and alias skill. |
 | `prompt_template` | string | No | Optional custom Claude Code prompt template containing `$ARGUMENTS`. |
 
@@ -104,8 +104,8 @@ The registry is validated by the JSON Schema at [`tools/commands.schema.json`](.
   - **Mechanism:** Provides `/prompt:<name>` with `{{args}}` expansion.
 
 ### 3. Antigravity / Gemini CLI
-- **Path:** `skills/<name>/SKILL.md` (when `alias_skill` is enabled)
-- **Deployment:** Linked directly through `~/.gemini/skills` and `~/.gemini/config/skills`
+- **Path:** `~/.gemini/config/skills/<name>/SKILL.md` (generated; never written to this repo)
+- **Deployment:** `~/.gemini/skills` is symlinked to this repo's `skills/` like the other agents. `make install` also runs `tools/generate_commands.py --install-antigravity ~/.gemini/config/skills`, which writes one alias skill per command (when `alias_skill` is enabled) into that separate real directory. `make uninstall` removes them.
 - **Mechanism:** Antigravity discovers all skills in its skill search path and makes them executable as `/<name>`. An alias skill forwards the request cleanly to the backing skill.
 
 ---
@@ -118,14 +118,12 @@ The generator and verification pipeline relies on modern Python tooling: **`uv`*
 
 | Command | Purpose |
 |---|---|
-| `make build-commands` | Compiles artifacts from `commands.json` via `uv run tools/generate_commands.py` |
-| `make check-commands` | Asserts zero drift between `commands.json` and generated files (CI/CD check) |
-| `make test` | Executes unit test suite via `uv run python -m unittest tools/test_generate_commands.py` |
-| `make lint` | Lints and validates formatting with `uvx ruff check tools/` and `ruff format --check` |
-| `make format` | Formats Python tools with `uvx ruff format tools/` |
-| `make install` | Compiles commands, creates symlinks for skills and commands, updates configuration |
-| `make status` | Audits all runtime symlinks and active slash commands across all platforms |
-| `make uninstall` | Removes all runtime symlinks |
+| `make install` | Regenerates artifacts from `commands.json`, symlinks `skills/` and commands into each agent by absolute path (re-run after moving the clone to repoint), writes Antigravity aliases |
+| `make test` | Unit tests plus a drift check between `commands.json` and generated files |
+| `make status` | Shows where each link points, flagging stale ones |
+| `make uninstall` | Removes links and generated aliases that point into this repo |
+
+Lint/format by hand with `uvx ruff check tools/` and `uvx ruff format tools/`.
 
 ---
 
