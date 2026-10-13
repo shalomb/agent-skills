@@ -15,6 +15,7 @@ import unittest
 from tools.generate_commands import (
     ALIAS_MARKER,
     format_instructions_list,
+    yaml_scalar,
     generate_artifacts,
     install_antigravity_aliases,
     render_antigravity_alias,
@@ -62,6 +63,16 @@ class TestGenerateCommands(unittest.TestCase):
             "1. Step one.\n2. Step two with details:\n   - detail A\n   - detail B"
         )
         self.assertEqual(formatted, expected)
+
+    def test_yaml_scalar_quotes_only_when_needed(self) -> None:
+        self.assertEqual(yaml_scalar("plain text"), "plain text")
+        self.assertEqual(yaml_scalar("a: b"), '"a: b"')
+        self.assertEqual(yaml_scalar("x #y"), '"x #y"')
+
+    def test_render_prompts_emit_valid_frontmatter_for_colons(self) -> None:
+        cmd = dict(self.valid_cmd, description="Recall: 3-line summary")
+        for content in (render_pi_prompt(cmd), render_claude_command(cmd)):
+            self.assertIn('description: "Recall: 3-line summary"', content)
 
     def test_validate_registry_success(self) -> None:
         data = {"commands": [self.valid_cmd]}
