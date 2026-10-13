@@ -25,6 +25,14 @@ from typing import Any
 ALIAS_MARKER = "<!-- generated:alias-skill -->"
 
 
+def yaml_scalar(text: str) -> str:
+    """Return text as a YAML scalar, double-quoted only when plain form is unsafe."""
+    text = text.strip()
+    if re.search(r": |\s#|^[\s\-?:,\[\]{}#&*!|>'\"%@`]|:$", text):
+        return json.dumps(text, ensure_ascii=False)
+    return text
+
+
 def format_instruction_item(item: str, index: int) -> str:
     """Format an instruction string with appropriate numbering and sub-indentation."""
     item = item.strip()
@@ -64,7 +72,7 @@ def render_claude_command(cmd: dict[str, Any]) -> str:
     if "prompt_template" in cmd and cmd["prompt_template"]:
         template = cmd["prompt_template"].strip()
         if not template.startswith("---"):
-            template = f"---\ndescription: {cmd['description']}\n---\n\n{template}"
+            template = f"---\ndescription: {yaml_scalar(cmd['description'])}\n---\n\n{template}"
         return f"{template}\n"
 
     description = cmd["description"].strip()
@@ -87,7 +95,7 @@ def render_claude_command(cmd: dict[str, Any]) -> str:
             "$ARGUMENTS\n"
         )
 
-    return f"---\ndescription: {description}\n---\n\n{body}"
+    return f"---\ndescription: {yaml_scalar(description)}\n---\n\n{body}"
 
 
 def render_pi_extension(cmd: dict[str, Any]) -> str:
@@ -136,7 +144,7 @@ def render_pi_prompt(cmd: dict[str, Any]) -> str:
     skill = cmd["skill"].strip()
 
     return f"""---
-description: {description}
+description: {yaml_scalar(description)}
 ---
 
 Follow the `{skill}` skill to handle this task:
@@ -156,7 +164,7 @@ def render_antigravity_alias(cmd: dict[str, Any]) -> str:
     lines = [
         "---",
         f"name: {name}",
-        f"description: {description}. Short command alias for {skill}.",
+        f"description: {yaml_scalar(f'{description}. Short command alias for {skill}.')}",
         "---",
         "",
         f"# {title} (/{name})",
