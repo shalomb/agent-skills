@@ -4,6 +4,7 @@ description: >
   Monitor and manage workspace reservations on Agilquest. Retrieve active reservations,
   check workspace availability, check in, book ahead, and automate recurring reservation
   checks via cron. Uses headless browser automation with cached Entra SSO authentication.
+  Use when the user mentions Agilquest, workspace or desk reservations, or checking in.
 ---
 
 # Agilquest Reservations

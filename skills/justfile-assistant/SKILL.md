@@ -1,6 +1,6 @@
 ---
 name: justfile-assistant
-description: Create well-formed justfiles with test ladder patterns, standard recipes (install, build, test, clean, lint, dev, docs), and Makefile compatibility wrappers. Detects project type and generates appropriate recipes for Node.js, Python, Rust, Go, Terraform, and generic projects.
+description: Create well-formed justfiles with test ladder patterns, standard recipes (install, build, test, clean, lint, dev, docs), and Makefile compatibility wrappers. Detects project type and generates appropriate recipes for Node.js, Python, Rust, Go, Terraform, and generic projects. Use when creating or fixing a justfile, or adding standard recipes to a project. Triggers include 'justfile', 'just recipes', 'test ladder'.
 ---
 
 # Justfile Assistant

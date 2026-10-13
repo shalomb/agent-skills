@@ -1,6 +1,6 @@
 ---
 name: uv
-description: "Use `uv` instead of pip/python/venv. Run scripts with `uv run script.py`, add deps with `uv add`, use inline script metadata for standalone scripts."
+description: "Use `uv` instead of pip/python/venv. Run scripts with `uv run script.py`, add deps with `uv add`, use inline script metadata for standalone scripts. Use when running Python, installing packages, or creating virtual environments."
 ---
 
 ## Quick Reference

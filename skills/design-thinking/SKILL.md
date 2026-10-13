@@ -1,6 +1,6 @@
 ---
 name: design-thinking
-description: Engage in non-linear design thinking for new ideas or features. Empathizes, defines, ideates, and prototypes to validate constraints before passing structured handoffs (What/Why/Boundaries) to implementation agents.
+description: Engage in non-linear design thinking for new ideas or features. Empathizes, defines, ideates, and prototypes to validate constraints before passing structured handoffs (What/Why/Boundaries) to implementation agents. Use when starting a new idea or feature that is still vague, before brainstorming or planning. Triggers include 'design thinking', 'empathize', 'what should we build'.
 ---
 
 # Design Thinking (/design)
