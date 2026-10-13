@@ -19,6 +19,10 @@ To audit active links and registered commands:
 make status
 ```
 
+`make install` links by absolute path, so after moving or re-cloning the repo, run it again to repoint every agent.
+
+External skill collections (for example [obra/superpowers](https://github.com/obra/superpowers)) are not part of this repo. If you symlink them into `skills/`, the links are git-ignored (see `.gitignore`).
+
 See [docs/reference/slash-commands.md](docs/reference/slash-commands.md) for details on defining and compiling custom commands.
 
 ---

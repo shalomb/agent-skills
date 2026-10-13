@@ -44,3 +44,20 @@ node_modules/
 # (*.env.template files ARE committed — they're public stubs, not secrets)
 *.env
 !*.env.template
+
+# Local symlinks to external skill collections (e.g. obra/superpowers); not portable
+/skills/brainstorming
+/skills/dispatching-parallel-agents
+/skills/executing-plans
+/skills/finishing-a-development-branch
+/skills/receiving-code-review
+/skills/requesting-code-review
+/skills/subagent-driven-development
+/skills/superpowers
+/skills/systematic-debugging
+/skills/test-driven-development
+/skills/using-git-worktrees
+/skills/using-superpowers
+/skills/verification-before-completion
+/skills/writing-plans
+/skills/writing-skills
