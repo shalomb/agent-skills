@@ -78,6 +78,7 @@ recreating it, after checking that it is clean and that nothing is running in it
 
 ```bash
 git -C <old-path> status --porcelain        # must print nothing
+mkdir -p "$ROOT/.worktrees"                  # git worktree move does not create parents
 git worktree move <old-path> "$ROOT/.worktrees/<dir>"
 ```
 
