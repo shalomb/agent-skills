@@ -64,10 +64,19 @@ export default function (pi: ExtensionAPI) {
     notify(lines.length ? `lazygit closed — ${lines.length} uncommitted change(s) in ${repoName}` : `lazygit closed — ${repoName} clean`);
   };
 
+  const spec = {
+    description: "Open lazygit in a tmux popup (no agent turn). `diff` = review layout. Args forwarded to lazygit.",
+    handler: run,
+    getArgumentCompletions: (p: string) => {
+      const opts = ["diff", "status", "branch", "log", "stash"].filter((o) => o.startsWith(p));
+      return opts.length ? opts.map((o) => ({ value: o, label: o })) : null;
+    },
+  };
+  // Publish for group commands (/git lg) — same registry as ~/.pi/agent/extensions/_lib/subcommands.ts,
+  // inlined because this file is symlinked from another repo without that _lib.
+  const shared: Map<string, unknown> = ((globalThis as any)[Symbol.for("pi.extensions.sharedCommands")] ??= new Map());
   for (const name of ["lazygit", "lg"]) {
-    pi.registerCommand(name, {
-      description: "Open lazygit in a tmux popup (no agent turn). `diff` = review layout. Args forwarded to lazygit.",
-      handler: run,
-    });
+    pi.registerCommand(name, spec);
+    shared.set(name, spec);
   }
 }
