@@ -60,7 +60,7 @@ todo brief [--json]    # One-line summary: open, claimed by others, yours, next 
 1. Set `TODO_OWNER` to something unique per agent (`pi:<session>`, `mux:<worktree>`); otherwise it defaults to `user@host:<ppid>`.
 2. Before starting work in a repo with a backlog, run `todo brief`. If the request matches an open task, `todo claim <id>`; if the user says "next" or "go", `todo claim` with no id.
 3. Never work a task claimed by someone else (`[wip: other]`); claims older than 4 h count as stale and can be taken over.
-4. Implement against the card's acceptance criteria. After the commit that satisfies them: `todo done <id> --commit HEAD`. Add `Refs: todo:<id>` to the commit message.
+4. Implement against the card's acceptance criteria. After the commit that satisfies them: `todo done <id> --commit HEAD`. Keep backlog ids out of commit messages, branch names and PRs: the backlog is private bookkeeping and shared repos must not depend on it; the link lives only in the task line (`[commit: <sha>]`).
 5. If you stop without finishing: `todo release <id>`.
 6. Never tick checkboxes by editing TODO.md directly; use the CLI so claims, locking and timestamps stay consistent.
 

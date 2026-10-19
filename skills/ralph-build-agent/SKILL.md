@@ -66,7 +66,7 @@ For each task in TODO.md:
   2. Green  — Write minimal code to make the test pass
   3. Refactor — Clean up; tests stay green
   4. Verify — Run full test suite, apply Farley per-test checklist
-  5. Commit — ACP atomic commit (Conventional Commits format) with `Refs: todo:<id>`
+  5. Commit — ACP atomic commit (Conventional Commits format) (no backlog ids in the message)
   6. Update — `todo done <id> --commit HEAD` (never tick the checkbox by hand)
   7. Next   — Repeat from 0 until `todo claim` reports nothing ready
 ```
