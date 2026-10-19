@@ -19,6 +19,7 @@ class Task:
     depends_on: List[str] = field(default_factory=list)
     section: str = ""
     raw_line: str = ""
+    line_no: int = -1
 
     @property
     def wsjf_score(self) -> float:

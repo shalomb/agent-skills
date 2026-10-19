@@ -14,7 +14,7 @@ from todo_navigator.dag import (
     find_matching_targets,
     get_all_task_ids,
     remove_dependency,
-    sort_tasks_wsjf,
+    replan_todo_file,
 )
 from todo_navigator.editor import (
     handle_express_edit,
@@ -376,15 +376,7 @@ def cmd_replan(args: argparse.Namespace) -> int:
         print(f"❌ No active TODO.md found at {todo_file}.")
         return 1
 
-    pre, tasks, post = parse_todo_file(todo_file)
-    sorted_tasks = sort_tasks_wsjf(tasks)
-
-    new_lines = list(pre)
-    for t in sorted_tasks:
-        new_lines.append(t.to_markdown_line())
-    new_lines.extend(post)
-
-    todo_file.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
+    replan_todo_file(todo_file)
     print(f"✅ Re-planned backlog in [{todo_file.name}](file://{todo_file}) by topological WSJF waves.")
     return 0
 

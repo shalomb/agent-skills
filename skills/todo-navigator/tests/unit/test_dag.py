@@ -12,9 +12,22 @@ from todo_navigator.dag import (
     detect_cycle,
     find_matching_targets,
     remove_dependency,
+    replan_todo_file,
     sort_tasks_wsjf,
 )
 from todo_navigator.models import Task
+
+SECTIONED_TODO = (
+    "# Backlog\n"
+    "\n"
+    "## CRITICAL\n"
+    "- [ ] Fix crash <!-- [id: fix-crash] [prio: P0] -->\n"
+    "\n"
+    "## LATER\n"
+    "- [ ] Add export <!-- [id: add-export] [prio: P2] -->\n"
+    "\n"
+    "Footer notes.\n"
+)
 
 
 class TestDAG(unittest.TestCase):
@@ -81,6 +94,46 @@ class TestDAG(unittest.TestCase):
             ok_rm, msg_rm = remove_dependency(repo_root, "b", "a")
             self.assertTrue(ok_rm)
             self.assertIn("no longer depends on 'a'", msg_rm)
+
+    def test_dependency_edits_keep_tasks_in_their_sections(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo_file = repo_root / "TODO.md"
+            todo_file.write_text(SECTIONED_TODO, encoding="utf-8")
+
+            add_dependency(repo_root, "add-export", "fix-crash")
+            remove_dependency(repo_root, "add-export", "fix-crash")
+
+            self.assertEqual(todo_file.read_text(encoding="utf-8"), SECTIONED_TODO)
+
+    def test_replan_reorders_within_sections_only(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            todo_file = Path(td) / "TODO.md"
+            todo_file.write_text(
+                "# Backlog\n"
+                "\n"
+                "## CRITICAL\n"
+                "- [ ] Fix crash <!-- [id: fix-crash] [prio: P0] -->\n"
+                "\n"
+                "## LATER\n"
+                "- [ ] Low <!-- [id: low] [prio: P2] -->\n"
+                "- [ ] High <!-- [id: high] [prio: P2] [wsjf: 9.0/1.0] -->\n",
+                encoding="utf-8",
+            )
+
+            replan_todo_file(todo_file)
+
+            self.assertEqual(
+                todo_file.read_text(encoding="utf-8"),
+                "# Backlog\n"
+                "\n"
+                "## CRITICAL\n"
+                "- [ ] Fix crash <!-- [id: fix-crash] [prio: P0] -->\n"
+                "\n"
+                "## LATER\n"
+                "- [ ] High <!-- [id: high] [prio: P2] [wsjf: 9.0/1.0] -->\n"
+                "- [ ] Low <!-- [id: low] [prio: P2] -->\n",
+            )
 
     def test_find_matching_targets(self) -> None:
         with tempfile.TemporaryDirectory() as td:

@@ -152,7 +152,7 @@ def parse_todo_file(todo_path: Path) -> Tuple[List[str], List[Task], List[str]]:
     current_h2 = ""
     current_h3 = ""
 
-    for line in lines:
+    for line_no, line in enumerate(lines):
         stripped = line.strip()
         m_h2 = re.match(r"^##\s+(.*)$", stripped)
         if m_h2:
@@ -166,6 +166,7 @@ def parse_todo_file(todo_path: Path) -> Tuple[List[str], List[Task], List[str]]:
         current_section = current_h2 or current_h3
         task = parse_todo_line(line, current_section=current_section)
         if task:
+            task.line_no = line_no
             in_tasks = True
             tasks.append(task)
         elif not in_tasks:

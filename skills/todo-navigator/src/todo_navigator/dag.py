@@ -151,10 +151,36 @@ def sort_tasks_wsjf(tasks: List[Task]) -> List[Task]:
     return completed + sorted_uncompleted
 
 
+def _rewrite_task_lines(todo_path: Path, placements: List[Tuple[int, Task]]) -> None:
+    """Writes tasks onto their original line slots, leaving headings and prose untouched."""
+    lines = todo_path.read_text(encoding="utf-8").splitlines()
+    for line_no, task in placements:
+        lines[line_no] = task.to_markdown_line()
+    todo_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def replan_todo_file(todo_path: Path) -> None:
+    """Reorders tasks by topological WSJF waves within each section, keeping section membership."""
+    _, tasks, _ = parse_todo_file(todo_path)
+    rank = {id(t): i for i, t in enumerate(sort_tasks_wsjf(tasks))}
+
+    by_section: Dict[str, List[Task]] = {}
+    for t in tasks:
+        by_section.setdefault(t.section, []).append(t)
+
+    placements: List[Tuple[int, Task]] = []
+    for section_tasks in by_section.values():
+        slots = [t.line_no for t in section_tasks]
+        ordered = sorted(section_tasks, key=lambda t: rank[id(t)])
+        placements.extend(zip(slots, ordered))
+
+    _rewrite_task_lines(todo_path, placements)
+
+
 def add_dependency(repo_root: Path, task_id: str, dep_id: str, force_shadow: bool = False) -> Tuple[bool, str]:
     """Adds dep_id to task_id's depends_on list in TODO.md, checking for cycles."""
     todo_path = get_active_todo_path(repo_root, force_shadow=force_shadow)
-    pre, tasks, post = parse_todo_file(todo_path)
+    _, tasks, _ = parse_todo_file(todo_path)
 
     target_task = next((t for t in tasks if t.id == task_id), None)
     if not target_task:
@@ -173,20 +199,14 @@ def add_dependency(repo_root: Path, task_id: str, dep_id: str, force_shadow: boo
         target_task.depends_on.remove(dep_id)
         return False, f"Cannot add dependency: circular cycle detected ({' -> '.join(cycle)})"
 
-    # Write updated TODO.md
-    new_lines = list(pre)
-    for t in tasks:
-        new_lines.append(t.to_markdown_line())
-    new_lines.extend(post)
-    todo_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
-
+    _rewrite_task_lines(todo_path, [(target_task.line_no, target_task)])
     return True, f"Added dependency: '{task_id}' now depends on '{dep_id}'."
 
 
 def remove_dependency(repo_root: Path, task_id: str, dep_id: str, force_shadow: bool = False) -> Tuple[bool, str]:
     """Removes dep_id from task_id's depends_on list in TODO.md."""
     todo_path = get_active_todo_path(repo_root, force_shadow=force_shadow)
-    pre, tasks, post = parse_todo_file(todo_path)
+    _, tasks, _ = parse_todo_file(todo_path)
 
     target_task = next((t for t in tasks if t.id == task_id), None)
     if not target_task:
@@ -196,10 +216,5 @@ def remove_dependency(repo_root: Path, task_id: str, dep_id: str, force_shadow: 
         return True, f"Task '{task_id}' does not depend on '{dep_id}'."
 
     target_task.depends_on.remove(dep_id)
-    new_lines = list(pre)
-    for t in tasks:
-        new_lines.append(t.to_markdown_line())
-    new_lines.extend(post)
-    todo_path.write_text("\n".join(new_lines) + "\n", encoding="utf-8")
-
+    _rewrite_task_lines(todo_path, [(target_task.line_no, target_task)])
     return True, f"Removed dependency: '{task_id}' no longer depends on '{dep_id}'."
