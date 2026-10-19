@@ -7,6 +7,7 @@ import subprocess
 import sys
 from typing import List, Optional
 
+from todo_navigator.claims import brief, claim, claim_next, complete, release
 from todo_navigator.dag import (
     add_dependency,
     compute_waves,
@@ -224,6 +225,8 @@ def cmd_next(args: argparse.Namespace) -> int:
     _, tasks, _ = parse_todo_file(todo_file)
     completed_ids = {t.id for t in tasks if t.completed}
     unblocked = [t for t in tasks if not t.completed and all(d in completed_ids for d in t.depends_on)]
+    me = current_owner()
+    unblocked = [t for t in unblocked if not t.wip or t.wip == me]
 
     if not unblocked:
         if any(not t.completed for t in tasks):
@@ -381,6 +384,93 @@ def cmd_replan(args: argparse.Namespace) -> int:
     return 0
 
 
+def current_owner() -> str:
+    """Claim owner: $TODO_OWNER (agents set e.g. pi:<session>), else user@host:<parent pid>."""
+    import os
+    import socket
+
+    return os.environ.get("TODO_OWNER") or f"{os.environ.get('USER', 'user')}@{socket.gethostname()}:{os.getppid()}"
+
+
+def _todo_or_fail(args: argparse.Namespace):
+    repo_root = get_repo_root()
+    todo_file = get_active_todo_path(repo_root, force_shadow=getattr(args, "shadow", False))
+    if not todo_file.exists():
+        print(f"❌ No active TODO.md found at {todo_file}.", file=sys.stderr)
+        return repo_root, None
+    return repo_root, todo_file
+
+
+def cmd_claim(args: argparse.Namespace) -> int:
+    """Claims a task (or the next ready one) for this agent and prints its card."""
+    repo_root, todo_file = _todo_or_fail(args)
+    if not todo_file:
+        return 1
+    owner = args.owner or current_owner()
+    if args.target:
+        ok, msg = claim(todo_file, args.target, owner)
+        print(msg)
+        if not ok:
+            return 1
+        task_id = args.target
+    else:
+        task = claim_next(todo_file, owner)
+        if not task:
+            print("Nothing ready to claim (all open tasks are blocked or claimed).")
+            return 0
+        task_id = task.id
+        print(f"Claimed '{task_id}' for {owner}.")
+    card = get_shadow_dir(repo_root) / "tasks" / f"{task_id}.md"
+    if not card.exists():
+        _, tasks, _ = parse_todo_file(todo_file)
+        title = next((t.title for t in tasks if t.id == task_id), task_id)
+        scaffold_task_card(card, task_id, title)
+    print(f"Card: {card}")
+    print(card.read_text(encoding="utf-8"))
+    print(f"When finished: todo done {task_id} --commit HEAD   To give up: todo release {task_id}")
+    return 0
+
+
+def cmd_done(args: argparse.Namespace) -> int:
+    _, todo_file = _todo_or_fail(args)
+    if not todo_file:
+        return 1
+    commit = args.commit
+    if commit == "HEAD":
+        r = subprocess.run(["git", "rev-parse", "--short", "HEAD"], capture_output=True, text=True, check=False)
+        commit = r.stdout.strip()
+    ok, msg = complete(todo_file, args.target, commit=commit or "")
+    print(msg)
+    return 0 if ok else 1
+
+
+def cmd_release(args: argparse.Namespace) -> int:
+    _, todo_file = _todo_or_fail(args)
+    if not todo_file:
+        return 1
+    ok, msg = release(todo_file, args.target, args.owner or current_owner(), force=args.force)
+    print(msg)
+    return 0 if ok else 1
+
+
+def cmd_brief(args: argparse.Namespace) -> int:
+    """Backlog summary for agent context injection. Silent (exit 0, no output) when no backlog."""
+    import json
+
+    repo_root = get_repo_root()
+    todo_file = get_active_todo_path(repo_root, force_shadow=getattr(args, "shadow", False))
+    if not todo_file.exists():
+        return 0
+    b = brief(todo_file, args.owner or current_owner())
+    if args.json:
+        print(json.dumps(b))
+        return 0
+    nxt = f"next ready: {b['next']['id']} ({b['next']['priority']})" if b["next"] else "nothing ready"
+    mine = ", ".join(m["id"] for m in b["mine"]) or "none"
+    print(f"Backlog {todo_file}: {b['open']} open, {len(b['claimed'])} claimed by others, yours: {mine}; {nxt}.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Constructs the unified CLI argument parser."""
     parser = argparse.ArgumentParser(
@@ -451,6 +541,28 @@ def build_parser() -> argparse.ArgumentParser:
     # replan
     p_replan = subparsers.add_parser("replan", help="Topologically sort backlog by WSJF")
     p_replan.set_defaults(func=cmd_replan)
+
+    # claim / done / release / brief (multi-agent coordination)
+    p_claim = subparsers.add_parser("claim", help="Claim a task (default: next ready) for this agent")
+    p_claim.add_argument("target", nargs="?", default="", help="Task ID (default: next ready task)")
+    p_claim.add_argument("--as", dest="owner", help="Owner (default: $TODO_OWNER or user@host:ppid)")
+    p_claim.set_defaults(func=cmd_claim)
+
+    p_done = subparsers.add_parser("done", help="Mark a task done, recording time and commit")
+    p_done.add_argument("target", help="Task ID")
+    p_done.add_argument("--commit", help="Commit sha (HEAD = current)")
+    p_done.set_defaults(func=cmd_done)
+
+    p_release = subparsers.add_parser("release", help="Give up a claim")
+    p_release.add_argument("target", help="Task ID")
+    p_release.add_argument("--as", dest="owner", help="Owner (default: $TODO_OWNER)")
+    p_release.add_argument("--force", action="store_true", help="Release someone else's claim")
+    p_release.set_defaults(func=cmd_release)
+
+    p_brief = subparsers.add_parser("brief", help="One-line backlog summary for agent context")
+    p_brief.add_argument("--json", action="store_true")
+    p_brief.add_argument("--as", dest="owner")
+    p_brief.set_defaults(func=cmd_brief)
 
     return parser
 

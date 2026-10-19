@@ -47,7 +47,22 @@ todo edit              # Edit master TODO.md in Vim tmux popup
 todo edit <query>      # Edit card in Vim (multi-file args in tmux popup)
 todo edit <query> done # Express mark done
 todo edit <query> add <text> # Express add acceptance criterion
+
+# Multi-agent coordination (claims are tags on the task line, file-locked)
+todo claim [id]        # Claim id, or the next ready task nobody holds; prints the card
+todo done <id> --commit HEAD   # Tick it, record time + commit, clear the claim
+todo release <id>      # Give a claim back (--force for someone else's)
+todo brief [--json]    # One-line summary: open, claimed by others, yours, next ready
 ```
+
+## Agent protocol (any agent, any harness)
+
+1. Set `TODO_OWNER` to something unique per agent (`pi:<session>`, `mux:<worktree>`); otherwise it defaults to `user@host:<ppid>`.
+2. Before starting work in a repo with a backlog, run `todo brief`. If the request matches an open task, `todo claim <id>`; if the user says "next" or "go", `todo claim` with no id.
+3. Never work a task claimed by someone else (`[wip: other]`); claims older than 4 h count as stale and can be taken over.
+4. Implement against the card's acceptance criteria. After the commit that satisfies them: `todo done <id> --commit HEAD`. Add `Refs: todo:<id>` to the commit message.
+5. If you stop without finishing: `todo release <id>`.
+6. Never tick checkboxes by editing TODO.md directly; use the CLI so claims, locking and timestamps stay consistent.
 
 ## Detailed References
 

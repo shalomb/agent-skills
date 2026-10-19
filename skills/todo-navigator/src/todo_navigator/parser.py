@@ -100,6 +100,7 @@ def parse_todo_line(line: str, current_section: str = "") -> Optional[Task]:
     wsjf_cost = 1.0
     wsjf_size = 1.0
     deps: List[str] = []
+    extra: dict = {}
 
     if comment:
         tags = re.findall(r"\[([a-zA-Z0-9_-]+):\s*([^\]]+)\]", comment)
@@ -120,6 +121,8 @@ def parse_todo_line(line: str, current_section: str = "") -> Optional[Task]:
                         wsjf_size = float(parts[1])
                     except ValueError:
                         pass
+            elif k in ("wip", "since", "done", "commit"):
+                extra[k] = v
 
     if not task_id:
         task_id = generate_task_id(title)
@@ -134,6 +137,10 @@ def parse_todo_line(line: str, current_section: str = "") -> Optional[Task]:
         depends_on=deps,
         section=current_section,
         raw_line=line,
+        wip=extra.get("wip", ""),
+        wip_since=extra.get("since", ""),
+        done_at=extra.get("done", ""),
+        commit=extra.get("commit", ""),
     )
 
 

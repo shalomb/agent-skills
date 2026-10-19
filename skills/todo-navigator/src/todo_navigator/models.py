@@ -20,6 +20,10 @@ class Task:
     section: str = ""
     raw_line: str = ""
     line_no: int = -1
+    wip: str = ""
+    wip_since: str = ""
+    done_at: str = ""
+    commit: str = ""
 
     @property
     def wsjf_score(self) -> float:
@@ -34,5 +38,13 @@ class Task:
             tags.append(f"depends: {','.join(self.depends_on)}")
         if self.wsjf_cost != 1.0 or self.wsjf_size != 1.0:
             tags.append(f"wsjf: {self.wsjf_cost}/{self.wsjf_size}")
+        if self.wip:
+            tags.append(f"wip: {self.wip}")
+            if self.wip_since:
+                tags.append(f"since: {self.wip_since}")
+        if self.done_at:
+            tags.append(f"done: {self.done_at}")
+        if self.commit:
+            tags.append(f"commit: {self.commit}")
         tag_str = " ".join(f"[{t}]" for t in tags)
         return f"- {checkbox} {self.title} <!-- {tag_str} -->"
