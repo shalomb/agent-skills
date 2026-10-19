@@ -67,6 +67,18 @@ class ClaimCliTest(unittest.TestCase):
         out = self.todo("next", owner="pi:B").stdout
         self.assertIn("Next Actionable Task: Add export", out)
 
+    def test_owner_defaults_to_the_pi_session_when_todo_owner_is_unset(self) -> None:
+        env = {k: v for k, v in self.env.items() if k != "TODO_OWNER"}
+        env["PI_SESSION_ID"] = "abcdef12-3456-7890"
+        subprocess.run(
+            [sys.executable, "-m", "todo_navigator.cli", "claim"],
+            cwd=self.repo,
+            env=env,
+            check=True,
+            capture_output=True,
+        )
+        self.assertIn("[wip: pi:abcdef12]", (self.repo / "TODO.md").read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

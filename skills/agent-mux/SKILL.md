@@ -48,7 +48,7 @@ The orchestrator's job is **routing, not implementing**.
 | Apply state transitions | Commit or push code |
 | Triage Bart rejections into TODO entries | Rebase branches manually |
 | Decide wave ordering | Investigate root causes inline |
-| Update TODO.md status | Open PRs |
+| Update TODO.md status via `todo claim <id> --as mux:<id>` / `todo done <id> --commit <sha>` / `todo release <id> --force` (never hand-edit checkboxes) | Open PRs |
 
 If you find yourself running `git`, `uv run pytest`, or editing source files — **stop**.
 Write a TODO entry and dispatch an agent instead.

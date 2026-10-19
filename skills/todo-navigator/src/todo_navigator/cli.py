@@ -385,11 +385,15 @@ def cmd_replan(args: argparse.Namespace) -> int:
 
 
 def current_owner() -> str:
-    """Claim owner: $TODO_OWNER (agents set e.g. pi:<session>), else user@host:<parent pid>."""
+    """Claim owner: $TODO_OWNER, else pi:<PI_SESSION_ID[:8]> inside pi, else user@host:<parent pid>."""
     import os
     import socket
 
-    return os.environ.get("TODO_OWNER") or f"{os.environ.get('USER', 'user')}@{socket.gethostname()}:{os.getppid()}"
+    if os.environ.get("TODO_OWNER"):
+        return os.environ["TODO_OWNER"]
+    if os.environ.get("PI_SESSION_ID"):
+        return f"pi:{os.environ['PI_SESSION_ID'][:8]}"
+    return f"{os.environ.get('USER', 'user')}@{socket.gethostname()}:{os.getppid()}"
 
 
 def _todo_or_fail(args: argparse.Namespace):

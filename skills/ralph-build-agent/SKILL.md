@@ -61,14 +61,18 @@ repeats automatically until every task is done.
 
 ```
 For each task in TODO.md:
+  0. Claim  — `todo claim` (next ready task nobody else holds; prints its card)
   1. Red    — Write a failing test that describes the desired behaviour
   2. Green  — Write minimal code to make the test pass
   3. Refactor — Clean up; tests stay green
   4. Verify — Run full test suite, apply Farley per-test checklist
-  5. Commit — ACP atomic commit (Conventional Commits format)
-  6. Update — Mark task complete in TODO.md
-  7. Next   — Move to the next task; repeat until TODO.md is burned down
+  5. Commit — ACP atomic commit (Conventional Commits format) with `Refs: todo:<id>`
+  6. Update — `todo done <id> --commit HEAD` (never tick the checkbox by hand)
+  7. Next   — Repeat from 0 until `todo claim` reports nothing ready
 ```
+
+When several agents share one backlog, `todo claim` is the only safe way to pick
+work: it is file-locked and skips tasks other agents hold (see todo-navigator).
 
 ## Key Standards (read these)
 - `references/ralph.md` — persona, TDD rules, Farley checklist
