@@ -291,6 +291,7 @@ jq -n --arg j "($jql) AND issuetype = Epic AND statusCategory != Done ORDER BY s
 
 - Hyperlink across systems with full URLs: Jira browse URL, tracker issue/blob URL (on a pushed branch), repository URL. Never cite local paths or scratch files; the reader does not have the author's machine. Restate key facts inline.
 - Distinguish *Done* (delivered) from *Won't Do* (duplicate, stalled, superseded). Closure comments state what was delivered, descoped or carried forward, with evidence links; a duplicate links its survivor.
+- Workflows may offer only `Done` to close, with no resolution field on the transition screen, so Won't Do / Duplicate cannot be set via the API (`resolution` is rejected as "not on the appropriate screen"). Close with an explanatory comment and a label, or set the resolution in the UI.
 - Epic Status / epic-specific status fields can differ from the workflow status. Check both.
 
 ### Read a Jira board
