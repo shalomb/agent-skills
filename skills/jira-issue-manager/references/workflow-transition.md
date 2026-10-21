@@ -10,7 +10,7 @@ When a field is missing:
 3. The issue returns to its original state
 4. A rejection email is sent to the user
 
-**You cannot trust the CLI exit code or success message.** Always verify via REST after transitioning.
+**You cannot trust the CLI exit code or success message.** A bounced transition may leave only an automation comment on the issue (listing the missing fields) and no other signal: after transitioning, check both the status and the issue's latest comments. Always verify via REST after transitioning.
 
 ```bash
 # Transition

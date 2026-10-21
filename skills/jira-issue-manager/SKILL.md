@@ -261,6 +261,38 @@ POST /rest/api/3/issueLink
 }
 ```
 
+### Saved filters (the `jira` CLI has no `filter` command)
+
+A filter URL `…/issues/?filter=N` is read via REST, then its JQL is run with the search endpoint.
+Pass credentials explicitly (`-a user:token` from `~/.netrc`); relying on netrc auto-detection can fail.
+
+```bash
+H=https://<your-jira-host>/rest/api/3
+jql=$(http -b -a "$u:$p" GET $H/filter/<N> | jq -r .jql)        # also .name, .owner.displayName
+jq -n --arg j "($jql) AND issuetype = Epic AND statusCategory != Done ORDER BY status, key" \
+  '{jql:$j,fields:["summary","status","assignee"],maxResults:100}' \
+ | http -b -a "$u:$p" POST $H/search/jql \
+ | jq -r '.issues[]|[.key,.fields.status.name,(.fields.assignee.displayName//"-"),.fields.summary]|@tsv'
+```
+
+- Use `POST /search/jql` (the old `/search` is removed). Wrap the filter JQL in parentheses before adding clauses.
+- Prefer `statusCategory != Done` over status names: workflows differ per project.
+- Account IDs inside JQL resolve with `GET /user?accountId=...`. Do not use `user/search?query=<first name>`: it returns dozens of matches.
+
+### Reviewing a set of epics
+
+1. Pull `updated`, the latest comments, child-issue counts, parent, due date and assignee for each epic into scratch JSON, then filter with `jq` by date. Keep raw data out of the conversation.
+2. Staleness signals: due date passed; linked tracker issue closed while the epic is open; no comment for many weeks; active comments on an epic still in an intake state; very short description with no acceptance criteria.
+3. Check a bounced transition via the issue's latest comments, not only its status (see `references/workflow-transition.md`).
+4. Do discovery before changing anything. Restructuring or splitting epics is a planning decision: surface the facts and leave the split to the owners.
+5. Do not guess owners from commit authorship alone; ask when evidence is thin.
+
+### Links and closure comments
+
+- Hyperlink across systems with full URLs: Jira browse URL, tracker issue/blob URL (on a pushed branch), repository URL. Never cite local paths or scratch files; the reader does not have the author's machine. Restate key facts inline.
+- Distinguish *Done* (delivered) from *Won't Do* (duplicate, stalled, superseded). Closure comments state what was delivered, descoped or carried forward, with evidence links; a duplicate links its survivor.
+- Epic Status / epic-specific status fields can differ from the workflow status. Check both.
+
 ### Read a Jira board
 
 Board UI URLs (`/jira/software/c/projects/X/boards/Y`) are not readable by web fetch.
