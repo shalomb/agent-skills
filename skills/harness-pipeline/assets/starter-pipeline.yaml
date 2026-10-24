@@ -1,0 +1,28 @@
+---
+pipeline:
+  name: Starter Deployment Pipeline
+  identifier: starter_deployment_pipeline
+  projectIdentifier: default_project
+  orgIdentifier: default_org
+  stages:
+    - stage:
+        name: Deployment Stage
+        identifier: deploy_stage
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: ShellScript
+                  name: Run Deployment Script
+                  identifier: run_deploy_script
+                  spec:
+                    shell: Bash
+                    onDelegate: true
+                    source:
+                      type: Inline
+                      spec:
+                        script: |-
+                          #!/bin/bash
+                          set -euo pipefail
+                          echo "Starting pipeline deployment for <+pipeline.identifier>..."
