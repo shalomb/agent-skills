@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# sig — thin, safe wrapper around signal-cli for send/receive/list.
+# Usage: sig self <msg> | send <+number> <msg> | group <name> <msg>
+#        sig groups | receive [seconds] | account
+# Env: SIGNAL_ACCOUNT (E.164; default: the only registered account)
+#      SIG_DRY_RUN=1   print the signal-cli command instead of running it
+set -euo pipefail
+
+die() { echo "sig: $*" >&2; exit 1; }
+command -v signal-cli > /dev/null || die "signal-cli not found"
+
+run() { if [[ -n "${SIG_DRY_RUN:-}" ]]; then printf '%q ' signal-cli "$@"; echo; else signal-cli "$@"; fi; }
+
+account() {
+  if [[ -n "${SIGNAL_ACCOUNT:-}" ]]; then echo "$SIGNAL_ACCOUNT"; return; fi
+  local accts
+  accts="$(signal-cli listAccounts | rg -o '\+[0-9]+')" || die "no accounts registered"
+  [[ "$(wc -l <<< "$accts")" -eq 1 ]] || die "several accounts; set SIGNAL_ACCOUNT"
+  echo "$accts"
+}
+
+daemon_running() { pgrep -f 'org.asamk.signal.Main.* daemon' > /dev/null; }
+
+cmd="${1:-}"; shift || true
+case "$cmd" in
+  account) account ;;
+  self)
+    [[ $# -ge 1 ]] || die "usage: sig self <message>"
+    A="$(account)"; run -a "$A" send --note-to-self -m "$*" ;;
+  send)
+    [[ $# -ge 2 ]] || die "usage: sig send <+number> <message>"
+    A="$(account)"; to="$1"; shift
+    [[ "$to" =~ ^\+[0-9]+$ ]] || die "recipient must be E.164 (+123...)"
+    run -a "$A" send -m "$*" "$to" ;;
+  groups)
+    A="$(account)"
+    signal-cli -a "$A" -o json listGroups | jq -r '.[] | "\(.name)\t\(.id)"' ;;
+  group)
+    [[ $# -ge 2 ]] || die "usage: sig group <exact name> <message>"
+    A="$(account)"; name="$1"; shift
+    ids="$(signal-cli -a "$A" -o json listGroups | jq -r --arg n "$name" '.[]|select(.name==$n)|.id')"
+    [[ -n "$ids" ]] || die "no group named '$name' (see: sig groups)"
+    [[ "$(wc -l <<< "$ids")" -eq 1 ]] || die "several groups named '$name'"
+    run -a "$A" send -g "$ids" -m "$*" ;;
+  receive)
+    daemon_running && die "a signal-cli daemon owns this account; use its JSON-RPC/SSE instead"
+    A="$(account)"; run -a "$A" -o json receive -t "${1:-5}" --ignore-attachments ;;
+  *) die "usage: sig self|send|group|groups|receive|account" ;;
+esac
