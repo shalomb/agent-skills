@@ -7,3 +7,4 @@ manifest.json
 .env.local
 *.pyc
 __pycache__/
+schemas/
