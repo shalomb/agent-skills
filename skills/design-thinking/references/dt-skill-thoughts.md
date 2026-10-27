@@ -17,7 +17,7 @@
 
 *   **Context Management:** Use subagents for discovery and summarization to manage massive context effectively without losing critical details.
 *   **Living Documentation:** Documentation evolves *with* the design process, not at the end of it.
-    *   **Real-time Glossary:** Fuzzy terms are clarified and updated in `CONTEXT.md` the minute they are redefined.
+    *   **Real-time Glossary:** Fuzzy terms are clarified and updated in `GLOSSARY.md` the minute they are redefined.
     *   **Just-in-Time Decisions:** Non-trivial decisions are logged in ADRs immediately, capturing rationale and trade-offs.
 *   **The Handoff Artefacts:** BDD/Gherkin specs are the primary "What." However, they aren't enough. The handoff must also include Domain Glossaries, Architectural Boundaries (C4), targeted ADRs, and explicit Anti-Goals.
 *   **Backend Design Matters:** Design thinking is not just for UI wireframes. It applies equally to backend architecture (e.g., designing an observability stack, choosing metrics, and defining data visualization flows).

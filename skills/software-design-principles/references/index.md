@@ -6,3 +6,5 @@ This index acts as a quick reference registry for all software design principles
 - **[Principle of Least Surprise](principles/least-surprise.md)**: System behavior, interfaces, and defaults should align with standard conventions and natural user expectations.
 - **[Principle of Least Privilege](principles/least-privilege.md)**: Components and users should be granted only the absolute minimum permissions needed to perform their intended function.
 - **[Commensurate Scaling](principles/commensurate-scaling.md)**: As demand increases by an order of magnitude N, the resources, costs, and efforts to handle it should not exceed N. This is achieved via statelessness, sharding, caching, and horizontal scaling.
+- **[Least-Resistance Defaults](principles/least-resistance-defaults.md)**: Pre-select the most likely choice with its reason, so the cheapest action accepts it and effort goes only where the person disagrees.
+- **[Send the Delta, Not the Document](principles/delta-not-document.md)**: When a reviewed artefact comes back, compute and send only the anchored changes, not the whole document.

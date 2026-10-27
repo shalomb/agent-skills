@@ -47,12 +47,21 @@ Before finalizing an ADR, the agent must self-critique against these common arch
 
 ## When to Write an ADR
 
-Write one when:
+Write one only when all three are true (the test from Matt Pocock's `domain-modeling` skill):
+
+1. **Hard to reverse:** changing the decision later costs a lot.
+2. **Surprising without context:** a future reader will ask "why did they do it this way?"
+3. **A real trade-off:** genuine alternatives existed, and one won for specific reasons.
+
+If one is missing, skip the ADR. Decisions that often pass the test:
 - Choosing between two or more valid implementation approaches with distinct trade-offs
 - Adding, changing, or removing a public API, service boundary, or subsystem contract
 - Accepting technical debt or operational burden that future maintainers will question
-- Introducing a new technology, architectural pattern, or paradigm
+- Introducing a new technology, architectural pattern, or paradigm that carries lock-in
 - Deviating from an established codebase pattern with good reason
+- Constraints not visible in the code (compliance, partner contracts, latency budgets)
+
+A design spec can collect several settled decisions first and *promote* them to ADRs once agreed. Record the planned promotion in the spec (for example a `promotes_to` front-matter field).
 
 Skip for:
 - Routine bug fixes with an obvious solution

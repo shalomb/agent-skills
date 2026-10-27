@@ -24,7 +24,7 @@ Implementation agents are highly susceptible to instruction-following bias. If t
 The handoff from Design to Implementation must strictly be:
 - **The What:** Behavior constraints (BDD / Gherkin specs).
 - **The Why:** Immutable constraints and trade-offs (ADRs).
-- **The Boundaries:** Ubiquitous language (Domain Glossary / `CONTEXT.md`) and component fences (C4 Models).
+- **The Boundaries:** Ubiquitous language (Domain Glossary / `GLOSSARY.md`) and component fences (C4 Models).
 - **The Anti-Goals:** Explicitly what *not* to do.
 
 ## 7. Backend Design is Still Design Thinking
