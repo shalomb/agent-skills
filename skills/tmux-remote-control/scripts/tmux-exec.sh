@@ -295,6 +295,29 @@ ensure_helper() {
     return 0
 }
 
+# The Return that follows a long multi-line payload is sometimes swallowed by
+# the pane's line editor, leaving the command typed but never run.  A started
+# command either has finished (ecfile non-empty) or is running as a child of the
+# pane's shell.  Neither after a short grace period means the Enter was lost:
+# resend it (bounded).  (outfile exists from mktemp, so it cannot signal start.)
+confirm_started() {
+    local pane_id=$1 outfile=$2 ecfile=$3; shift 3
+    local -a sock=( "$@" )
+    local shell_pid attempt i
+    shell_pid=$(tmux "${sock[@]}" display-message -p -t "${pane_id}" '#{pane_pid}' 2>/dev/null) \
+        || return 0
+    [[ -n ${shell_pid} ]] || return 0
+    for attempt in 1 2 3; do
+        for i in {1..10}; do
+            [[ -s ${ecfile} ]] && return 0
+            pgrep -P "${shell_pid}" >/dev/null 2>&1 && return 0
+            sleep 0.1
+        done
+        tmux "${sock[@]}" send-keys -t "${pane_id}" C-m
+    done
+    return 0
+}
+
 # Lay the command out one statement per line, indented two spaces.
 #
 # Splits ONLY on top-level `;` and existing newlines.  A `;` inside quotes,
@@ -465,6 +488,7 @@ exec_shell() {
         tmux "${sock[@]}" send-keys -t "${pane_id}" C-u
         tmux "${sock[@]}" send-keys -t "${pane_id}" -l -- "${payload}"
         tmux "${sock[@]}" send-keys -t "${pane_id}" C-m
+        confirm_started "${pane_id}" "${outfile}" "${ecfile}" "${sock[@]}"
 
         # Release flock — state file guards against concurrent use now.
         flock -u 200
