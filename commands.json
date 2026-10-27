@@ -237,6 +237,54 @@
         "If the backlog is empty, bootstrap initial tasks and goal from git context and specifications.",
         "Highlight critical path bottlenecks (tasks blocking downstream items) and execution waves."
       ]
+    },
+    {
+      "name": "wizard",
+      "skill": "wizard",
+      "title": "Interactive Bash Wizard Generator",
+      "description": "Generate an interactive bash wizard for human-only steps (OAuth, CI secrets, cutover)",
+      "default_action": "scoping and authoring an interactive bash wizard",
+      "instructions": [
+        "Scope every manual step the human must take, values to capture, and where they land (.env, gh secret, gh var).",
+        "Generate an interactive bash script using template.sh library helpers (stage, open_url, ask_secret, write_env, set_secret, confirm).",
+        "Verify with shellcheck and bash -n; do not execute end-to-end yourself (it blocks on human input)."
+      ]
+    },
+    {
+      "name": "domain",
+      "skill": "domain-modeling",
+      "title": "Domain Modeling & Ubiquitous Language",
+      "description": "Build and sharpen a project domain model, GLOSSARY.md, and bounded contexts",
+      "default_action": "sharpening domain terminology and updating GLOSSARY.md",
+      "instructions": [
+        "Actively challenge vague or conflicting domain terms against GLOSSARY.md / GLOSSARY-MAP.md.",
+        "Enforce strict GLOSSARY.md format with concise definitions and explicit _Avoid_ synonym lists.",
+        "Cross-reference domain terminology with code and offer ADRs only for hard-to-reverse architectural trade-offs."
+      ]
+    },
+    {
+      "name": "design-code",
+      "skill": "codebase-design",
+      "title": "Deep Module Codebase Design",
+      "description": "Design deep modules, narrow interfaces, and locate clean seams (Ousterhout)",
+      "default_action": "designing or deepening module interfaces and locating seams",
+      "instructions": [
+        "Apply John Ousterhout Philosophy of Software Design: maximize depth (lots of functionality behind a small, simple interface).",
+        "Locate clean seams (Michael Feathers) and test strictly at the public interface.",
+        "Apply the Deletion Test: if removing a module eliminates no complexity and scatters it to callers, it was an artificial pass-through."
+      ]
+    },
+    {
+      "name": "tickets",
+      "skill": "to-tickets",
+      "title": "Tracer-Bullet Tickets Generator",
+      "description": "Decompose plans or specs into tracer-bullet vertical slices with explicit blocking DAG edges",
+      "default_action": "breaking down work into tracer-bullet tickets with dependency edges",
+      "instructions": [
+        "Break work into vertical tracer-bullet slices cutting through all layers (schema, API, UI, test).",
+        "Declare explicit blocking DAG edges (tickets that gate each slice).",
+        "Handle wide refactors using expand-contract rather than forcing broken horizontal stubs."
+      ]
     }
   ]
 }

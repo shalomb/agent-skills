@@ -9,22 +9,9 @@ export default function (pi: ExtensionAPI) {
     description: "Navigate project tasks, inspect roadmap, and view or edit task cards in shadow cache",
     handler: async (args, ctx) => {
       const query = args.trim();
-
-      // No args: open the master TODO in nvim in a tmux split to the right (no agent turn).
-      if (!query) {
-        if (!process.env.TMUX) {
-          ctx.ui.notify("/todo needs a tmux session for the split", "error");
-          return;
-        }
-        const res = await pi.exec("tmux", [
-          "split-window", "-h", "-c", ctx.cwd, "VISUAL=nvim EDITOR=nvim todo edit --no-popup",
-        ]);
-        if (res.code !== 0) {
-          ctx.ui.notify(`todo split failed (${res.code}): ${res.stderr.trim()}`, "error");
-        }
-        return;
-      }
-      const message = `/skill:todo-navigator ${query}`;
+      const message = query
+        ? `/skill:todo-navigator ${query}`
+        : "/skill:todo-navigator Please assist with navigating project tasks and inspecting the roadmap.";
 
       if (!ctx.isIdle()) {
         pi.sendUserMessage(message, { deliverAs: "followUp" });
