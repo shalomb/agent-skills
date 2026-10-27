@@ -257,6 +257,87 @@ write_helper() {
 	EOF
 }
 
+# Wait until the pane sits at a quiet shell prompt: no child process under the
+# pane's shell and an unchanged screen for ~0.3 s.  Keys sent while a prompt
+# hook is still running can be discarded or mangled by the tty (observed: the
+# Enter, and even C-u, lost -> command typed but never run).  Bounded; returns
+# 0 regardless so a wedged pane degrades to the old behaviour.
+wait_pane_quiet() {
+    local pane_id=$1 max=${2:-5}; shift 2
+    local -a sock=( "$@" )
+    local shell_pid prev="" cur stable=0 i
+    shell_pid=$(tmux "${sock[@]}" display-message -p -t "${pane_id}" '#{pane_pid}' 2>/dev/null)
+    for (( i = 0; i < max * 10; i++ )); do
+        cur=$(tmux "${sock[@]}" capture-pane -p -t "${pane_id}" 2>/dev/null | md5sum)
+        if [[ ${cur} == "${prev}" ]] \
+           && { [[ -z ${shell_pid} ]] || ! pgrep -P "${shell_pid}" >/dev/null 2>&1; }; then
+            (( ++stable >= 3 )) && return 0
+        else
+            stable=0
+        fi
+        prev=${cur}
+        sleep 0.1
+    done
+    return 0
+}
+
+# Discard whatever is half-typed in the pane's line editor, including earlier
+# lines of a multi-line buffer (C-u only kills the current line, and in vi mode
+# only back to the insertion point).  C-c at an idle prompt drops the whole
+# buffer, but must never hit a foreground process, so it is used only when the
+# shell has no children; otherwise fall back to C-u.
+reset_input_line() {
+    local pane_id=$1; shift
+    local -a sock=( "$@" )
+    local shell_pid
+    shell_pid=$(tmux "${sock[@]}" display-message -p -t "${pane_id}" '#{pane_pid}' 2>/dev/null)
+    if [[ -n ${shell_pid} ]] && ! pgrep -P "${shell_pid}" >/dev/null 2>&1; then
+        tmux "${sock[@]}" send-keys -t "${pane_id}" C-c
+        wait_pane_quiet "${pane_id}" 3 "${sock[@]}"
+    else
+        tmux "${sock[@]}" send-keys -t "${pane_id}" C-u
+    fi
+}
+
+# Type TEXT into the pane.  A literal LF is NOT typed as such: readline setups
+# often bind C-j to nothing (e.g. `"\C-j": ""` "taken up by tmux"), which would
+# swallow every line break and glue lines together (`echo $i` + `done` ->
+# `echo $idone`).  Each newline is sent as Return instead, exactly as a person
+# typing the lines would (PS2 continues the command).  No trailing Return.
+send_text() {
+    local pane_id=$1 text=$2; shift 2
+    local -a sock=( "$@" )
+    local line first=1
+    while :; do
+        line=${text%%$'\n'*}
+        (( first )) || tmux "${sock[@]}" send-keys -t "${pane_id}" C-m
+        first=0
+        [[ -n ${line} ]] && tmux "${sock[@]}" send-keys -t "${pane_id}" -l -- "${line}"
+        [[ ${text} == *$'\n'* ]] || break
+        text=${text#*$'\n'}
+    done
+}
+
+# Type TEXT + Return, then wait for FILE to become non-empty; resend Return up
+# to 3 times if it does not (lost-Enter recovery).  Returns 0 when confirmed.
+send_line_confirmed() {
+    local pane_id=$1 text=$2 file=$3; shift 3
+    local -a sock=( "$@" )
+    local attempt i
+    wait_pane_quiet "${pane_id}" 5 "${sock[@]}"
+    reset_input_line "${pane_id}" "${sock[@]}"
+    send_text "${pane_id}" "${text}" "${sock[@]}"
+    tmux "${sock[@]}" send-keys -t "${pane_id}" C-m
+    for attempt in 1 2 3; do
+        for i in {1..15}; do
+            [[ -s ${file} ]] && return 0
+            sleep 0.1
+        done
+        tmux "${sock[@]}" send-keys -t "${pane_id}" C-m
+    done
+    [[ -s ${file} ]]
+}
+
 # Define the helper in the pane if it is missing.  Re-sent whenever absent,
 # so a restarted shell or a fresh pane self-heals with no user setup.
 ensure_helper() {
@@ -267,19 +348,9 @@ ensure_helper() {
     probe=$(mktemp "${STATE_DIR}/probe.XXXXXX")
 
     # Trailing `clear` keeps this bookkeeping out of the visible pane.
-    tmux "${sock[@]}" send-keys -t "${pane_id}" C-u
-    tmux "${sock[@]}" send-keys -t "${pane_id}" -l -- \
-        "declare -F ${HELPER_FN} >/dev/null 2>&1; echo \$? > ${probe}; clear"
-    tmux "${sock[@]}" send-keys -t "${pane_id}" C-m
-
-    # Wait briefly for the probe to land; a busy or wedged pane just falls
-    # through to a re-definition, which is harmless.
-    local i
-    # shellcheck disable=SC2034  # loop counter is intentionally unused
-    for i in {1..25}; do
-        [[ -s ${probe} ]] && break
-        sleep 0.1
-    done
+    send_line_confirmed "${pane_id}" \
+        "declare -F ${HELPER_FN} >/dev/null 2>&1; echo \$? > ${probe}; clear" \
+        "${probe}" "${sock[@]}" || true
 
     local defined=1
     [[ -s ${probe} ]] && defined=$(<"${probe}")
@@ -288,10 +359,14 @@ ensure_helper() {
     (( defined == 0 )) && return 0
 
     write_helper
-    tmux "${sock[@]}" send-keys -t "${pane_id}" C-u
-    tmux "${sock[@]}" send-keys -t "${pane_id}" -l -- \
-        "TMUX_EXEC_DIR=${STATE_DIR}; . ${HELPER_FILE}; clear"
-    tmux "${sock[@]}" send-keys -t "${pane_id}" C-m
+    local done_marker
+    done_marker=$(mktemp "${STATE_DIR}/helper-done.XXXXXX")
+    : > "${done_marker}"
+    send_line_confirmed "${pane_id}" \
+        "TMUX_EXEC_DIR=${STATE_DIR}; . ${HELPER_FILE}; echo ok > ${done_marker}; clear" \
+        "${done_marker}" "${sock[@]}" || true
+    rm -f -- "${done_marker}"
+    wait_pane_quiet "${pane_id}" 5 "${sock[@]}"
     return 0
 }
 
@@ -480,13 +555,22 @@ exec_shell() {
         # a narrow split.  PS2 is blanked by the helper, so the body renders
         # flush-left with no continuation markers.
         local payload
-        printf -v payload '%s (\n%s\n)' "${HELPER_FN}" "$(indent_body "${command}")"
+        # A heredoc body and its terminator must start at column 0, so a command
+        # containing one is sent verbatim instead of being re-indented.
+        local body
+        if [[ ${command} == *'<<'* ]]; then
+            body=${command}
+        else
+            body=$(indent_body "${command}")
+        fi
+        printf -v payload '%s (\n%s\n)' "${HELPER_FN}" "${body}"
 
         write_state "${sf}" "${channel}" "${command}" "shell" \
                     "${outfile}" "${ecfile}"
 
-        tmux "${sock[@]}" send-keys -t "${pane_id}" C-u
-        tmux "${sock[@]}" send-keys -t "${pane_id}" -l -- "${payload}"
+        wait_pane_quiet "${pane_id}" 5 "${sock[@]}"
+        reset_input_line "${pane_id}" "${sock[@]}"
+        send_text "${pane_id}" "${payload}" "${sock[@]}"
         tmux "${sock[@]}" send-keys -t "${pane_id}" C-m
         confirm_started "${pane_id}" "${outfile}" "${ecfile}" "${sock[@]}"
 
@@ -573,7 +657,7 @@ exec_detached() {
         try_harvest_previous "${sf}" "${pane_id}" "${sock[@]}" || exit 1
 
         tmux "${sock[@]}" send-keys -t "${pane_id}" C-u
-        tmux "${sock[@]}" send-keys -t "${pane_id}" -l -- "${command}"
+        send_text "${pane_id}" "${command}" "${sock[@]}"
         tmux "${sock[@]}" send-keys -t "${pane_id}" C-m
 
         flock -u 200
@@ -622,7 +706,7 @@ exec_interactive() {
         write_state "${sf}" "" "${command}" "interactive" "" ""
 
         tmux "${sock[@]}" send-keys -t "${pane_id}" C-u
-        tmux "${sock[@]}" send-keys -t "${pane_id}" -l -- "${command}"
+        send_text "${pane_id}" "${command}" "${sock[@]}"
         tmux "${sock[@]}" send-keys -t "${pane_id}" C-m
 
         flock -u 200
