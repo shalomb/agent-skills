@@ -135,3 +135,41 @@ class TestNetworkBoundaries:
 
     def test_ranges_match_adr_0003(self):
         assert PARALLELS_RANGES + TAILNET_RANGES == (PARALLELS, TAILNET_V4, TAILNET_V6)
+
+
+class TestServeRoots:
+    def test_serves_the_shadow_root_at_r_and_the_source_root_at_src(self):
+        conf = render()
+        assert re.search(r'location /r/ \{[^}]*alias "/home/u/.cache/agent-skills/";', conf)
+        assert re.search(r'location /src/ \{[^}]*alias "/mnt/host/projects/";', conf)
+
+    def test_everything_else_is_not_found(self):
+        assert re.search(r"location / \{\s*return 404;\s*\}", render())
+
+    def test_any_path_segment_starting_with_a_dot_is_not_found(self):
+        conf = render()
+        match = re.search(r'location ~ "([^"]+)" \{\s*return 404;\s*\}', conf)
+        assert match is not None
+        pattern = re.compile(match.group(1))
+        for hidden in ["/src/a/.env", "/src/a/.git/config", "/r/.hidden/report.html", "/.ssh/id_ed25519", "/r/x/.", "/src/.a/b"]:
+            assert pattern.search(hidden), hidden
+        for visible in ["/src/a/env", "/r/a.b/c.html", "/r/understand/index.html"]:
+            assert not pattern.search(visible), visible
+
+    def test_dot_rule_is_a_regex_location_so_it_wins_over_the_prefix_locations(self):
+        conf = render()
+        assert "^~" not in conf  # a ^~ prefix location would beat the regex location
+
+    @pytest.mark.parametrize("root", ["/home/u/.cache/agent-skills", "/mnt/host/projects"])
+    def test_symlinks_below_each_root_are_refused(self, root):
+        # `on`, not `if_not_owner`: the link and its target usually have the same
+        # owner (the user), so if_not_owner would follow ~/projects/x/keys -> ~/.aws.
+        assert f'disable_symlinks on from="{root}/";' in render()
+
+    def test_directories_list_unless_they_hold_an_index_html(self):
+        conf = render()
+        assert directives(conf, "autoindex") == ["on", "on"]
+        assert directives(conf, "index") == ["index.html", "index.html"]
+
+    def test_runs_as_the_invoking_user(self):
+        assert directives(render(), "user") == []
