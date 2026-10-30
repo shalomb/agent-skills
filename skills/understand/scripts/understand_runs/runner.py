@@ -388,3 +388,13 @@ def run_report(
 
 
 make_report = run_report
+
+__all__ = [
+    "GitRequiredError",
+    "Lens",
+    "ReportResult",
+    "make_report",
+    "parse_command",
+    "run_report",
+]
+
