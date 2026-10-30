@@ -1,7 +1,7 @@
 """The report page: graph, sections in file order, glossary last."""
 import html
 import json
-from pathlib import Path
+import re
 from urllib.parse import quote
 
 from .anchors import source_view_href
@@ -101,14 +101,107 @@ def _node_item(node):
         f'<a href="{html.escape(view_href(node.path, node.line))}">{html.escape(node.label)}</a>{summary}</li>')
 
 
+def _slug(text):
+    cleaned = re.sub(r"[^a-zA-Z0-9]+", "-", text.strip()).strip("-").lower()
+    return cleaned or "item"
+
+
+def _glossary_draft(contexts, collisions):
+    lines = ["# Glossary\n"]
+    valid = [c for c in contexts if c.terms]
+    if not valid:
+        lines.append("## domain\n\n**Term**:\nDefinition of term.\n")
+        return "\n".join(lines).strip() + "\n"
+    for ctx in valid:
+        lines.append(f"## {ctx.name}\n")
+        for t in ctx.terms:
+            lines.append(f"**{t.term}**:\n{t.meaning}\n")
+    if collisions:
+        lines.append("## Collisions\n")
+        for term_name, _, occs in collisions:
+            ctx_meanings = ", ".join(f'"{c}" ({t.meaning})' for c, t in occs)
+            lines.append(f"- **{term_name}**: multiple meanings in {ctx_meanings}\n")
+    return "\n".join(lines).strip() + "\n"
+
+
 def _glossary_section(bundle):
+    term_occs = {}
+    for ctx in bundle.glossary_contexts:
+        for t in ctx.terms:
+            key = t.term.strip().lower()
+            if not key:
+                continue
+            term_occs.setdefault(key, []).append((ctx.name, t))
+
+    collisions = []
+    collided_keys = set()
+    for key, occs in sorted(term_occs.items()):
+        contexts_seen = {c for c, _ in occs}
+        if len(contexts_seen) < 2:
+            continue
+        meanings_set = {t.meaning.strip() for _, t in occs}
+        if len(meanings_set) <= 1:
+            continue
+        canonical_term = occs[0][1].term
+        collisions.append((canonical_term, key, occs))
+        collided_keys.add(key)
+
+    draft_text = _glossary_draft(bundle.glossary_contexts, collisions)
+    draft_block = (
+        '<div class="glossary-draft">'
+        '<h3>Glossary draft</h3>'
+        '<p>Suggested <code>GLOSSARY.md</code> draft that can be applied to the repository:</p>'
+        f'<pre class="glossary-draft-text"><code>{html.escape(draft_text)}</code></pre></div>'
+    )
+
     if not any(c.terms for c in bundle.glossary_contexts):
-        return "<p>This report defines no terms.</p>"
+        return f"<p>This report defines no terms.</p>{draft_block}"
+
+    seen_ids = set()
+    term_anchors = {}
+    for ctx in bundle.glossary_contexts:
+        for t in ctx.terms:
+            base = f"glossary-{_slug(ctx.name)}-{_slug(t.term)}"
+            cand = base
+            counter = 2
+            while cand in seen_ids:
+                cand = f"{base}-{counter}"
+                counter += 1
+            seen_ids.add(cand)
+            term_anchors[(ctx.name, t.term.strip().lower())] = cand
+
     out = []
+
+    if collisions:
+        collision_items = []
+        for term_name, key, occs in collisions:
+            links = []
+            for ctx_name, t in occs:
+                anchor = term_anchors.get((ctx_name, key), "")
+                href = f"#{anchor}" if anchor else "#"
+                links.append(f'<a href="{html.escape(href)}">{html.escape(ctx_name)}</a>: {html.escape(t.meaning)}')
+            links_html = " &middot; ".join(links)
+            collision_items.append(f'<li><strong>{html.escape(term_name)}</strong>: {links_html}</li>')
+        collisions_html = "".join(collision_items)
+        out.append(
+            '<div class="glossary-collisions">'
+            '<h3>Collisions</h3>'
+            '<p>The following terms have different meanings across contexts:</p>'
+            f'<ul class="collision-list">{collisions_html}</ul></div>'
+        )
+
     for context in bundle.glossary_contexts:
-        terms = "".join(
-            f"<dt>{html.escape(t.term)}</dt><dd>{html.escape(t.meaning)}</dd>" for t in context.terms)
-        out.append(f"<h3>{html.escape(context.name)}</h3><dl class=\"terms\">{terms}</dl>")
+        items = []
+        for t in context.terms:
+            k = t.term.strip().lower()
+            anchor = term_anchors.get((context.name, k), "")
+            id_attr = f' id="{html.escape(anchor)}"' if anchor else ""
+            badge = ' <span class="collision-badge">collision</span>' if k in collided_keys else ""
+            items.append(f"<dt{id_attr}>{html.escape(t.term)}{badge}</dt><dd>{html.escape(t.meaning)}</dd>")
+        terms_html = "".join(items)
+        out.append(f'<h3>{html.escape(context.name)}</h3><dl class="terms">{terms_html}</dl>')
+
+    out.append(draft_block)
     return "".join(out)
 
 

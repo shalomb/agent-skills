@@ -81,6 +81,11 @@ ul.nodes .summary{display:block; color:var(--md-sys-color-on-surface-variant); m
 dl.terms{font-family:var(--md-sys-typescale-body-font); font-size:14.5px}
 dl.terms dt{font-weight:650; margin-top:12px}
 dl.terms dd{margin:2px 0 0}
+.collision-badge{font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.05em; background:var(--md-sys-color-error-container); color:var(--md-sys-color-on-error-container); padding:2px 6px; border-radius:4px; margin-left:6px; vertical-align:middle}
+.glossary-collisions{margin-bottom:20px; padding:12px 16px; background:var(--md-sys-color-surface-container, var(--md-sys-color-surface-variant)); border-radius:8px}
+.glossary-collisions h3{margin-top:0}
+.glossary-draft{margin-top:24px; padding:12px 16px; border:1px dashed var(--md-sys-color-outline-variant); border-radius:8px}
+.glossary-draft-text{white-space:pre-wrap; font-family:var(--md-sys-typescale-code-font); font-size:13px}
 /* source view */
 table.source{width:100%; font-family:var(--md-sys-typescale-code-font); font-size:13px; line-height:1.55; border:0}
 table.source th,table.source td{border:0; padding:0 12px; vertical-align:top}
