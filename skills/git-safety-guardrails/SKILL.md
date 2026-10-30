@@ -127,3 +127,30 @@ git push origin main --force
 ```
 
 Always force-push `main` with care — coordinate with the team first.
+
+## Removing a file from a pushed PR branch
+
+When a file was committed by mistake (for example an untracked local file
+swept in by `git add <dir>`), take it out of every commit, keep the local copy,
+and prove the PR no longer has it.
+
+```bash
+cp path/to/file /tmp/file.bak                        # keep the local copy
+OLD=$(git rev-parse HEAD)
+GIT_EDITOR=true GIT_SEQUENCE_EDITOR=true git rebase origin/main --exec \
+  'if git cat-file -e HEAD:path/to/file 2>/dev/null; then git rm -q --cached path/to/file && git commit -q --amend --no-edit; fi'
+cmp path/to/file /tmp/file.bak                         # still there, still untracked
+git diff origin/main...HEAD --stat                     # only the intended files
+
+# Lease on the exact old SHA, with an explicit refspec
+git push --force-with-lease=<branch>:$OLD origin HEAD:<branch>
+
+# Verify on GitHub, not from push output
+gh pr view <n> --json headRefOid,files -q '.headRefOid[0:8]+" "+([.files[].path]|join(", "))'
+```
+
+- A bare `git push --force-with-lease` can print "Everything up-to-date"
+  and push nothing (for example when the upstream is set up by rebasing).
+  Always check that the PR head SHA changed.
+- `rebase --exec` keeps GPG signing; check with `git log --format='%G? %h' origin/main..HEAD`.
+- Reply to and resolve any review or code-scanning threads on the removed file.
