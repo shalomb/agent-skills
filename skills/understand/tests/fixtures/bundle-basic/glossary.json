@@ -1,0 +1,10 @@
+{
+  "contexts": [
+    {
+      "name": "runtime",
+      "terms": [
+        {"term": "Config", "meaning": "The settings that the server starts with."}
+      ]
+    }
+  ]
+}

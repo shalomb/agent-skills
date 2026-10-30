@@ -28,3 +28,6 @@ markers = [
   "browser: needs chromium-headless-shell",
   "mmdc: needs mmdc and chromium-headless-shell",
 ]
+
+[tool.pyright]
+extraPaths = ["scripts", "tests/renderer"]
