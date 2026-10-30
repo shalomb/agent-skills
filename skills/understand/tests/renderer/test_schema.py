@@ -143,3 +143,13 @@ def test_sections_are_ordered_by_file_name(bundle):
 
 def test_cited_files_cover_nodes_and_anchors(bundle):
     assert load_bundle(bundle).cited_paths() == ["src/app.ts", "src/config.ts"]
+
+
+def test_section_keeps_its_file_name_for_the_anchor_index(bundle):
+    assert [s.filename for s in load_bundle(bundle).sections] == ["01-overview.md", "02-configuration.md"]
+
+
+def test_html_file_in_the_bundle_is_refused_because_agents_do_not_write_html(bundle):
+    (bundle / "sections" / "extra.html").write_text("<p>hi</p>")
+    with pytest.raises(BundleError, match=r"extra.html.*HTML"):
+        load_bundle(bundle)

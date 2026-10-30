@@ -43,6 +43,7 @@ class Edge:
 @dataclass(frozen=True)
 class Section:
     anchor_id: str
+    filename: str
     title: str
     markdown: str
 
@@ -81,6 +82,7 @@ class Bundle:
 
 def load_bundle(directory):
     directory = Path(directory)
+    _refuse_html(directory)
     graph = _read_required_json(directory / "graph.json")
     _check_version(graph)
     nodes = _nodes(graph.get("nodes"))
@@ -93,6 +95,12 @@ def load_bundle(directory):
         glossary_contexts=_glossary(_read_optional_json(directory / "glossary.json")),
         extra_anchors=_anchors(_read_optional_json(directory / "anchors.json")),
     )
+
+
+def _refuse_html(directory):
+    for found in sorted(directory.rglob("*.html")):
+        raise BundleError(
+            f"{found.relative_to(directory)}: a bundle holds no HTML; agents do not write HTML (ADR 0001)")
 
 
 def _read_required_json(path):
@@ -198,7 +206,7 @@ def _sections(directory):
             raise BundleError(f"sections/{f.name}: duplicate section name {anchor_id!r}")
         seen.add(anchor_id)
         text = f.read_text(encoding="utf-8")
-        sections.append(Section(anchor_id, _first_heading(text) or anchor_id.replace("-", " ").title(), text))
+        sections.append(Section(anchor_id, f.name, _first_heading(text) or anchor_id.replace("-", " ").title(), text))
     return sections
 
 
