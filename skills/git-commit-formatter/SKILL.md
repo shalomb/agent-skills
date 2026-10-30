@@ -31,6 +31,10 @@ An Atomic Commit MUST contain the following elements. Do not commit until all co
 3. **Documentation:** You MUST include updates to end-user documentation or inline code comments that reflect the change and explain non-obvious logic.
 4. **Cleanliness:** You MUST remove all temporary files, build artifacts, debug statements (`console.log`, `print`), and leftover comments before committing.
 5. **Intentional Staging:** Use `git add <files>` for specific paths. **Do NOT use `git add .`** blindly.
+   - A directory path (`git add scripts`, `git add src/`) is `git add .` for that folder: it also stages untracked files you did not write.
+   - Run `git status --short` before every commit. If any `??` file sits in a folder you are staging, name your files one by one.
+   - Check what is staged with `git diff --cached --stat` before `git commit`.
+6. **No emoji in commit text:** Commit hooks may reject emoji such as 🤖 as AI-attribution markers. Describe it in words ("robot emoji"); the emoji can stay in the code.
 
 For the full formal specification, including rationale and TDD mapping, read: **[references/acp-spec.md](references/acp-spec.md)**
 
