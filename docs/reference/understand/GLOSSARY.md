@@ -25,8 +25,12 @@ The fixed program that turns a bundle into a report.
 _Avoid_: builder, generator
 
 **Report server**:
-The user-level web server that shows the shadow directory to the host computer.
+The user-level web server that shows the shadow directory to devices on the Parallels network and the tailnet.
 _Avoid_: web server
+
+**Tailnet**:
+The private Tailscale network of the devices that the owner signs in.
+_Avoid_: VPN, mesh
 
 **Serve root**:
 A directory that the report server is permitted to show.

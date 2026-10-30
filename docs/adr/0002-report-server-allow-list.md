@@ -1,6 +1,6 @@
 # 0002. The report server exposes an allow list, not $HOME
 
-- Status: Accepted
+- Status: Accepted, amended by [0003](0003-report-server-tailnet-access.md) (network rule)
 - Date: 2026-10-30
 - Context: /understand design session, node `delivery.serve-root` ([decision tree](../explanation/understand/decision-tree.md))
 
@@ -17,7 +17,7 @@
 
 ## Rules
 
-- The server MUST listen only on the Parallels address and MUST deny clients outside `10.211.55.0/24`.
+- ~~The server MUST listen only on the Parallels address and MUST deny clients outside `10.211.55.0/24`.~~ Superseded by [ADR 0003](0003-report-server-tailnet-access.md).
 - The server MUST return 404 for any path segment that starts with `.`.
 - The server MUST NOT follow symlinks that leave a serve root.
 - The server MUST run as the user, not as root.

@@ -13,9 +13,11 @@ Stance: long horizon
     Reason: reports can be regenerated; one slug convention links todos and reports. Round 1.
 - [settled] command.surface -- /understand [topic] with pr and diff subcommands; /understand-pr and /understand-diff are aliases.
     Reason: one entry point with completion, like /git. Round 1.
-- [settled] delivery -- Always-on nginx serves the shadow directory, only on the Parallels network (10.211.55.0/24). The agent prints the URL.
+- [settled] delivery -- Always-on nginx serves the shadow directory to the Parallels network and the tailnet. The agent prints the URL for each network.
     Reason: no $BROWSER in the VM; nginx 1.30 is installed (system unit masked, www-data, blog on :80 all interfaces). Round 2 note.
-  - [settled] delivery.nginx-mode -- User-level nginx under a systemd --user unit, port 8787, allow 10.211.55.0/24 only.
+  - [settled] delivery.nginx-mode -- User-level nginx under a systemd --user unit, port 8787.
+  - [settled] delivery.networks -- Accept 10.211.55.0/24 (Parallels) and 100.64.0.0/10 + fd7a:115c:a1e0::/48 (tailnet); deny others; Parallels keeps working when tailscale is down.
+      Reason: user wants access from tailnet devices. Chat after round 6 (amends delivery). ADR: ../../adr/0003-report-server-tailnet-access.md
       Reason: no sudo, runs as user, blog site untouched. Round 3.
     - [settled] delivery.serve-root -- Allow list: /r/ -> shadow root, /src/ -> ~/projects; dotfiles and dot dirs blocked; default 404.
         Reason: $HOME holds ssh keys, aws creds, vault token, auth.json; a deny list leaks on one miss. Round 4. ADR: ../../adr/0002-report-server-allow-list.md

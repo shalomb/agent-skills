@@ -12,6 +12,7 @@ related:
 promotes_to:
   - ../../adr/0001-bundle-and-fixed-renderer.md
   - ../../adr/0002-report-server-allow-list.md
+  - ../../adr/0003-report-server-tailnet-access.md
 ---
 
 # /understand: handoff spec
@@ -42,7 +43,7 @@ flowchart TB
   C --> R[Renderer: report, source views, index]
   R --> S[(Shadow directory)]
   S --> N[Report server]
-  N --> B[Reader on host Mac]
+  N --> B[Reader: host Mac or tailnet device]
 ```
 
 ## Goal and success metric
@@ -157,18 +158,22 @@ flowchart TB
 
 ### 6. Report server
 
-See [ADR 0002](../../adr/0002-report-server-allow-list.md).
+See [ADR 0002](../../adr/0002-report-server-allow-list.md) and [ADR 0003](../../adr/0003-report-server-tailnet-access.md).
 
 ```mermaid
 flowchart TB
-  B[Host Mac browser] -->|"10.211.55.0/24 only"| N["nginx, systemd --user, 10.211.55.3:8787"]
+  B1[Host Mac browser] -->|"Parallels 10.211.55.0/24"| N["nginx, systemd --user, :8787"]
+  B2[Tailnet device] -->|"tailnet 100.64.0.0/10, fd7a:115c:a1e0::/48"| N
+  B3[Any other client] -.->|denied| N
   N --> R1["/r/ -> shadow root"]
   N --> R2["/src/ -> ~/projects"]
   N -.->|"dot segments, other paths"| X[404]
 ```
 
 - The server MUST run as the user and MUST NOT need sudo.
-- It MUST listen only on the Parallels address and deny other clients.
+- It MUST accept clients from the Parallels network and the tailnet only, and deny all other clients.
+- It MUST keep serving the Parallels network when tailscale is down.
+- The end message MUST give the report URL for each network.
 - It MUST return 404 for any path segment that starts with `.`, and MUST NOT follow symlinks out of a serve root.
 
 ## Anti-goals
@@ -176,7 +181,7 @@ flowchart TB
 - No writes to the repository, ever. The only git write is the temporary pr worktree, in the shadow directory.
 - No agent-written HTML.
 - No network access needed to read a report.
-- No exposure of `$HOME` or dotfiles.
+- No exposure of `$HOME` or dotfiles, on any network.
 - No changes to the system nginx or the blog site.
 
 ## Open decisions
@@ -200,5 +205,5 @@ flowchart TB
 - [Decision tree](../../explanation/understand/decision-tree.md) and [round replies](../../explanation/understand/rounds/)
 - [Architecture views](../../explanation/understand/c4.md)
 - [Glossary](./GLOSSARY.md)
-- [ADR 0001](../../adr/0001-bundle-and-fixed-renderer.md), [ADR 0002](../../adr/0002-report-server-allow-list.md)
+- [ADR 0001](../../adr/0001-bundle-and-fixed-renderer.md), [ADR 0002](../../adr/0002-report-server-allow-list.md), [ADR 0003](../../adr/0003-report-server-tailnet-access.md)
 - [Acceptance scenarios](../../../skills/understand/features/understand.feature)
