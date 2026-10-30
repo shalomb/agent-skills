@@ -120,3 +120,17 @@ class TestInstallDryRun:
         result = cli(["install", "--unit-dir", str(unit_dir), "--no-systemctl"], roots)
         assert result.returncode == 0, result.stderr
         assert (unit_dir / "understand-report-server@.service").is_file()
+
+
+class TestInstallScript:
+    SCRIPT = SERVER_DIR / "install.sh"
+
+    def test_dry_run_through_the_script_prints_the_plan_and_changes_nothing(self, roots, tmp_path):
+        unit_dir = tmp_path / "units"
+        result = subprocess.run(
+            [str(self.SCRIPT), "--dry-run", "--unit-dir", str(unit_dir)],
+            env=roots, capture_output=True, text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert "would write" in result.stdout and "would run: systemctl --user daemon-reload" in result.stdout
+        assert not unit_dir.exists()

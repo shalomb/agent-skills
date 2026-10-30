@@ -48,7 +48,6 @@ ExecStart={python} -m report_server run --network %i --port {port}
 Restart=on-failure
 RestartSec=10
 NoNewPrivileges=yes
-PrivateTmp=yes
 
 [Install]
 WantedBy=default.target
