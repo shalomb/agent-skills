@@ -128,6 +128,19 @@ Confirm:
 
 **Test passes?** You're testing existing behavior. Fix test.
 
+**Code already written before its tests?** That breaks the Iron Law; say so. The
+fallback proof is to break the code on purpose, one behaviour at a time:
+
+1. Remove or break one behaviour (delete the file, invert a condition, return a
+   constant, drop an output string).
+2. Run the tests. At least one must fail. If all pass, that behaviour has no
+   real test.
+3. Restore the code (`cp` from a backup, or `git checkout -- <file>`) and confirm green.
+
+Watch for string asserts that pass for the wrong reason: the expected text may
+also appear elsewhere in the output. Assert on text only the behaviour under
+test produces.
+
 **Test errors?** Fix setup/compilation error, re-run until it fails cleanly on behavior.
 
 ### Seams and Anti-Patterns
