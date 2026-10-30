@@ -11,6 +11,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from understand_plan.docs import generate_docs_bundle
+from understand_plan.models import Lens
+from understand_plan.planner import plan_discovery
+from understand_plan.scanner import scan_directory
 from understand_render.run import render_run
 from understand_runs.slug import get_repo_root, get_repo_slug, is_git_repo
 from understand_runs.storage import create_run_dir, normalize_lens
@@ -21,12 +25,6 @@ IGNORE_DIRS = {".git", ".venv", "venv", "__pycache__", "node_modules", ".cache"}
 
 class GitRequiredError(Exception):
     """Raised when a lens requires a git repository but the target directory has none."""
-
-
-@dataclass(frozen=True)
-class Lens:
-    type: str  # "full" | "topic" | "pr" | "diff"
-    target: str | None = None
 
 
 @dataclass(frozen=True)
@@ -177,6 +175,8 @@ def make_report(
     # Phase 1: plan
     if on_phase:
         on_phase("plan")
+    prescan = scan_directory(repo_path)
+    plan = plan_discovery(prescan, parsed_lens)
 
     # Phase 2: discover
     if on_phase:
@@ -188,7 +188,10 @@ def make_report(
         on_phase("converge")
     temp_bundle_dir = Path(tempfile.mkdtemp(prefix="understand-bundle-"))
     try:
-        summary = _create_bundle(temp_bundle_dir, repo_path, parsed_lens, folders, files)
+        if plan.profile == "docs":
+            summary = generate_docs_bundle(temp_bundle_dir, repo_path, parsed_lens, files)
+        else:
+            summary = _create_bundle(temp_bundle_dir, repo_path, parsed_lens, folders, files)
 
         # Phase 4: render
         if on_phase:

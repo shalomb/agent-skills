@@ -23,6 +23,7 @@ markers = [
   "step-5: topic, pr, and diff lenses",
   "step-6: glossary contexts and collisions",
   "spec-1: spec unit 1, command surface",
+  "spec-2: spec unit 2, discovery plan",
   "spec-3: spec unit 3, bundle and renderer",
   "spec-4: spec unit 4, shadow directory and runs",
   "spec-5: spec unit 5, anchors and glossary",
