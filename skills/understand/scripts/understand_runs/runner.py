@@ -15,6 +15,7 @@ from typing import Any
 import understand_lenses.diff as diff_lens
 import understand_lenses.pr as pr_lens
 import understand_lenses.topic as topic_lens
+from understand_glossary import extract_glossary
 from understand_lenses.models import LensFocus
 from understand_plan.docs import generate_docs_bundle
 from understand_plan.models import Lens
@@ -41,6 +42,7 @@ class ReportResult:
     end_message: str
     focus_set: set[str] = field(default_factory=set)
     seed_nodes: set[str] = field(default_factory=set)
+    glossary: Any = None
 
 
 def parse_command(command_or_args: str) -> Lens:
@@ -273,6 +275,17 @@ def _execute_phases(
                 edges=edges,
             )
 
+        # Glossary extraction (Step 6)
+        glossary_result = extract_glossary(source_root)
+        glossary_data = glossary_result.to_json_dict()
+        (temp_bundle_dir / "glossary.json").write_text(
+            json.dumps(glossary_data, indent=2) + "\n", encoding="utf-8"
+        )
+        if glossary_result.draft:
+            (temp_bundle_dir / "glossary-draft.md").write_text(
+                glossary_result.draft, encoding="utf-8"
+            )
+
         # Phase 4: render
         if on_phase:
             on_phase("render")
@@ -297,6 +310,15 @@ def _execute_phases(
             log=lambda m: None,
         )
 
+        # Copy glossary bundle files to shadow storage run_dir
+        (run_dir / "glossary.json").write_text(
+            json.dumps(glossary_data, indent=2) + "\n", encoding="utf-8"
+        )
+        if glossary_result.draft:
+            (run_dir / "glossary-draft.md").write_text(
+                glossary_result.draft, encoding="utf-8"
+            )
+
         urls = get_report_urls(repo_slug, lens_id, run_dir.name)
         end_message = format_end_message(repo_slug, lens_id, urls, summary=summary)
 
@@ -308,6 +330,7 @@ def _execute_phases(
             end_message=end_message,
             focus_set=focus_set,
             seed_nodes=seed_nodes,
+            glossary=glossary_result,
         )
     finally:
         shutil.rmtree(temp_bundle_dir, ignore_errors=True)
