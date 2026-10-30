@@ -1,0 +1,33 @@
+[project]
+name = "understand"
+version = "0.1.0"
+description = "Renderer for /understand report bundles"
+requires-python = ">=3.11"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest>=8,<9.2",
+  "pytest-bdd>=8",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["scripts"]
+markers = [
+  "wip: scenario whose step is not built yet",
+  "step-1: renderer and bundle schema",
+  "step-2: report server",
+  "step-3: extension and full lens",
+  "step-4: planner and docs profile",
+  "step-5: topic, pr, and diff lenses",
+  "step-6: glossary contexts and collisions",
+  "spec-3: spec unit 3, bundle and renderer",
+  "spec-5: spec unit 5, anchors and glossary",
+  "adr-0001: bundle and fixed renderer",
+  "browser: needs chromium-headless-shell",
+  "mmdc: needs mmdc and chromium-headless-shell",
+]
+
+[tool.pyright]
+extraPaths = ["scripts", "tests/renderer"]

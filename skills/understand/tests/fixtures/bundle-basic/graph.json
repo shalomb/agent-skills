@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "title": "Fixture app",
+  "nodes": [
+    {"label": "App entry", "kind": "file", "path": "src/app.ts", "summary": "Starts the server."},
+    {"label": "Config module", "kind": "file", "path": "src/config.ts", "summary": "Reads the command line."},
+    {"label": "parseConfig", "kind": "function", "path": "src/config.ts", "symbol": "parseConfig", "line": 12, "summary": "Turns argv into a Config."}
+  ],
+  "edges": [
+    {"source": "src/app.ts", "target": "src/config.ts", "kind": "imports"},
+    {"source": "src/app.ts", "target": "src/config.ts::parseConfig", "kind": "calls"}
+  ]
+}
