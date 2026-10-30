@@ -1,5 +1,7 @@
 """Unit tests for finding the VM's own addresses inside a network (pure)."""
 
+# pyright: reportMissingImports=false
+# (pytest comes from `uv run --with`; conftest.py puts report_server on sys.path)
 from __future__ import annotations
 
 import json

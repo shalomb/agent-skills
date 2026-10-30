@@ -1,5 +1,7 @@
 """Unit tests for serve-root resolution."""
 
+# pyright: reportMissingImports=false
+# (report_server is put on sys.path by conftest.py; the editor cannot see that)
 from __future__ import annotations
 
 from pathlib import Path

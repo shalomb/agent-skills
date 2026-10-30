@@ -4,6 +4,8 @@ Used by the scenarios and the integration tests. Nothing here needs root: the
 server gets a temporary prefix, a test port, and loopback addresses.
 """
 
+# pyright: reportMissingImports=false
+# (pytest comes from `uv run --with`; conftest.py puts report_server on sys.path)
 from __future__ import annotations
 
 import http.client

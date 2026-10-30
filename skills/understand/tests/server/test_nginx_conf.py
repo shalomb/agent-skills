@@ -1,5 +1,7 @@
 """Unit tests for the nginx.conf generator (pure: text in, text out)."""
 
+# pyright: reportMissingImports=false
+# (pytest comes from `uv run --with`; conftest.py puts report_server on sys.path)
 from __future__ import annotations
 
 import ipaddress

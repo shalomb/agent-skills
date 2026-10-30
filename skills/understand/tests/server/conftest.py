@@ -4,6 +4,8 @@ The world is a fake home directory laid out like the real one: `projects` is a
 symlink to the directory that holds the repositories, as on the real VM.
 """
 
+# pyright: reportMissingImports=false
+# (pytest comes from `uv run --with`; conftest.py puts report_server on sys.path)
 from __future__ import annotations
 
 import sys

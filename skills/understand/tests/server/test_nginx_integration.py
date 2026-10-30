@@ -3,6 +3,8 @@
 These go beyond the feature file: path tricks, listings, and the `latest` link.
 """
 
+# pyright: reportMissingImports=false
+# (pytest comes from `uv run --with`; conftest.py puts report_server on sys.path)
 from __future__ import annotations
 
 from pathlib import Path
