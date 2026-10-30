@@ -35,10 +35,23 @@ def _listen_directive(address: str, port: int) -> str:
     return f"listen {ip}:{port};"
 
 
+def _allow_directive(cidr: str) -> str:
+    try:
+        network = ipaddress.ip_network(cidr, strict=True)
+    except ValueError as error:
+        raise ValueError(f"permitted range is not a canonical CIDR: {cidr!r} ({error})") from None
+    if "/" not in cidr or network.prefixlen == 0:
+        raise ValueError(f"permitted range must be a bounded CIDR, got {cidr!r}")
+    return f"allow {network};"
+
+
 def render_nginx_conf(params: ServerParams) -> str:
     if not params.listen:
         raise ValueError("listen needs at least one address")
     if not MIN_UNPRIVILEGED_PORT <= params.port <= 65535:
         raise ValueError(f"port must be {MIN_UNPRIVILEGED_PORT}-65535 (no root needed), got {params.port}")
     listens = "\n".join(f"    {_listen_directive(a, params.port)}" for a in params.listen)
-    return f"http {{\n  server {{\n{listens}\n  }}\n}}\n"
+    if not params.permitted:
+        raise ValueError("permitted needs at least one range")
+    rules = "\n".join(f"    {_allow_directive(r)}" for r in params.permitted)
+    return f"http {{\n  server {{\n{listens}\n{rules}\n    deny all;\n\n    location / {{ return 404; }}\n  }}\n}}\n"
