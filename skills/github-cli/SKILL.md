@@ -30,6 +30,7 @@ This skill has a broad command surface and supports powerful API interactions. *
    - **Issue Hierarchy (Parent/Child)**: See `references/issue-hierarchy.guide.md`
    - **Team Management Operations**: See `references/github-team-management.md`
    - **PI Epic Issues**: See `references/epic-issue-template.md` — template, labels, body structure, and the safe issue-rewrite pattern
+   - **PR bot comments and required checks**: See `references/pr-bot-comments.md` — one comment per PR (marker, hash, mention once, delete on pass) and making a check block merges
    - Common developer workflow examples
 
 3. **Team Management Best Practices**:
