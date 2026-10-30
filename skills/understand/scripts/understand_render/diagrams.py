@@ -11,7 +11,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-DEFAULT_TIMEOUT_SECONDS = 60
+DEFAULT_TIMEOUT_SECONDS: float = 60
 
 
 def puppeteer_config(chromium_path):
@@ -19,7 +19,7 @@ def puppeteer_config(chromium_path):
 
 
 class DiagramRenderer:
-    def __init__(self, mmdc_path, chromium_path, log, timeout=DEFAULT_TIMEOUT_SECONDS):
+    def __init__(self, mmdc_path, chromium_path, log, timeout: float = DEFAULT_TIMEOUT_SECONDS):
         self.mmdc_path = mmdc_path
         self.chromium_path = chromium_path
         self.log = log

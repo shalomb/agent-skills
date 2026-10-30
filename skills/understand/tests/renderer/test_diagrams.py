@@ -57,9 +57,11 @@ def test_prerendered_diagram_is_inline_svg_without_xml_prolog(tmp_path, recordin
 def test_each_diagram_gets_its_own_svg_id(tmp_path, recording_mmdc):
     renderer = DiagramRenderer(str(recording_mmdc), CHROMIUM, [].append)
     renderer.render(FLOW)
-    first = (tmp_path / "args.txt").read_text()
+    first = (tmp_path / "args.txt").read_text().split()
     renderer.render(FLOW)
-    assert (tmp_path / "args.txt").read_text() != first
+    second = (tmp_path / "args.txt").read_text().split()
+    assert first[first.index("-I") + 1] == "diagram-1"
+    assert second[second.index("-I") + 1] == "diagram-2"
 
 
 def test_absent_mmdc_falls_back_and_logs(tmp_path):
