@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-from report_server.addresses import addresses_in
-from report_server.networks import NETWORKS
-from report_server.nginx_conf import ServerParams
+from .addresses import addresses_in
+from .networks import NETWORKS
+from .nginx_conf import ServerParams
 
 APP_DIR = "agent-skills/understand-server"
 
