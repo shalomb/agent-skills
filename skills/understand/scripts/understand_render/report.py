@@ -21,10 +21,17 @@ def view_href(path, line=None):
 
 def graph_elements(bundle):
     """Cytoscape elements. Ids are anchor ids, so edges link by anchor, not by position."""
-    nodes = [
-        {"data": {"id": n.anchor_id, "label": n.label, "kind": n.kind, "path": n.path,
-                  "href": view_href(n.path, n.line)}}
-        for n in bundle.nodes]
+    nodes = []
+    for n in bundle.nodes:
+        data = {
+            "id": n.anchor_id,
+            "label": n.label,
+            "kind": n.kind,
+            "path": n.path,
+            "href": view_href(n.path, n.line),
+        }
+        elem = {"data": data, "classes": "dim"} if n.dimmed else {"data": data}
+        nodes.append(elem)
     edges = [
         {"data": {"source": e.source, "target": e.target, "kind": e.kind}}
         for e in bundle.edges]
@@ -88,8 +95,9 @@ def _graph_section(bundle):
 
 def _node_item(node):
     summary = f'<span class="summary">{html.escape(node.summary)}</span>' if node.summary else ""
+    dim_class = ' class="dim"' if node.dimmed else ""
     return (
-        f'<li id="{html.escape(node.anchor_id)}"><span class="kind">{html.escape(node.kind)}</span>'
+        f'<li id="{html.escape(node.anchor_id)}"{dim_class}><span class="kind">{html.escape(node.kind)}</span>'
         f'<a href="{html.escape(view_href(node.path, node.line))}">{html.escape(node.label)}</a>{summary}</li>')
 
 
