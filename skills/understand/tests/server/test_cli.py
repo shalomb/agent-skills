@@ -84,9 +84,15 @@ class TestRunWhenTheNetworkIsAbsent:
         assert result.returncode == 3
         assert "no address in the tailnet network" in result.stderr
 
-    def test_it_creates_no_files_when_it_cannot_start(self, roots, ip_json, tmp_path):
+    def test_it_creates_no_runtime_files_when_it_cannot_start(self, roots, ip_json, tmp_path):
         cli(["run", "--network", "tailnet", "--ip-json", str(ip_json(IP_JSON_TAILSCALE_UP[:1]))], roots)
         assert not (tmp_path / "run").exists()
+
+    def test_the_shadow_root_is_created_when_no_report_exists_yet(self, cli_env, ip_json, tmp_path):
+        (tmp_path / "home" / "projects").mkdir(parents=True)
+        result = cli(["run", "--network", "tailnet", "--ip-json", str(ip_json(IP_JSON_TAILSCALE_UP[:1]))], cli_env)
+        assert result.returncode == 3, result.stderr  # no address, not a missing directory
+        assert (tmp_path / "cache" / "agent-skills").is_dir()
 
     def test_an_unknown_network_is_a_usage_error(self, roots, ip_json):
         result = cli(["run", "--network", "wifi", "--ip-json", str(ip_json([]))], roots)

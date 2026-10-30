@@ -33,7 +33,7 @@ Feature: Show reports to the devices of the owner
     When the device asks for the report index
     Then no report is served to the device
 
-  @wip @step-2
+  @step-2
   Scenario: The host Mac still gets reports when tailscale is down
     Given tailscale is down
     When the host Mac asks for the report index

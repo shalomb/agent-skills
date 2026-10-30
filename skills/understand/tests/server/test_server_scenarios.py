@@ -9,9 +9,12 @@ addresses (see LOOPBACK_PERMITTED in conftest.py for the mapping).
 # (pytest comes from `uv run --with`; conftest.py puts report_server on sys.path)
 from __future__ import annotations
 
+import json
 import os
 import re
 import stat
+import subprocess
+import sys
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
@@ -96,18 +99,36 @@ def device_on_other_interface(world: World):
 
 
 @given("tailscale is down")
-def tailscale_is_down(world: World, started_servers: list, server_params, tmp_path: Path):
-    # With tailscale down the tailnet address does not exist on the VM. 192.0.2.1
-    # (TEST-NET-1) is never a local address, so nginx cannot bind it.
-    tailnet_params = replace(
-        server_params,
-        listen=("192.0.2.1",),
-        run_dir=tmp_path / "run-tailnet",
-        log_dir=tmp_path / "log-tailnet",
-        temp_dir=tmp_path / "tmp-tailnet",
+def tailscale_is_down(world: World, tmp_path: Path):
+    # The VM has no tailnet address. Two things must hold: the tailnet instance
+    # exits non-zero (so systemd retries it), and nginx itself cannot bind the
+    # address if it were asked to. The parallels server (`world.server`) is a
+    # separate process and keeps running through both.
+    ip_json = tmp_path / "ip-no-tailscale.json"
+    ip_json.write_text(json.dumps([{"ifname": "enp0s5", "addr_info": [{"local": "10.211.55.3"}]}]))
+    home = tmp_path / "home-tailnet"
+    (home / "projects").mkdir(parents=True)
+    env = {
+        "PATH": os.environ["PATH"],
+        "HOME": str(home),
+        "XDG_RUNTIME_DIR": str(tmp_path / "run-tailnet"),
+        "XDG_STATE_HOME": str(tmp_path / "state-tailnet"),
+        "PYTHONPATH": str(Path(__file__).resolve().parents[2] / "server"),
+    }
+    result = subprocess.run(
+        [sys.executable, "-m", "report_server", "run", "--network", "tailnet", "--ip-json", str(ip_json)],
+        env=env, capture_output=True, text=True,
+    )
+    assert result.returncode == 3, result.stderr
+    unbindable = replace(
+        world.server.params,
+        listen=("192.0.2.1",),  # TEST-NET-1: never a local address
+        run_dir=tmp_path / "run-unbindable",
+        log_dir=tmp_path / "log-unbindable",
+        temp_dir=tmp_path / "tmp-unbindable",
     )
     with pytest.raises(ServerStartFailed, match="Cannot assign requested address"):
-        RunningNginx(tailnet_params).start()
+        RunningNginx(unbindable).start()
 
 
 @when("the host Mac asks for the report index")

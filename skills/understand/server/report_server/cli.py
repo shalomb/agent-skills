@@ -25,12 +25,14 @@ def _params(args: argparse.Namespace, env: Mapping[str, str]) -> ServerParams:
     ip_json = Path(args.ip_json).read_text() if args.ip_json else subprocess.run(
         ["ip", "-j", "addr", "show"], check=True, capture_output=True, text=True
     ).stdout
-    cache = Path(env.get("XDG_CACHE_HOME") or f"{env['HOME']}/.cache")
+    shadow = Path(env.get("XDG_CACHE_HOME") or f"{env['HOME']}/.cache") / "agent-skills"
+    if args.command == "run":
+        shadow.mkdir(parents=True, exist_ok=True)  # no report may exist yet
     return build_instance(
         args.network,
         parse_ip_addr_json(ip_json),
         port=args.port,
-        shadow_root=resolve_serve_root(cache / "agent-skills"),
+        shadow_root=resolve_serve_root(shadow),
         src_root=resolve_serve_root(Path(env["HOME"]) / "projects"),
         env=env,
     )
