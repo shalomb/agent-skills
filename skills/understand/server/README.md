@@ -1,0 +1,72 @@
+# /understand report server
+
+Serves reports and cited source to the host Mac and to tailnet devices, and to
+no other client. Decisions: [ADR 0002](../../../docs/adr/0002-report-server-allow-list.md),
+[ADR 0003](../../../docs/adr/0003-report-server-tailnet-access.md). Scenarios:
+[report-server.feature](../features/report-server.feature).
+
+It is a user-level nginx (`/usr/sbin/nginx`) started from a generated config. It
+does not use `/etc/nginx`, the system unit, or the blog site on :80, and needs no sudo.
+
+## What it serves
+
+| URL | Directory | Notes |
+| :-- | :-- | :-- |
+| `/r/` | `${XDG_CACHE_HOME:-~/.cache}/agent-skills/` | shadow root |
+| `/src/` | `~/projects` | resolved with `realpath` when the config is generated |
+| anything else | | 404 |
+
+- Any path segment starting with `.` is 404 (also `%2e`, `..` tricks).
+- Every refusal (denied client, hidden file, refused link) answers 404; denials
+  are visible in `error.log` as `access forbidden by rule`.
+- Directories list their entries unless they hold an `index.html`.
+
+## Networks: two independent instances
+
+`understand-report-server@parallels` listens on the VM's address inside `10.211.55.0/24`.
+`understand-report-server@tailnet` listens on the VM's addresses inside `100.64.0.0/10` and
+`fd7a:115c:a1e0::/48`. Both accept clients from all three ranges and deny the rest.
+Neither lists the other as a dependency, so with tailscale down the tailnet unit
+exits 3 (no address) and systemd retries every 10 s, while the Parallels unit keeps serving.
+A user unit cannot be ordered after the system `tailscaled`; retrying is the mechanism.
+No instance ever binds a wildcard, loopback or other interface address.
+
+Runtime files: pid, config, temp under `$XDG_RUNTIME_DIR/agent-skills/understand-server/<network>/`,
+logs under `${XDG_STATE_HOME:-~/.local/state}/agent-skills/understand-server/<network>/`.
+The generator refuses any of these inside a serve root.
+
+## Symlinks
+
+`disable_symlinks on from="<resolved root>/"`. `~/projects` is itself a symlink
+(to a Parallels shared folder), and nginx checks links only *below* the root it is
+given, so the root is resolved once at config time. `if_not_owner` was rejected: the
+user owns both a link and its target (`~/projects/demo/keys -> ~/.aws`), so it would
+follow the link.
+
+**Consequence:** nginx refuses every symlink below a root, including the per-lens
+`latest -> <run>` link of spec unit 4. Use the run directory URL, or have the producer
+write a real `latest/index.html` redirect. Only a real nginx test proves this
+(`TestLatestLink`).
+
+## Commands
+
+```bash
+python3 -m report_server render --network parallels   # print the nginx.conf
+./install.sh --dry-run --enable                       # show what install would do
+./install.sh --enable                                 # write the unit, enable both instances
+```
+
+`install.sh` bakes the absolute path of this directory into the unit
+(`PYTHONPATH`), so install from the final checkout, not a temporary worktree.
+
+## Tests
+
+```bash
+skills/understand/tests/server/run-tests.sh -q
+```
+
+`run-tests.sh` pins `pytest<9` because pytest-bdd 9.0.0 breaks on pytest 9.2.
+Client networks are simulated with loopback source addresses against a real nginx.
+Real IPv6 and tailnet range edges are covered by unit tests of the directives and
+the range arithmetic, not by live traffic; see `test_nginx_conf.py` and
+`test_real_addresses.py`.
