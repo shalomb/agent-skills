@@ -31,6 +31,7 @@ class Node:
     symbol: str | None
     line: int | None
     summary: str
+    dimmed: bool = False
 
 
 @dataclass(frozen=True)
@@ -165,10 +166,12 @@ def _nodes(raw):
         if line is not None and (not isinstance(line, int) or isinstance(line, bool) or line < 1):
             raise BundleError(f'{where}: field "line" must be a positive integer')
         symbol = _optional_str(item, "symbol", where)
+        dimmed = bool(item.get("dimmed", False))
         node = Node(
             anchor_id=node_anchor_id(item["path"], symbol), label=item["label"],
             kind=_str(item, "kind", where, default="file"), path=item["path"],
-            symbol=symbol, line=line, summary=_str(item, "summary", where, default=""))
+            symbol=symbol, line=line, summary=_str(item, "summary", where, default=""),
+            dimmed=dimmed)
         if node.anchor_id in seen:
             raise BundleError(f'{where}: duplicate anchor {node.anchor_id!r}, already used by nodes[{seen[node.anchor_id]}]')
         seen[node.anchor_id] = i
