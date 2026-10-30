@@ -93,6 +93,11 @@ def render_nginx_conf(params: ServerParams) -> str:
     if not MIN_UNPRIVILEGED_PORT <= params.port <= 65535:
         raise ValueError(f"port must be {MIN_UNPRIVILEGED_PORT}-65535 (no root needed), got {params.port}")
     listens = "\n".join(f"    {_listen_directive(a, params.port)}" for a in params.listen)
+    for field in ("run_dir", "log_dir", "temp_dir"):
+        private = Path(_path(getattr(params, field)))
+        for root in (params.shadow_root, params.src_root):
+            if private.is_relative_to(root):
+                raise ValueError(f"{field} {private} must not be inside the serve root {root}")
     if not params.permitted:
         raise ValueError("permitted needs at least one range")
     rules = "\n".join(f"    {_allow_directive(r)}" for r in params.permitted)

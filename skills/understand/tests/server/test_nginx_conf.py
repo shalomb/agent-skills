@@ -20,7 +20,7 @@ PARAMS = ServerParams(
     src_root=Path("/mnt/host/projects"),
     run_dir=Path("/run/user/1000/agent-skills/understand-server/parallels"),
     log_dir=Path("/home/u/.local/state/agent-skills/understand-server/parallels"),
-    temp_dir=Path("/home/u/.cache/agent-skills/understand-server/parallels/tmp"),
+    temp_dir=Path("/run/user/1000/agent-skills/understand-server/parallels/tmp"),
 )
 
 
@@ -173,3 +173,13 @@ class TestServeRoots:
 
     def test_runs_as_the_invoking_user(self):
         assert directives(render(), "user") == []
+
+
+class TestPrivateDirectoriesStayOutOfServeRoots:
+    """pid, log and temp files must never be readable through /r/ or /src/."""
+
+    @pytest.mark.parametrize("field", ["run_dir", "log_dir", "temp_dir"])
+    @pytest.mark.parametrize("inside", ["/home/u/.cache/agent-skills/x", "/mnt/host/projects/x", "/home/u/.cache/agent-skills", "/mnt/host/projects"])
+    def test_refuses_a_private_dir_inside_a_serve_root(self, field, inside):
+        with pytest.raises(ValueError, match=field):
+            render(**{field: Path(inside)})
