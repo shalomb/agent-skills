@@ -133,6 +133,32 @@ class ClaimsTest(unittest.TestCase):
         self.assertEqual(b["mine"], [])
         self.assertEqual(b["next"]["id"], "add-export")
 
+    def test_claiming_a_completed_task_is_refused_and_leaves_file_untouched(self) -> None:
+        self.assertTrue(complete(self.todo, "fix-crash", now=T0, lock_dir=self.locks)[0])
+        before = self.todo.read_text(encoding="utf-8")
+        ok, msg = claim(self.todo, "fix-crash", "pi:B", now=T0, lock_dir=self.locks)
+        self.assertFalse(ok)
+        self.assertIn("already done", msg)
+        self.assertEqual(self.todo.read_text(encoding="utf-8"), before)
+
+    def test_claim_accepts_keyword_arguments(self) -> None:
+        ok, _ = claim(todo_path=self.todo, task_id="add-export", owner="pi:A", now=T0, lock_dir=self.locks)
+        self.assertTrue(ok)
+
+    def test_default_lock_dir_honours_xdg_runtime_dir(self) -> None:
+        import importlib
+        import os
+        from unittest import mock
+
+        import todo_navigator.claims as claims_mod
+
+        try:
+            with mock.patch.dict(os.environ, {"XDG_RUNTIME_DIR": str(self.dir)}):
+                importlib.reload(claims_mod)
+                self.assertEqual(claims_mod.DEFAULT_LOCK_DIR, self.dir / "todo-navigator-locks")
+        finally:
+            importlib.reload(claims_mod)
+
 
 if __name__ == "__main__":
     unittest.main()
