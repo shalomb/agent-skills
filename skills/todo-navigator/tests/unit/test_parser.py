@@ -9,6 +9,7 @@ from pathlib import Path
 from todo_navigator.parser import (
     add_task_to_todo,
     generate_task_id,
+    get_repo_root,
     get_repo_slug,
     parse_todo_file,
     parse_todo_line,
@@ -194,6 +195,65 @@ class TestParser(unittest.TestCase):
             self.assertIn("[id: middle]", lines[2])
             self.assertIn("[id: b]", lines[3])
             self.assertIn("a", task.depends_on)
+
+    def test_parse_todo_file_splits_pre_tasks_post(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            todo = Path(td) / "TODO.md"
+            todo.write_text(
+                "# Head\n\n- [ ] One <!-- [id: one] -->\n- [ ] Two <!-- [id: two] -->\nTail\n", encoding="utf-8"
+            )
+            pre, tasks, post = parse_todo_file(todo)
+            self.assertEqual(pre, ["# Head", ""])
+            self.assertEqual([t.id for t in tasks], ["one", "two"])
+            self.assertEqual(post, ["Tail"])
+
+    def test_add_task_is_written_as_open_checkbox(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo = repo_root / "TODO.md"
+            todo.write_text("# Backlog\n", encoding="utf-8")
+            task, _ = add_task_to_todo(repo_root, title="Fresh")
+            self.assertFalse(task.completed)
+            _, tasks, _ = parse_todo_file(todo)
+            self.assertFalse(tasks[0].completed)
+            self.assertIn("- [ ] Fresh", todo.read_text(encoding="utf-8"))
+
+    def test_add_task_to_existing_section_goes_before_trailing_blank_line(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo = repo_root / "TODO.md"
+            todo.write_text("## A\n- [ ] t <!-- [id: t] -->\n\n## B\n- [ ] u <!-- [id: u] -->\n", encoding="utf-8")
+            add_task_to_todo(repo_root, title="Newbie", section="A")
+            lines = todo.read_text(encoding="utf-8").splitlines()
+            self.assertIn("[id: t]", lines[1])
+            self.assertIn("[id: newbie]", lines[2])
+            self.assertEqual(lines[3], "")
+            self.assertEqual(lines[4], "## B")
+
+    def test_add_task_with_section_and_after_id_inserts_once(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo = repo_root / "TODO.md"
+            todo.write_text("## A\n- [ ] t <!-- [id: t] -->\n- [ ] u <!-- [id: u] -->\n", encoding="utf-8")
+            add_task_to_todo(repo_root, title="Once", section="A", after_id="t")
+            lines = todo.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(sum("[id: once]" in ln for ln in lines), 1)
+
+    def test_get_repo_root_returns_git_toplevel_from_subdirectory(self) -> None:
+        import os
+        import subprocess
+
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td).resolve()
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            sub = root / "a" / "b"
+            sub.mkdir(parents=True)
+            old = os.getcwd()
+            os.chdir(sub)
+            try:
+                self.assertEqual(get_repo_root(), root)
+            finally:
+                os.chdir(old)
 
 
 if __name__ == "__main__":
