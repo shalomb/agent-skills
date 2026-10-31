@@ -151,19 +151,45 @@ No answers changed. What next?
 | Note rejects the premise       | Reshape the parent node.                    |
 | Round file found at start      | Offer resume. Default: resume.              |
 
-## 7. Node states and the end of the session
+## 7. Node states, the Adversarial Stress-Test, and the end of the session
 
 Each node in `decision-tree.md` has one of these states:
 `open`, `settled`, `deferred` (with a reason), or `rejected` (with a reason).
 
+### The penultimate round: Adversarial Stress-Test (`waf.*`)
+
+When all functional nodes on the critical path are `settled`, do **not** send
+the final review round yet. First send one **Adversarial Stress-Test Round**
+(`waf.*` nodes) to shoot holes in the settled concept across five lenses:
+
+1. **Cost & latency ceiling (`waf.cost-overhead-cap`):** Where does
+   orchestration or ceremony cost more than the work itself? What must be
+   deterministic instead of an LLM or network hop?
+2. **Concurrency & contention (`waf.concurrency`):** Where do parallel workers
+   or requests collide (locks, rebase storms, cold-start amplification)?
+3. **Partial-failure salvage (`waf.partial-salvage`):** When step $K$ of $N$
+   fails, how is valid work from steps $1 \dots K-1$ kept instead of lost?
+4. **Cold-start & small-$N$ safety (`waf.cold-start`):** Where does the design
+   assume large-$N$ statistics or steady-state caches that fail at $N=1$?
+5. **Falsifiable hypotheses (`waf.falsifiable-hypotheses`):** Bind each core
+   pillar to a numeric pass/kill threshold tested in a tracer spike.
+
+### Handoff readiness checks
+
 The tree is ready for handoff when all of these are true:
 
-1. No `open` node is on the critical path.
+1. No `open` node is on the critical path (including the `waf.*` stress-test
+   nodes).
 2. Each leaf can be written as a Gherkin scenario: the what, not the how.
-3. The last round added no glossary term and changed no definition.
-4. The last round made no new node, and the user accepted most defaults.
+3. Every core architectural bet has a **Falsifiable Hypothesis** with a numeric
+   kill threshold mapped to a tracer spike.
+4. Every settled ADR node represents **one** architectural decision (no
+   compound "God Decisions") and was written after loading
+   `architecture-decision-records`.
+5. The last round added no glossary term and changed no definition.
+6. The last round made no new node, and the user accepted most defaults.
 
-A soft cap of 5 to 7 rounds applies. At the cap, list the open nodes and
+A soft cap of 5 to 8 rounds applies. At the cap, list the open nodes and
 offer to defer them.
 
 Then send a **final review round**. It shows the full tree as an ASCII

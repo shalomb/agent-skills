@@ -72,20 +72,33 @@ Do not ask questions one by one. Present the entire frontier round at once.
 - Once the human agrees, those nodes on the Design Tree are "settled."
 - **Define the Metric:** Before locking in, briefly validate how success will be measured. (*"How will we know this feature is successful in production? What is the telemetry or metric we are watching?"*)
 - Lock into that design direction.
-- Recalculate the next layer of the Design Tree (the new Frontier) and repeat from Step 2 until the entire tree is resolved.
+- Recalculate the next layer of the Design Tree (the new Frontier) and repeat from Step 2 until all functional nodes are resolved.
 
-### 6. The Handoff (Extracting the Guardrails)
-When the tree is fully resolved, generate the inputs required for the implementation agents. **DO NOT** write a monolithic implementation spec dictating "how" to write the code. 
+### 6. The Adversarial Stress-Test & Falsifiability Gate (Mandatory Penultimate Round)
+Never jump straight from settling functional decisions to the final handoff review. Collaborative convergence breeds confirmation bias. Once the functional frontier is settled, run one dedicated **Well-Architected & Falsifiability Round** (`waf.*` nodes) to shoot holes in the concept across five lenses:
+1. **Cost & Latency Ceiling:** Does the proposed orchestration/machinery cost more tokens or latency than the work itself? What can be made deterministic instead of an LLM or network call?
+2. **Concurrency & Contention:** Where do parallel pieces collide (shared state, locks, rebase storms, cold-start amplification)?
+3. **Partial-Failure Salvage (Blast Radius):** When step $K$ of $N$ fails mid-flight, how is completed work ($1 \dots K-1$) salvaged rather than rolled back?
+4. **Cold-Start & Small-$N$ Edge Cases:** Does the design rely on statistical/RL or scale assumptions that fail or overfit at $N=1\text{--}15$?
+5. **Blind Spots & Falsifiable Hypotheses:** Bind every core architectural pillar to a **Falsifiable Hypothesis** (`H1..Hn`) with a quantitative pass/kill threshold verified by a Tracer-Bullet Spike before full build-out.
+
+### 7. The Handoff (Extracting the Guardrails via Owner Skills)
+When the tree and its `waf.*` stress-test nodes are resolved, generate the inputs required for the implementation agents. **DO NOT** write a monolithic implementation spec dictating "how" to write the code. 
+
+**Just-in-Time Skill Loading (Mandatory Gate):** Do not draft artefacts from memory. Before writing each artefact type for the first time in a session, `read` its owner skill so the output conforms to the canonical structure and anti-pattern gates:
+- **ADRs:** Load `architecture-decision-records/SKILL.md` and `references/adr-template.md` *before* writing any ADR (enforce the **Decomposition Gate**: one single architectural decision per ADR, never a compound "God Decision"; include `Decision Drivers`, the 8-row `Y-Statement`, `Domain Quality Framework Alignment`, `Architectural Reification`, and the `Multi-Criteria Comparison Matrix`).
+- **Behavioral Specs (`.feature`):** Load `adzic-bdd/SKILL.md` *before* writing Gherkin scenarios (business-readable, declarative, Adzic Index $\ge 7$).
+- **Architectural Seams (C4):** Load `c4-architecture/SKILL.md` *before* writing C4 diagrams (`C4Context` / `C4Container` syntax, unidirectional verb-labelled arrows, $\le 20$ elements).
 
 Write the glossary and ADRs as their decisions settle, not only at the end. Use the placement, owner skills, and writing rules in [artefact-package.md](references/artefact-package.md). The handoff is one spec document that links to everything else.
 
 Produce the following artefacts:
 1. **Domain Glossary (`GLOSSARY.md`):** Define the ubiquitous language.
 2. **Behavioral Specs (BDD/Gherkin):** Define the acceptance criteria (The "What").
-3. **Architecture Decision Records (ADRs):** Only for decisions that pass the ADR test: hard to reverse, surprising without context, and a real trade-off (The "Why").
+3. **Architecture Decision Records (ADRs):** Only for single-focus decisions that pass the ADR test: hard to reverse, surprising without context, and a real trade-off (The "Why"). Split compound choices into separate ADRs.
 4. **Architectural Seams:** Define component boundaries (e.g., C4 diagrams).
 5. **Anti-Goals:** What the implementation agent should strictly avoid.
-6. **Tracer-Bullet Tickets:** Break the validated design down into actionable User Stories or tickets to populate the backlog, ensuring value is delivered in chunks.
+6. **Tracer-Bullet Tickets:** Start with falsification spikes for `H1..Hn`, then break the validated design down into actionable slices to populate the backlog.
 
 ---
 **Terminal State:** The session ends when the handoff artefacts are complete, reviewed by the human, and ready to be fed into an implementation skill. With `/grill-me`, the review is the final review round in [grill-rounds.md](references/grill-rounds.md).

@@ -7,16 +7,21 @@ the final review round. Create files lazily.
 
 ## Contents
 
-| Artefact             | Purpose                                         | Owner skill or rule               |
-| :------------------- | :---------------------------------------------- | :-------------------------------- |
-| Handoff spec         | The what, why and boundaries. Links to the rest. | "Writing for humans" (below)     |
-| Decision tree        | Every node: state, decision, reason, links.     | `decision tree` format (below)    |
-| Round replies        | The user's returned round files, as written.    | `grill-rounds.md`                 |
-| Glossary             | The ubiquitous language.                        | Glossary rules (below)            |
-| ADRs                 | Decisions that pass the ADR test.               | `architecture-decision-records`   |
-| Architecture views   | Decided boundaries (C4).                        | `c4-architecture`                 |
-| Acceptance scenarios | `.feature` files for each settled leaf group.   | `adzic-bdd` (Adzic Index ≥ 7)     |
-| Tracer-bullet tickets | Backlog items, after the user approves.        | backlog / `jira-issue-manager`    |
+**Mandatory Just-in-Time Skill Gate:** Never write an ADR, C4 diagram, or
+`.feature` file from memory. Before writing an artefact for the first time in a
+session, call `read` on its owner skill (`SKILL.md` and template reference) so
+its structural rules and anti-pattern gates are active in context.
+
+| Artefact             | Purpose                                         | Owner skill or rule (MUST `read` before writing) |
+| :------------------- | :---------------------------------------------- | :----------------------------------------------- |
+| Handoff spec         | The what, why and boundaries. Links to the rest. | "Writing for humans" (below)                     |
+| Decision tree        | Every node: state, decision, reason, links.     | `decision tree` format (below)                   |
+| Round replies        | The user's returned round files, as written.    | `grill-rounds.md`                                |
+| Glossary             | The ubiquitous language.                        | `domain-modeling` + Glossary rules (below)       |
+| ADRs                 | Decisions that pass the ADR test (1 per file).  | `architecture-decision-records` (`SKILL.md` + `references/adr-template.md`) |
+| Architecture views   | Decided boundaries (C4).                        | `c4-architecture` (`SKILL.md`)                   |
+| Acceptance scenarios | `.feature` files for each settled leaf group.   | `adzic-bdd` (`SKILL.md`, Adzic Index ≥ 7)        |
+| Tracer-bullet tickets | Falsification spikes first, then backlog slices.| backlog / `todo-navigator` / `jira-issue-manager`|
 
 ## Placement
 
@@ -81,11 +86,24 @@ Two different versions of one record reach the server.
 _Avoid_: collision, clash
 ```
 
-## ADR test
+## ADR test and Decomposition Gate
 
 Write an ADR only when all three are true: hard to reverse, surprising
 without context, and a real trade-off. A spec can hold settled decisions
 first and promote them to ADRs when they are agreed (`promotes_to`).
+
+Before writing any ADR, `read` the `architecture-decision-records` skill and
+its `references/adr-template.md`, and enforce:
+
+1. **No "God Decisions" (1 ASR per ADR):** Never bundle multiple distinct
+   choices (for example topology + storage + guardrails, or four separate
+   WAF guardrails) into a single ADR. Split each architectural choice into its
+   own ADR linked from its specific node in `decision-tree.md`.
+2. **Full Canonical Structure:** Every ADR must include prioritized `Decision
+   Drivers` (`DRV-01..`), `Domain Quality Framework Alignment`, the 8-row
+   tabular `Y-Statement`, `Architectural Reification & Enforcement`, balanced
+   `Consequences`, the `Multi-Criteria Comparison Matrix`, and `Revisit
+   Criteria`.
 
 ## Decision tree format
 
@@ -119,7 +137,10 @@ a contract block that makes the implementation reproducible.
 3. **Who reads what.** A table: for each audience, the sections to read,
    in order.
 4. **At a glance.** One table or one diagram that shows the full design.
-5. **Goal and success metric.** Two or three sentences.
+5. **Goal, falsifiable hypotheses, and kill criteria.** Two or three
+   sentences for the goal, plus a table of falsifiable hypotheses (`H1..Hn`)
+   with numeric pass thresholds and kill/simplify criteria tested by tracer
+   spikes.
 6. **Spec units.** One for each part of the design:
    - a **Who / When** line;
    - a **diagram** that is the specification;

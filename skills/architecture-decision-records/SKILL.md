@@ -26,7 +26,7 @@ Every ADR generated or reviewed must adhere to these five universal tenets:
   - *"Who was consulted and who needs to be informed?"*
   - *"What was the runner-up alternative and why was it rejected?"*
 - **Downside Gate:** Refuse to finalize an ADR that lists only positive consequences.
-- **Decomposition Gate:** If a user requests a sprawling decision, propose breaking it down into distinct, single-focus ADRs before drafting.
+- **Decomposition Gate:** If a user or a design session (such as `design-thinking` / `/grill-me`) settles a compound set of choices, split them into distinct, single-focus ADRs (1 ASR per document) before drafting. Never emit a bundled "God Decision" ADR from a multi-question design round.
 
 ---
 

@@ -29,3 +29,10 @@ The handoff from Design to Implementation must strictly be:
 
 ## 7. Backend Design is Still Design Thinking
 Design thinking is not just for UI/UX wireframes. Empathizing with an SRE to build an observability stack (e.g., tracing latency bottlenecks) requires the exact same empathy, definition, rapid prototyping, and throwaway testing as designing a frontend workflow.
+
+## 8. Adversarial Self-Falsification (Shoot Holes Before You Commit)
+Collaborative ideation between a human and an agent naturally accumulates **confirmation bias** (Compliance Bias and Solution Fixation). By the time a decision tree converges, both parties are invested in the concept and blind to its operational weight.
+Before a design is locked for handoff, the agent must pivot from **constructive co-creator** to **well-architected adversary**:
+- Actively try to break the settled concept across **Cost/Latency Ceiling** (does the machinery cost more than the work?), **Concurrency & Contention**, **Partial-Failure Salvage**, **Cold-Start / Small-$N$ Starvation**, and **Silent Drift**.
+- Bind every core architectural pillar to a **Falsifiable Hypothesis** with a quantitative pass/kill threshold tested in a tracer spike before full build-out. If a mechanism fails its spike metric, kill or simplify it immediately.
+
