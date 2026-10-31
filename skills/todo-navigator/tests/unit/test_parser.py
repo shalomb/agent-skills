@@ -148,6 +148,53 @@ class TestParser(unittest.TestCase):
             self.assertEqual(len(tasks), 1)
             self.assertEqual(tasks[0].section, "🔴 CRITICAL")
 
+    def test_add_task_creates_missing_section_with_single_entry(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo = repo_root / "TODO.md"
+            todo.write_text("# Backlog\n\n- [ ] Old <!-- [id: old] -->\n", encoding="utf-8")
+            task, _ = add_task_to_todo(repo_root, title="Brand New", section="URGENT")
+            lines = todo.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(sum("[id: brand-new]" in ln for ln in lines), 1)
+            self.assertEqual(lines.index("## URGENT") + 1, next(i for i, ln in enumerate(lines) if "brand-new" in ln))
+            self.assertEqual(task.section, "URGENT")
+
+    def test_add_task_without_existing_tasks_appends_at_end(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo = repo_root / "TODO.md"
+            todo.write_text("# Backlog\n\nNotes here.\n", encoding="utf-8")
+            add_task_to_todo(repo_root, title="First One")
+            lines = todo.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(lines[:3], ["# Backlog", "", "Notes here."])
+            self.assertIn("[id: first-one]", lines[-1])
+
+    def test_add_task_inserts_after_last_task_at_index_one(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo = repo_root / "TODO.md"
+            todo.write_text("# Backlog\n- [ ] Old <!-- [id: old] -->\n\nFooter\n", encoding="utf-8")
+            add_task_to_todo(repo_root, title="Newer")
+            lines = todo.read_text(encoding="utf-8").splitlines()
+            self.assertIn("[id: old]", lines[1])
+            self.assertIn("[id: newer]", lines[2])
+
+    def test_add_task_after_id_inserts_once_directly_after_anchor(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo = repo_root / "TODO.md"
+            todo.write_text(
+                "# Backlog\n- [ ] A <!-- [id: a] -->\n- [ ] B <!-- [id: b] -->\n",
+                encoding="utf-8",
+            )
+            task, _ = add_task_to_todo(repo_root, title="Middle", after_id="a")
+            lines = todo.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(sum("[id: middle]" in ln for ln in lines), 1)
+            self.assertIn("[id: a]", lines[1])
+            self.assertIn("[id: middle]", lines[2])
+            self.assertIn("[id: b]", lines[3])
+            self.assertIn("a", task.depends_on)
+
 
 if __name__ == "__main__":
     unittest.main()

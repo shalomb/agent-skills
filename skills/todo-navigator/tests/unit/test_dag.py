@@ -159,6 +159,55 @@ class TestDAG(unittest.TestCase):
             m3 = find_matching_targets(repo_root, shadow_dir, "e")
             self.assertEqual(len(m3), 2)
 
+    def test_find_matching_targets_blank_or_todo_alias_returns_todo_file(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            shadow_dir = repo_root / "shadow"
+            (repo_root / "TODO.md").write_text("# Backlog\n", encoding="utf-8")
+            expected = [("todo", repo_root / "TODO.md")]
+            for query in ("", "   ", "todo", "TODO", "Backlog"):
+                self.assertEqual(find_matching_targets(repo_root, shadow_dir, query), expected, query)
+
+    def test_find_matching_targets_strips_md_suffix_for_exact_match(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            shadow_dir = repo_root / "shadow"
+            tasks_dir = shadow_dir / "tasks"
+            tasks_dir.mkdir(parents=True)
+            (tasks_dir / "core-engine.md").write_text("# Card", encoding="utf-8")
+            (tasks_dir / "core-engine-v2.md").write_text("# Card", encoding="utf-8")
+
+            matches = find_matching_targets(repo_root, shadow_dir, "core-engine.md")
+            self.assertEqual(matches, [("core-engine", tasks_dir / "core-engine.md")])
+
+    def test_dependency_ops_report_failure_for_unknown_task(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo_file = repo_root / "TODO.md"
+            todo_file.write_text(SECTIONED_TODO, encoding="utf-8")
+
+            ok, msg = add_dependency(repo_root, "ghost", "fix-crash")
+            self.assertFalse(ok)
+            self.assertIn("'ghost' not found", msg)
+
+            ok, msg = remove_dependency(repo_root, "ghost", "fix-crash")
+            self.assertFalse(ok)
+            self.assertIn("'ghost' not found", msg)
+            self.assertEqual(todo_file.read_text(encoding="utf-8"), SECTIONED_TODO)
+
+    def test_add_dependency_already_present_succeeds_without_rewriting(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo_file = repo_root / "TODO.md"
+            todo_file.write_text(SECTIONED_TODO, encoding="utf-8")
+            self.assertTrue(add_dependency(repo_root, "add-export", "fix-crash")[0])
+            after_first = todo_file.read_text(encoding="utf-8")
+
+            ok, msg = add_dependency(repo_root, "add-export", "fix-crash")
+            self.assertTrue(ok)
+            self.assertIn("already depends on", msg)
+            self.assertEqual(todo_file.read_text(encoding="utf-8"), after_first)
+
 
 if __name__ == "__main__":
     unittest.main()
