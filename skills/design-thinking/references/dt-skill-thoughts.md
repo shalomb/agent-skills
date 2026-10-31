@@ -16,10 +16,10 @@
 ## 2. Architecture & Artefacts
 
 *   **Context Management:** Use subagents for discovery and summarization to manage massive context effectively without losing critical details.
-*   **Living Documentation:** Documentation evolves *with* the design process, not at the end of it.
-    *   **Real-time Glossary:** Fuzzy terms are clarified and updated in `GLOSSARY.md` the minute they are redefined.
-    *   **Just-in-Time Decisions:** Non-trivial decisions are logged in ADRs immediately, capturing rationale and trade-offs.
-*   **The Handoff Artefacts:** BDD/Gherkin specs are the primary "What." However, they aren't enough. The handoff must also include Domain Glossaries, Architectural Boundaries (C4), targeted ADRs, and explicit Anti-Goals.
+*   **Living Documentation (Governed by Owner Skills):** Documentation evolves *with* the design process, not at the end of it, and always loads its owner skill before writing rather than drafting from memory.
+    *   **Real-time Glossary:** Fuzzy terms are clarified and updated in `GLOSSARY.md` the minute they are redefined (`domain-modeling`).
+    *   **Just-in-Time Decisions:** Non-trivial decisions are logged in single-focus ADRs immediately (`architecture-decision-records`, 1 decision per ADR, never a compound "God Decision").
+*   **The Handoff Artefacts:** BDD/Gherkin specs (`adzic-bdd`) are the primary "What." However, they aren't enough. The handoff must also include Domain Glossaries, Architectural Boundaries (`c4-architecture`), targeted single-focus ADRs, Falsifiable Hypotheses with kill criteria, and explicit Anti-Goals.
 *   **Backend Design Matters:** Design thinking is not just for UI wireframes. It applies equally to backend architecture (e.g., designing an observability stack, choosing metrics, and defining data visualization flows).
 
 ## 3. Agent UX & Interaction ("Grilling" the User)
@@ -39,4 +39,5 @@
     *   *Option Space:* Map assumptions, unknowns, options, trade-offs, and risks.
 3.  **Diverge, Prune, and Prototype:** Rapidly build "quick and dirty" throwaway prototypes for the remaining options to validate assumptions.
 4.  **Present the Round:** The agent presents findings, recommendations, and validated/invalidated assumptions to the human for sign-off.
-5.  **Settle and Recalculate:** Lock into a design direction, generate living documentation, and calculate the next layer of the tree. (Repeat until ready for Handoff).
+5.  **Settle and Recalculate:** Lock into a design direction, generate living documentation, and calculate the next layer of the tree.
+6.  **Adversarial Self-Falsification (Penultimate Round):** Once functional nodes settle, pivot from co-creator to adversary (`waf.*` round) — challenge cost/latency overhead, concurrency contention, partial-failure salvage, and small-$N$ assumptions, and bind each core bet to a Falsifiable Hypothesis and kill threshold before final handoff.

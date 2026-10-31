@@ -22,10 +22,12 @@ AI agents possess massive, near-perfect working memory, allowing them to ingest 
 ## 6. Strict Handoff Boundaries (What and Why, Never How)
 Implementation agents are highly susceptible to instruction-following bias. If the design phase dictates *how* to write the code, the implementation agent will blindly follow it, losing its creative problem-solving ability.
 The handoff from Design to Implementation must strictly be:
-- **The What:** Behavior constraints (BDD / Gherkin specs).
-- **The Why:** Immutable constraints and trade-offs (ADRs).
-- **The Boundaries:** Ubiquitous language (Domain Glossary / `GLOSSARY.md`) and component fences (C4 Models).
+- **The What:** Behavior constraints (BDD / Gherkin specs, governed by `adzic-bdd`).
+- **The Why:** Immutable, single-focus decisions and trade-offs (ADRs, governed by `architecture-decision-records` — one decision per ADR, never a bundled "God Decision").
+- **The Boundaries:** Ubiquitous language (Domain Glossary / `GLOSSARY.md`, governed by `domain-modeling`) and component fences (C4 Models, governed by `c4-architecture`).
 - **The Anti-Goals:** Explicitly what *not* to do.
+
+*Rule:* Never draft handoff artefacts from memory. Load each artefact's owner skill just-in-time before writing it so its structural invariants and anti-pattern gates are enforced.
 
 ## 7. Backend Design is Still Design Thinking
 Design thinking is not just for UI/UX wireframes. Empathizing with an SRE to build an observability stack (e.g., tracing latency bottlenecks) requires the exact same empathy, definition, rapid prototyping, and throwaway testing as designing a frontend workflow.
@@ -35,4 +37,9 @@ Collaborative ideation between a human and an agent naturally accumulates **conf
 Before a design is locked for handoff, the agent must pivot from **constructive co-creator** to **well-architected adversary**:
 - Actively try to break the settled concept across **Cost/Latency Ceiling** (does the machinery cost more than the work?), **Concurrency & Contention**, **Partial-Failure Salvage**, **Cold-Start / Small-$N$ Starvation**, and **Silent Drift**.
 - Bind every core architectural pillar to a **Falsifiable Hypothesis** with a quantitative pass/kill threshold tested in a tracer spike before full build-out. If a mechanism fails its spike metric, kill or simplify it immediately.
+
+## 9. Economics of Agency & Intent Governance
+More agency, more personas, or more feedback loops are not inherently better:
+- **Deterministic First:** Never spend LLM tokens or multi-agent cold starts on coordination, routing, or checks that a deterministic CLI, graph query, or test gate can perform at near-zero cost.
+- **Observations $\neq$ Intent:** In iterative systems, feedback loops easily generate more candidate work than completed outcomes. Capture non-urgent findings as structured *Observations* first, and promote them into committed backlog *Intent* only when recurrence trends, WSJF heat, and convergence budgets justify acting on them.
 
