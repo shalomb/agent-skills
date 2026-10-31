@@ -11,6 +11,7 @@ from todo_navigator.dag import (
     compute_waves,
     detect_cycle,
     find_matching_targets,
+    get_all_task_ids,
     remove_dependency,
     replan_todo_file,
     sort_tasks_wsjf,
@@ -207,6 +208,76 @@ class TestDAG(unittest.TestCase):
             self.assertTrue(ok)
             self.assertIn("already depends on", msg)
             self.assertEqual(todo_file.read_text(encoding="utf-8"), after_first)
+
+    def test_get_all_task_ids_merges_todo_and_cards_excluding_aliases(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            shadow_dir = repo_root / "shadow"
+            tasks_dir = shadow_dir / "tasks"
+            tasks_dir.mkdir(parents=True)
+            (repo_root / "TODO.md").write_text(SECTIONED_TODO, encoding="utf-8")
+            (tasks_dir / "card-only.md").write_text("# Card", encoding="utf-8")
+            (tasks_dir / "todo.md").write_text("# x", encoding="utf-8")
+            (tasks_dir / "backlog.md").write_text("# x", encoding="utf-8")
+
+            # default force_shadow must read the repo TODO.md when present
+            self.assertEqual(get_all_task_ids(repo_root, shadow_dir), ["add-export", "card-only", "fix-crash"])
+
+    def test_find_matching_targets_resolves_todo_only_task_to_card_path(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            shadow_dir = repo_root / "shadow"
+            (repo_root / "TODO.md").write_text(SECTIONED_TODO, encoding="utf-8")
+            matches = find_matching_targets(repo_root, shadow_dir, "fix-crash")
+            self.assertEqual(matches, [("fix-crash", shadow_dir / "tasks" / "fix-crash.md")])
+
+    def test_detect_cycle_finds_a_three_node_cycle(self) -> None:
+        tasks = [
+            Task(id="a", title="A", depends_on=["b"]),
+            Task(id="b", title="B", depends_on=["c"]),
+            Task(id="c", title="C", depends_on=["a"]),
+        ]
+        cycle = detect_cycle(tasks)
+        self.assertIsNotNone(cycle)
+        self.assertEqual(cycle, ["a", "b", "c", "a"])
+
+    def test_detect_cycle_none_for_diamond(self) -> None:
+        tasks = [
+            Task(id="top", title="T", depends_on=["l", "r"]),
+            Task(id="l", title="L", depends_on=["base"]),
+            Task(id="r", title="R", depends_on=["base"]),
+            Task(id="base", title="B"),
+        ]
+        self.assertIsNone(detect_cycle(tasks))
+
+    def test_compute_waves_deadlock_wave_orders_by_highest_wsjf_first(self) -> None:
+        tasks = [
+            Task(id="low", title="L", wsjf_cost=1.0, depends_on=["high"]),
+            Task(id="high", title="H", wsjf_cost=9.0, depends_on=["low"]),
+        ]
+        waves = compute_waves(tasks)
+        self.assertEqual(len(waves), 1)
+        self.assertEqual([t.id for t in waves[0]], ["high", "low"])
+
+    def test_add_dependency_rejects_self_dependency(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo_file = repo_root / "TODO.md"
+            todo_file.write_text(SECTIONED_TODO, encoding="utf-8")
+            ok, msg = add_dependency(repo_root, "fix-crash", "fix-crash")
+            self.assertFalse(ok)
+            self.assertIn("cannot depend on itself", msg)
+            self.assertEqual(todo_file.read_text(encoding="utf-8"), SECTIONED_TODO)
+
+    def test_remove_dependency_not_present_is_a_successful_noop(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            repo_root = Path(td)
+            todo_file = repo_root / "TODO.md"
+            todo_file.write_text(SECTIONED_TODO, encoding="utf-8")
+            ok, msg = remove_dependency(repo_root, "add-export", "fix-crash")
+            self.assertTrue(ok)
+            self.assertIn("does not depend on", msg)
+            self.assertEqual(todo_file.read_text(encoding="utf-8"), SECTIONED_TODO)
 
 
 if __name__ == "__main__":
