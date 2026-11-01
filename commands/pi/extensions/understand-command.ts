@@ -3,7 +3,8 @@
  * Registered commands: /understand, /understand-pr, /understand-diff.
  */
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
+import { resolve } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
@@ -127,6 +128,85 @@ async function checkIsGitRepo(cwd: string, ctx?: any): Promise<boolean> {
   }
 }
 
+export async function executePythonRunner(
+  args: string,
+  cwd: string,
+  onPhase?: (phase: string) => void
+): Promise<{ runDir: string; urls: ReportUrls; endMessage: string }> {
+  const runnerScript = resolve(
+    __dirname,
+    "../../skills/understand/scripts"
+  );
+
+  return new Promise((resolvePromise, rejectPromise) => {
+    const child = spawn(
+      "python3",
+      ["-m", "understand_runs.cli", "--json", "--cwd", cwd, ...args.trim().split(/\s+/).filter(Boolean)],
+      {
+        cwd,
+        env: {
+          ...process.env,
+          PYTHONPATH: runnerScript,
+        },
+      }
+    );
+
+    let stdoutData = "";
+    let stderrData = "";
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      const text = chunk.toString();
+      stdoutData += text;
+      const lines = text.split("\n");
+      for (const line of lines) {
+        if (line.startsWith("PHASE:")) {
+          const phase = line.replace("PHASE:", "").trim();
+          onPhase?.(phase);
+        }
+      }
+    });
+
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderrData += chunk.toString();
+    });
+
+    child.on("close", (code) => {
+      if (code !== 0) {
+        return rejectPromise(
+          new Error(stderrData.trim() || `Runner exited with code ${code}`)
+        );
+      }
+
+      // Look for JSON payload in stdout
+      const lines = stdoutData.trim().split("\n");
+      let parsedJson: any = null;
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i].trim();
+        if (line.startsWith("{") && line.endsWith("}")) {
+          try {
+            parsedJson = JSON.parse(line);
+            break;
+          } catch {
+            // continue looking
+          }
+        }
+      }
+
+      if (!parsedJson) {
+        return rejectPromise(
+          new Error(`Failed to parse runner output: ${stdoutData}`)
+        );
+      }
+
+      resolvePromise({
+        runDir: parsedJson.run_dir,
+        urls: parsedJson.urls,
+        endMessage: parsedJson.end_message,
+      });
+    });
+  });
+}
+
 export async function runUnderstand(
   args: string,
   ctx: any
@@ -146,12 +226,39 @@ export async function runUnderstand(
     return { success: false, error: errorMsg };
   }
 
-  // Progress notification: phases plan, discover, converge, render
-  const phases = ["plan", "discover", "converge", "render"];
-  for (const phase of phases) {
+  const onPhase = (phase: string) => {
     if (ctx.ui?.setStatus) {
       ctx.ui.setStatus("understand", phase);
     }
+  };
+
+  // If a custom runner is injected or available, run it
+  const runner = ctx.runner || (ctx.executeRunner ? executePythonRunner : undefined);
+  if (runner) {
+    try {
+      const runnerRes = await runner(args, cwd, onPhase);
+      if (ctx.ui?.notify) {
+        ctx.ui.notify(runnerRes.endMessage, "info");
+      }
+      return {
+        success: true,
+        lens,
+        urls: runnerRes.urls,
+        endMessage: runnerRes.endMessage,
+      };
+    } catch (err: any) {
+      const errorMsg = err?.message || String(err);
+      if (ctx.ui?.notify) {
+        ctx.ui.notify(`Report failed: ${errorMsg}`, "error");
+      }
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  // Fallback / fast progress notification for mock/test runs without runner
+  const phases = ["plan", "discover", "converge", "render"];
+  for (const phase of phases) {
+    onPhase(phase);
   }
 
   const slug = deriveRepoSlug(cwd);
@@ -186,7 +293,7 @@ export default function registerUnderstandExtension(pi: ExtensionAPI) {
   const understandSpec = {
     description: "Inspect repository structure, topics, pull requests, and diffs",
     handler: async (args: string, ctx: any) => {
-      await runUnderstand(args, ctx);
+      await runUnderstand(args, { ...ctx, executeRunner: true });
     },
     getArgumentCompletions: (prefix: string) => getArgumentCompletions(prefix),
   };
@@ -196,14 +303,14 @@ export default function registerUnderstandExtension(pi: ExtensionAPI) {
   pi.registerCommand("understand-pr", {
     description: "Inspect a pull request report (alias for /understand pr <arg>)",
     handler: async (args: string, ctx: any) => {
-      await runUnderstand(`pr ${args}`.trim(), ctx);
+      await runUnderstand(`pr ${args}`.trim(), { ...ctx, executeRunner: true });
     },
   });
 
   pi.registerCommand("understand-diff", {
     description: "Inspect a diff report (alias for /understand diff <arg>)",
     handler: async (args: string, ctx: any) => {
-      await runUnderstand(`diff ${args}`.trim(), ctx);
+      await runUnderstand(`diff ${args}`.trim(), { ...ctx, executeRunner: true });
     },
   });
 }

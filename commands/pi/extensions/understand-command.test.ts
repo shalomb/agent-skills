@@ -127,6 +127,44 @@ describe("phases and end message", () => {
     expect(phases).toEqual(["plan", "discover", "converge", "render"]);
   });
 
+  test("executes runner when executeRunner is true", async () => {
+    let executed = false;
+    let phasesReceived: string[] = [];
+    const mockRunner = async (_args: string, _cwd: string, onPhase?: (p: string) => void) => {
+      executed = true;
+      onPhase?.("plan");
+      onPhase?.("discover");
+      onPhase?.("converge");
+      onPhase?.("render");
+      return {
+        runDir: "/tmp/fake-run",
+        urls: {
+          parallels: "http://10.211.55.3:8787/r/understand/test/full/run-1/",
+          tailnet: "http://100.99.83.53:8787/r/understand/test/full/run-1/",
+        },
+        endMessage: "Report ready: test (full)\nSummary: Real summary",
+      };
+    };
+
+    const mockCtx = {
+      cwd: "/tmp/fake-repo",
+      isGitRepo: true,
+      runner: mockRunner,
+      ui: {
+        setStatus: (_name: string, status: string) => {
+          phasesReceived.push(status);
+        },
+        notify: () => {},
+      },
+    };
+
+    const result = await runUnderstand("", mockCtx as any);
+    expect(executed).toBe(true);
+    expect(result.success).toBe(true);
+    expect(phasesReceived).toEqual(["plan", "discover", "converge", "render"]);
+    expect(result.urls?.parallels).toBe("http://10.211.55.3:8787/r/understand/test/full/run-1/");
+  });
+
   test("report URLs and end message length", () => {
     const urls = getReportUrls("my-repo", "full", "run-123");
     expect(urls.parallels).toBe(
