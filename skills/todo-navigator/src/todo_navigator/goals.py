@@ -14,13 +14,17 @@ from todo_navigator.parser import get_shadow_dir
 
 def current_branch(repo_root: Path) -> Optional[str]:
     """Current branch name, or None on a detached HEAD or outside git."""
-    res = subprocess.run(
-        ["git", "-C", str(repo_root), "symbolic-ref", "--short", "-q", "HEAD"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    return res.stdout.strip() or None if res.returncode == 0 else None
+    try:
+        res = subprocess.run(
+            ["git", "-C", str(repo_root), "symbolic-ref", "-q", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return None
+    ref = res.stdout.strip() if res.returncode == 0 else ""
+    return ref.removeprefix("refs/heads/") or None
 
 
 def read_front_matter(path: Path) -> Dict[str, str]:
