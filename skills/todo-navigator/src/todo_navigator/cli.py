@@ -22,7 +22,7 @@ from todo_navigator.editor import (
     launch_editor,
     stage_card_as_artifact,
 )
-from todo_navigator.goals import active_goal_id
+from todo_navigator.goals import active_goal_id, current_goal
 from todo_navigator.parser import (
     add_task_to_todo,
     get_active_todo_path,
@@ -470,6 +470,7 @@ def cmd_brief(args: argparse.Namespace) -> int:
     if not todo_file.exists():
         return 0
     b = brief(todo_file, args.owner or current_owner())
+    b["goal"] = current_goal(repo_root)
     if args.json:
         print(json.dumps(b))
         return 0

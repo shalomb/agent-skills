@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import subprocess
@@ -94,7 +95,9 @@ created_at: 2026-11-01T10:00:00Z
 """
 
 
-class AddGoalLinkTest(CliHarness):
+class GoalHarness(CliHarness):
+    """CliHarness on branch feat/export with a helper to write that branch's goal file."""
+
     def setUp(self) -> None:
         super().setUp()
         subprocess.run(["git", "-C", str(self.repo), "checkout", "-q", "-b", "feat/export"], check=True)
@@ -105,6 +108,8 @@ class AddGoalLinkTest(CliHarness):
         goals.mkdir(parents=True, exist_ok=True)
         (goals / f"{branch_slug}.md").write_text(GOAL_FILE.format(status=status), encoding="utf-8")
 
+
+class AddGoalLinkTest(GoalHarness):
     def added_line(self) -> str:
         return next(ln for ln in self.todo_text().splitlines() if "[id: t1]" in ln)
 
@@ -169,3 +174,21 @@ class ExpressDoneStampsDoneAtTest(CliHarness):
         )
         self.todo("edit", "a", "done")
         self.assertIn("[done: 2026-01-01T00:00Z]", self.todo_text())
+
+
+class BriefGoalTest(GoalHarness):
+    def brief(self) -> dict:
+        r = self.todo("brief", "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return json.loads(r.stdout)
+
+    def test_brief_json_reports_the_goal_of_the_current_branch(self) -> None:
+        self.write_goal("active")
+        self.assertEqual(self.brief()["goal"], {"id": "g-feat-export", "status": "active"})
+
+    def test_brief_json_reports_a_non_active_goal_with_its_status(self) -> None:
+        self.write_goal("draft")
+        self.assertEqual(self.brief()["goal"], {"id": "g-feat-export", "status": "draft"})
+
+    def test_brief_json_goal_is_null_without_a_goal_file(self) -> None:
+        self.assertIsNone(self.brief()["goal"])
