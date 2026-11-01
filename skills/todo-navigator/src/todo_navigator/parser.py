@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -148,7 +149,7 @@ def parse_todo_line(line: str, current_section: str = "") -> Optional[Task]:
                         wsjf_size = float(parts[1])
                     except ValueError:
                         pass
-            elif k in ("wip", "since", "done", "commit"):
+            elif k in ("wip", "since", "done", "commit", "created", "goal"):
                 extra[k] = v
 
     if not task_id:
@@ -168,6 +169,8 @@ def parse_todo_line(line: str, current_section: str = "") -> Optional[Task]:
         wip_since=extra.get("since", ""),
         done_at=extra.get("done", ""),
         commit=extra.get("commit", ""),
+        created=extra.get("created", ""),
+        goal=extra.get("goal", ""),
     )
 
 
@@ -242,8 +245,10 @@ def add_task_to_todo(
     after_id: Optional[str] = None,
     section: Optional[str] = None,
     force_shadow: bool = False,
+    now: Optional[datetime] = None,
 ) -> Tuple[Task, Path]:
     """Adds a task to the active TODO.md and creates its shadow task card."""
+    created = (now or datetime.now(timezone.utc)).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     shadow_dir = get_shadow_dir(repo_root)
     todo_path = get_active_todo_path(repo_root, force_shadow=force_shadow)
 
@@ -267,6 +272,7 @@ def add_task_to_todo(
         wsjf_cost=wsjf_cost,
         wsjf_size=wsjf_size,
         depends_on=deps,
+        created=created,
     ).to_markdown_line()
 
     inserted = False
@@ -328,6 +334,7 @@ def add_task_to_todo(
         wsjf_size=wsjf_size,
         depends_on=deps,
         section=target_section,
+        created=created,
     )
 
     card_path = shadow_dir / "tasks" / f"{final_id}.md"

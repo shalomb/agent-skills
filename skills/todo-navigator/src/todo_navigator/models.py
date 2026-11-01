@@ -24,6 +24,8 @@ class Task:
     wip_since: str = ""
     done_at: str = ""
     commit: str = ""
+    created: str = ""
+    goal: str = ""
 
     @property
     def wsjf_score(self) -> float:
@@ -38,6 +40,10 @@ class Task:
             tags.append(f"depends: {','.join(self.depends_on)}")
         if self.wsjf_cost != 1.0 or self.wsjf_size != 1.0:
             tags.append(f"wsjf: {self.wsjf_cost}/{self.wsjf_size}")
+        if self.created:
+            tags.append(f"created: {self.created}")
+        if self.goal:
+            tags.append(f"goal: {self.goal}")
         if self.wip:
             tags.append(f"wip: {self.wip}")
             if self.wip_since:
