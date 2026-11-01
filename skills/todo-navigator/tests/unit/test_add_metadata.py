@@ -147,3 +147,25 @@ class AddGoalLinkTest(CliHarness):
         subprocess.run([*git, "checkout", "-q", "--detach"], check=True)
         self.todo("add", "T", "--id", "t1")
         self.assertNotIn("[goal:", self.added_line())
+
+
+class ExpressDoneStampsDoneAtTest(CliHarness):
+    def test_edit_done_stamps_done_at_on_the_completed_task(self) -> None:
+        (self.repo / "TODO.md").write_text(
+            "# Backlog\n\n- [ ] A <!-- [id: a] [prio: P1] -->\n- [ ] B <!-- [id: b] [prio: P2] -->\n",
+            encoding="utf-8",
+        )
+        r = self.todo("edit", "a", "done")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        lines = self.todo_text().splitlines()
+        done_line = next(ln for ln in lines if "[id: a]" in ln)
+        self.assertTrue(done_line.startswith("- [x]"), done_line)
+        self.assertRegex(done_line, r"\[done: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z\]")
+        self.assertNotIn("[done:", next(ln for ln in lines if "[id: b]" in ln))
+
+    def test_edit_done_keeps_an_existing_done_at(self) -> None:
+        (self.repo / "TODO.md").write_text(
+            "# Backlog\n\n- [ ] A <!-- [id: a] [prio: P1] [done: 2026-01-01T00:00Z] -->\n", encoding="utf-8"
+        )
+        self.todo("edit", "a", "done")
+        self.assertIn("[done: 2026-01-01T00:00Z]", self.todo_text())

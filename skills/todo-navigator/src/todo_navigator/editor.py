@@ -7,6 +7,7 @@ import re
 import shutil
 import subprocess
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -57,8 +58,16 @@ def handle_express_edit(
             return 1
         content = todo_file.read_text(encoding="utf-8")
         pattern = rf"(-\s*\[)\s*(\]\s*.*\[id:\s*{re.escape(target)}\])"
-        if re.search(pattern, content):
-            new_content = re.sub(pattern, r"\g<1>x\g<2>", content, count=1)
+        match = re.search(pattern, content)
+        if match:
+            line_start = content.rfind("\n", 0, match.start()) + 1
+            line_end = content.find("\n", match.end())
+            line_end = len(content) if line_end == -1 else line_end
+            line = re.sub(pattern, r"\g<1>x\g<2>", content[line_start:line_end], count=1)
+            if "[done:" not in line:
+                done_tag = f"[done: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%MZ')}]"
+                line = re.sub(r"\s*-->\s*$", f" {done_tag} -->", line, count=1)
+            new_content = content[:line_start] + line + content[line_end:]
             todo_file.write_text(new_content, encoding="utf-8")
             print(f"✅ Marked task [{target}] as completed in [{todo_file.name}](file://{todo_file}).")
             return 0
