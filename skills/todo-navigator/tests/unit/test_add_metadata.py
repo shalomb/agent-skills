@@ -168,12 +168,43 @@ class ExpressDoneStampsDoneAtTest(CliHarness):
         self.assertRegex(done_line, r"\[done: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z\]")
         self.assertNotIn("[done:", next(ln for ln in lines if "[id: b]" in ln))
 
-    def test_edit_done_keeps_an_existing_done_at(self) -> None:
+    def test_edit_done_replaces_a_stale_done_at_with_a_fresh_one(self) -> None:
         (self.repo / "TODO.md").write_text(
             "# Backlog\n\n- [ ] A <!-- [id: a] [prio: P1] [done: 2026-01-01T00:00Z] -->\n", encoding="utf-8"
         )
         self.todo("edit", "a", "done")
-        self.assertIn("[done: 2026-01-01T00:00Z]", self.todo_text())
+        self.assertNotIn("2026-01-01T00:00Z", self.todo_text())
+        self.assertEqual(self.todo_text().count("[done:"), 1)
+
+
+class ReopenClearsCompletionTest(CliHarness):
+    def test_done_undone_done_round_trip_stamps_a_fresh_done_time(self) -> None:
+        (self.repo / "TODO.md").write_text(
+            "# Backlog\n\n- [x] A <!-- [id: a] [prio: P1] [done: 2026-01-01T00:00Z] [commit: abc123] -->\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(self.todo("edit", "a", "undone").returncode, 0)
+        reopened = self.todo_text()
+        self.assertIn("- [ ] A", reopened)
+        self.assertNotIn("[done:", reopened)
+        self.assertNotIn("[commit:", reopened)
+        self.assertIn("[prio: P1]", reopened)
+
+        self.assertEqual(self.todo("edit", "a", "done").returncode, 0)
+        line = next(ln for ln in self.todo_text().splitlines() if "[id: a]" in ln)
+        self.assertTrue(line.startswith("- [x]"), line)
+        self.assertRegex(line, r"\[done: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z\]")
+        self.assertNotIn("2026-01-01T00:00Z", line)
+
+    def test_every_reopen_alias_clears_done_and_commit(self) -> None:
+        for alias in ("undone", "todo", "uncheck", "reopen"):
+            with self.subTest(alias=alias):
+                (self.repo / "TODO.md").write_text(
+                    "- [x] A <!-- [id: a] [done: 2026-01-01T00:00Z] [commit: abc123] -->\n", encoding="utf-8"
+                )
+                self.todo("edit", "a", alias)
+                self.assertNotIn("[done:", self.todo_text())
+                self.assertNotIn("[commit:", self.todo_text())
 
 
 class BriefGoalTest(GoalHarness):

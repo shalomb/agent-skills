@@ -40,6 +40,13 @@ def stage_card_as_artifact(target: str, target_path: Path, art_path: Optional[Pa
     return None
 
 
+def _strip_tags(line: str, *names: str) -> str:
+    """Remove every `[name: …]` tag (and its leading space) from a task line."""
+    for name in names:
+        line = re.sub(rf"\s*\[{name}:[^\]]*\]", "", line)
+    return line
+
+
 def handle_express_edit(
     repo_root: Path,
     todo_file: Path,
@@ -64,9 +71,8 @@ def handle_express_edit(
             line_end = content.find("\n", match.end())
             line_end = len(content) if line_end == -1 else line_end
             line = re.sub(pattern, r"\g<1>x\g<2>", content[line_start:line_end], count=1)
-            if "[done:" not in line:
-                done_tag = f"[done: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%MZ')}]"
-                line = re.sub(r"\s*-->\s*$", f" {done_tag} -->", line, count=1)
+            done_tag = f"[done: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%MZ')}]"
+            line = re.sub(r"\s*-->\s*$", f" {done_tag} -->", _strip_tags(line, "done"), count=1)
             new_content = content[:line_start] + line + content[line_end:]
             todo_file.write_text(new_content, encoding="utf-8")
             print(f"✅ Marked task [{target}] as completed in [{todo_file.name}](file://{todo_file}).")
@@ -82,9 +88,14 @@ def handle_express_edit(
             return 1
         content = todo_file.read_text(encoding="utf-8")
         pattern = rf"(-\s*\[)[xX](\]\s*.*\[id:\s*{re.escape(target)}\])"
-        if re.search(pattern, content):
-            new_content = re.sub(pattern, r"\g<1> \g<2>", content, count=1)
-            todo_file.write_text(new_content, encoding="utf-8")
+        match = re.search(pattern, content)
+        if match:
+            line_start = content.rfind("\n", 0, match.start()) + 1
+            line_end = content.find("\n", match.end())
+            line_end = len(content) if line_end == -1 else line_end
+            line = re.sub(pattern, r"\g<1> \g<2>", content[line_start:line_end], count=1)
+            line = _strip_tags(line, "done", "commit")
+            todo_file.write_text(content[:line_start] + line + content[line_end:], encoding="utf-8")
             print(f"✅ Reopened task [{target}] in [{todo_file.name}](file://{todo_file}).")
             return 0
         else:
