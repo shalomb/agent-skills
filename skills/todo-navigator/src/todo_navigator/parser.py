@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -9,7 +10,11 @@ from typing import List, Optional, Tuple
 
 from todo_navigator.models import Task
 
-SHADOW_BASE = Path.home() / ".cache" / "agent-skills" / "todos"
+
+def get_shadow_base() -> Path:
+    """Root of all todo stores: $XDG_CACHE_HOME (read at call time) or ~/.cache."""
+    cache_home = os.environ.get("XDG_CACHE_HOME") or str(Path.home() / ".cache")
+    return Path(cache_home) / "agent-skills" / "todos"
 
 
 def get_repo_root() -> Path:
@@ -28,16 +33,38 @@ def get_repo_root() -> Path:
     return Path.cwd().resolve()
 
 
+def get_main_worktree_root(repo_root: Path) -> Path:
+    """Root of the main checkout, so every linked worktree of a repo maps to the same store.
+
+    Falls back to repo_root outside git and when the common git dir is not a `.git`
+    directory (submodules, bare repos), where its parent is not a worktree root.
+    """
+    try:
+        res = subprocess.run(
+            ["git", "-C", str(repo_root), "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            common_dir = (repo_root / res.stdout.strip()).resolve()
+            if common_dir.name == ".git":
+                return common_dir.parent
+    except OSError:
+        pass
+    return repo_root.resolve()
+
+
 def get_repo_slug(repo_root: Path) -> str:
-    """Derives a safe filesystem directory slug for the repository."""
-    raw = str(repo_root.resolve()).strip("/").replace("/", "-").replace("\\", "-").replace(":", "-")
+    """Derives a safe filesystem directory slug for the repository (shared by its worktrees)."""
+    raw = str(get_main_worktree_root(repo_root)).strip("/").replace("/", "-").replace("\\", "-").replace(":", "-")
     return re.sub(r"-+", "-", raw) or "default-repo"
 
 
 def get_shadow_dir(repo_root: Path) -> Path:
     """Returns the persistent shadow directory in user cache."""
     slug = get_repo_slug(repo_root)
-    shadow_dir = SHADOW_BASE / slug
+    shadow_dir = get_shadow_base() / slug
     shadow_dir.mkdir(parents=True, exist_ok=True)
     (shadow_dir / "tasks").mkdir(parents=True, exist_ok=True)
     return shadow_dir
