@@ -22,6 +22,7 @@ from todo_navigator.editor import (
     launch_editor,
     stage_card_as_artifact,
 )
+from todo_navigator.goals import active_goal_id
 from todo_navigator.parser import (
     add_task_to_todo,
     get_active_todo_path,
@@ -88,6 +89,8 @@ def cmd_add(args: argparse.Namespace) -> int:
     after_id = getattr(args, "after", None)
     task_id = getattr(args, "id", None)
     section = getattr(args, "section", None)
+    goal_arg = getattr(args, "goal", None)
+    goal = "" if goal_arg == "none" else goal_arg or active_goal_id(repo_root)
 
     deps = []
     if getattr(args, "depends", None):
@@ -115,6 +118,7 @@ def cmd_add(args: argparse.Namespace) -> int:
         after_id=after_id,
         section=section,
         force_shadow=force_shadow,
+        goal=goal,
     )
 
     todo_file = get_active_todo_path(repo_root, force_shadow=force_shadow)
@@ -504,6 +508,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_add.add_argument("--depends", help="Comma-separated prerequisite task IDs")
     p_add.add_argument("--wsjf", help="WSJF cost/size ratio (e.g. 2.0/1.0)")
     p_add.add_argument("--section", help="Insert task under this markdown section heading")
+    p_add.add_argument("--goal", help="Link task to this goal id (default: active goal of the branch; 'none' to skip)")
     p_add.set_defaults(func=cmd_add)
 
     # dep

@@ -245,6 +245,7 @@ def add_task_to_todo(
     after_id: Optional[str] = None,
     section: Optional[str] = None,
     force_shadow: bool = False,
+    goal: str = "",
     now: Optional[datetime] = None,
 ) -> Tuple[Task, Path]:
     """Adds a task to the active TODO.md and creates its shadow task card."""
@@ -273,6 +274,7 @@ def add_task_to_todo(
         wsjf_size=wsjf_size,
         depends_on=deps,
         created=created,
+        goal=goal,
     ).to_markdown_line()
 
     inserted = False
@@ -335,6 +337,7 @@ def add_task_to_todo(
         depends_on=deps,
         section=target_section,
         created=created,
+        goal=goal,
     )
 
     card_path = shadow_dir / "tasks" / f"{final_id}.md"

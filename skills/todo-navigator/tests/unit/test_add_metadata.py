@@ -9,13 +9,16 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
-from todo_navigator.parser import parse_todo_line
+from todo_navigator.parser import get_shadow_dir, parse_todo_line
 
 SRC = Path(__file__).resolve().parents[2] / "src"
 
 
-class AddMetadataTest(unittest.TestCase):
+class CliHarness(unittest.TestCase):
+    """Temp git repo plus an isolated XDG_CACHE_HOME; no tests of its own."""
+
     def setUp(self) -> None:
         tmp = Path(tempfile.mkdtemp()).resolve()
         self.repo = tmp / "repo"
@@ -42,6 +45,8 @@ class AddMetadataTest(unittest.TestCase):
     def todo_text(self) -> str:
         return (self.repo / "TODO.md").read_text(encoding="utf-8")
 
+
+class AddMetadataTest(CliHarness):
     def test_add_stamps_created_in_iso_8601_utc(self) -> None:
         r = self.todo("add", "Ship it", "--id", "ship-it")
         self.assertEqual(r.returncode, 0, r.stderr)
@@ -70,3 +75,75 @@ class AddMetadataTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+GOAL_FILE = """---
+id: g-feat-export
+branch: feat/export
+status: {status}            # draft | active | closed | dropped
+outcome: "Users can export a backlog as CSV"
+done_check:
+  kind: command
+  commands:
+    - make test-unit
+created_at: 2026-11-01T10:00:00Z
+---
+
+## Anti-goals
+- status: active
+"""
+
+
+class AddGoalLinkTest(CliHarness):
+    def setUp(self) -> None:
+        super().setUp()
+        subprocess.run(["git", "-C", str(self.repo), "checkout", "-q", "-b", "feat/export"], check=True)
+
+    def write_goal(self, status: str, branch_slug: str = "feat-export") -> None:
+        with mock.patch.dict(os.environ, {"XDG_CACHE_HOME": str(self.cache)}):
+            goals = get_shadow_dir(self.repo) / "goals"
+        goals.mkdir(parents=True, exist_ok=True)
+        (goals / f"{branch_slug}.md").write_text(GOAL_FILE.format(status=status), encoding="utf-8")
+
+    def added_line(self) -> str:
+        return next(ln for ln in self.todo_text().splitlines() if "[id: t1]" in ln)
+
+    def test_add_links_the_active_goal_of_the_current_branch(self) -> None:
+        self.write_goal("active")
+        self.assertEqual(self.todo("add", "T", "--id", "t1").returncode, 0)
+        self.assertIn("[goal: g-feat-export]", self.added_line())
+
+    def test_add_does_not_link_a_goal_that_is_not_active(self) -> None:
+        self.write_goal("draft")
+        self.todo("add", "T", "--id", "t1")
+        self.assertNotIn("[goal:", self.added_line())
+
+    def test_add_does_not_link_without_a_goal_file(self) -> None:
+        self.todo("add", "T", "--id", "t1")
+        self.assertNotIn("[goal:", self.added_line())
+
+    def test_add_ignores_the_goal_of_another_branch(self) -> None:
+        self.write_goal("active", branch_slug="feat-other")
+        self.todo("add", "T", "--id", "t1")
+        self.assertNotIn("[goal:", self.added_line())
+
+    def test_explicit_goal_overrides_the_active_goal(self) -> None:
+        self.write_goal("active")
+        self.todo("add", "T", "--id", "t1", "--goal", "g-other")
+        self.assertIn("[goal: g-other]", self.added_line())
+        self.assertNotIn("g-feat-export", self.added_line())
+
+    def test_goal_none_suppresses_the_link(self) -> None:
+        self.write_goal("active")
+        self.todo("add", "T", "--id", "t1", "--goal", "none")
+        self.assertNotIn("[goal:", self.added_line())
+
+    def test_detached_head_gets_no_goal_link(self) -> None:
+        self.write_goal("active")
+        env = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com", "GIT_COMMITTER_NAME": "t"}
+        env["GIT_COMMITTER_EMAIL"] = "t@example.com"
+        git = ["git", "-C", str(self.repo), "-c", "commit.gpgsign=false"]
+        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "c"], check=True, env={**os.environ, **env})
+        subprocess.run([*git, "checkout", "-q", "--detach"], check=True)
+        self.todo("add", "T", "--id", "t1")
+        self.assertNotIn("[goal:", self.added_line())
