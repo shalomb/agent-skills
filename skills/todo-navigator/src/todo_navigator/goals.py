@@ -29,7 +29,7 @@ def current_branch(repo_root: Path) -> Optional[str]:
 
 def read_front_matter(path: Path) -> Dict[str, str]:
     """Top-level `key: value` pairs of a leading `---` front-matter block (nested keys are ignored)."""
-    lines = path.read_text(encoding="utf-8").splitlines()
+    lines = path.read_text(encoding="utf-8-sig").splitlines()
     if not lines or lines[0].strip() != "---":
         return {}
     fields: Dict[str, str] = {}
