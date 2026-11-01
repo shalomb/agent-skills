@@ -41,10 +41,32 @@ def get_repo_root(cwd: Path | None = None) -> Path:
     return target
 
 
+def get_main_worktree_root(repo_root: Path) -> Path:
+    """Root of the main checkout, so every linked worktree of a repo maps to the same store.
+
+    Falls back to repo_root outside git and when the common git dir is not a `.git`
+    directory (submodules, bare repos), where its parent is not a worktree root.
+    """
+    try:
+        res = subprocess.run(
+            ["git", "-C", str(repo_root), "rev-parse", "--git-common-dir"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if res.returncode == 0 and res.stdout.strip():
+            common_dir = (repo_root / res.stdout.strip()).resolve()
+            if common_dir.name == ".git":
+                return common_dir.parent
+    except OSError:
+        pass
+    return repo_root.resolve()
+
+
 def get_repo_slug(repo_root: Path) -> str:
-    """Derives a safe filesystem directory slug for the repository matching todo-navigator."""
+    """Derives a safe filesystem directory slug for the repository (shared by its worktrees), matching todo-navigator."""
     raw = (
-        str(repo_root.resolve())
+        str(get_main_worktree_root(repo_root))
         .strip("/")
         .replace("/", "-")
         .replace("\\", "-")

@@ -1,7 +1,9 @@
 # pyright: reportMissingImports=false
 """Unit tests for repository slug derivation and git root detection."""
 
+import subprocess
 from pathlib import Path
+
 import pytest
 from understand_runs.slug import get_repo_root, get_repo_slug, is_git_repo
 import todo_navigator.parser as todo_parser
@@ -38,3 +40,11 @@ def test_is_git_repo_and_get_repo_root(git_repo, non_git_dir):
 
     assert is_git_repo(non_git_dir) is False
     assert get_repo_root(non_git_dir) == non_git_dir.resolve()
+
+
+def test_get_repo_slug_is_shared_by_linked_worktrees(git_repo, tmp_path):
+    linked = tmp_path / "linked-worktree"
+    subprocess.run(["git", "worktree", "add", "-q", "-b", "feat/x", str(linked)], cwd=git_repo, check=True)
+
+    assert get_repo_slug(linked) == get_repo_slug(git_repo)
+    assert get_repo_slug(linked) == todo_parser.get_repo_slug(linked)
