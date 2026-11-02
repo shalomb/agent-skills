@@ -9,6 +9,7 @@ import shutil
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -24,8 +25,9 @@ from understand_plan.planner import plan_discovery
 from understand_plan.scanner import scan_directory
 from understand_render.bundle import load_bundle
 from understand_render.run import render_run
+from understand_runs.catalog import deploy_catalog_spa, update_catalog
 from understand_runs.slug import get_repo_root, get_repo_slug, is_git_repo
-from understand_runs.storage import create_run_dir, normalize_lens
+from understand_runs.storage import create_run_dir, get_shadow_root, normalize_lens
 from understand_runs.urls import format_end_message, get_report_urls
 from understand_synth.sections import synthesize_sections
 
@@ -361,6 +363,37 @@ def _execute_phases(
 
         urls = get_report_urls(repo_slug, lens_id, run_dir.name)
         end_message = format_end_message(repo_slug, lens_id, urls, summary=summary)
+
+        # Update catalog and ensure catalog SPA dashboard is deployed
+        run_json_path = run_dir / "run.json"
+        created_at_str = None
+        if run_json_path.is_file():
+            try:
+                run_meta = json.loads(run_json_path.read_text(encoding="utf-8"))
+                created_at_str = run_meta.get("created_at")
+            except (json.JSONDecodeError, OSError):
+                created_at_str = None
+        if not created_at_str:
+            created_at_str = datetime.now(timezone.utc).isoformat()
+
+        report_rel_url = f"{repo_slug}/{lens_id}/{run_dir.name}/report.html"
+
+        catalog_entry = {
+            "repo_slug": repo_slug,
+            "lens": parsed_lens.type,
+            "target": parsed_lens.target,
+            "run_id": run_dir.name,
+            "timestamp": created_at_str,
+            "commit": commit,
+            "summary": summary,
+            "urls": urls,
+            "report_rel_url": report_rel_url,
+        }
+
+        shadow = base_dir or get_shadow_root()
+        shadow_root = shadow.parent if shadow.name == "understand" else shadow
+        update_catalog(shadow_root, catalog_entry)
+        deploy_catalog_spa(shadow_root)
 
         return ReportResult(
             run_dir=run_dir,

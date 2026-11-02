@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Understand Reports Catalog</title>
+  <style>
+    /* Material 3 design tokens - Teal palette */
+    :root {
+      --md-sys-typescale-display-font: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --md-sys-typescale-code-font: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+      --md-sys-shape-corner-small: 4px;
+      --md-sys-shape-corner-medium: 8px;
+      --md-sys-shape-corner-large: 16px;
+      --md-sys-shape-corner-pill: 9999px;
+      --md-sys-elevation-1: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.12);
+      --md-sys-elevation-2: 0 3px 6px rgba(0,0,0,0.12), 0 2px 4px rgba(0,0,0,0.08);
+
+      --md-sys-color-primary: #1B5E6B;
+      --md-sys-color-on-primary: #FFFFFF;
+      --md-sys-color-primary-container: #CFE7EC;
+      --md-sys-color-on-primary-container: #001F25;
+      --md-sys-color-secondary: #4A6268;
+      --md-sys-color-on-secondary: #FFFFFF;
+      --md-sys-color-secondary-container: #CDE7ED;
+      --md-sys-color-on-secondary-container: #051F23;
+      --md-sys-color-tertiary: #8C4A2F;
+      --md-sys-color-tertiary-container: #F6EDE8;
+      --md-sys-color-on-tertiary-container: #380D00;
+      --md-sys-color-background: #FBFAF8;
+      --md-sys-color-on-background: #16191D;
+      --md-sys-color-surface: #FBFAF8;
+      --md-sys-color-on-surface: #16191D;
+      --md-sys-color-surface-variant: #DBE4E6;
+      --md-sys-color-on-surface-variant: #5A6472;
+      --md-sys-color-surface-container-lowest: #FFFFFF;
+      --md-sys-color-surface-container-low: #F6F5F2;
+      --md-sys-color-surface-container: #F0EFEC;
+      --md-sys-color-surface-container-high: #EAE9E6;
+      --md-sys-color-surface-container-highest: #E4E3E0;
+      --md-sys-color-outline: #7C8695;
+      --md-sys-color-outline-variant: #D5D7D9;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --md-sys-color-primary: #5FB3C2;
+        --md-sys-color-on-primary: #00363E;
+        --md-sys-color-primary-container: #144A55;
+        --md-sys-color-on-primary-container: #CFE7EC;
+        --md-sys-color-secondary: #B1CBD1;
+        --md-sys-color-on-secondary: #1C3439;
+        --md-sys-color-secondary-container: #334B50;
+        --md-sys-color-on-secondary-container: #CDE7ED;
+        --md-sys-color-tertiary: #D08A63;
+        --md-sys-color-tertiary-container: #2A1E18;
+        --md-sys-color-on-tertiary-container: #F6D9C9;
+        --md-sys-color-background: #101316;
+        --md-sys-color-on-background: #E6E8EA;
+        --md-sys-color-surface: #101316;
+        --md-sys-color-on-surface: #E6E8EA;
+        --md-sys-color-surface-variant: #3F484B;
+        --md-sys-color-on-surface-variant: #A2ACB9;
+        --md-sys-color-surface-container-lowest: #0B0E10;
+        --md-sys-color-surface-container-low: #161A1E;
+        --md-sys-color-surface-container: #1A1E22;
+        --md-sys-color-surface-container-high: #24282C;
+        --md-sys-color-surface-container-highest: #2F3337;
+        --md-sys-color-outline: #828D9B;
+        --md-sys-color-outline-variant: #3F484B;
+      }
+    }
+
+    :root[data-theme="light"] {
+      --md-sys-color-primary: #1B5E6B;
+      --md-sys-color-on-primary: #FFFFFF;
+      --md-sys-color-primary-container: #CFE7EC;
+      --md-sys-color-on-primary-container: #001F25;
+      --md-sys-color-secondary: #4A6268;
+      --md-sys-color-on-secondary: #FFFFFF;
+      --md-sys-color-secondary-container: #CDE7ED;
+      --md-sys-color-on-secondary-container: #051F23;
+      --md-sys-color-tertiary: #8C4A2F;
+      --md-sys-color-tertiary-container: #F6EDE8;
+      --md-sys-color-on-tertiary-container: #380D00;
+      --md-sys-color-background: #FBFAF8;
+      --md-sys-color-on-background: #16191D;
+      --md-sys-color-surface: #FBFAF8;
+      --md-sys-color-on-surface: #16191D;
+      --md-sys-color-surface-variant: #DBE4E6;
+      --md-sys-color-on-surface-variant: #5A6472;
+      --md-sys-color-surface-container-lowest: #FFFFFF;
+      --md-sys-color-surface-container-low: #F6F5F2;
+      --md-sys-color-surface-container: #F0EFEC;
+      --md-sys-color-surface-container-high: #EAE9E6;
+      --md-sys-color-surface-container-highest: #E4E3E0;
+      --md-sys-color-outline: #7C8695;
+      --md-sys-color-outline-variant: #D5D7D9;
+    }
+
+    :root[data-theme="dark"] {
+      --md-sys-color-primary: #5FB3C2;
+      --md-sys-color-on-primary: #00363E;
+      --md-sys-color-primary-container: #144A55;
+      --md-sys-color-on-primary-container: #CFE7EC;
+      --md-sys-color-secondary: #B1CBD1;
+      --md-sys-color-on-secondary: #1C3439;
+      --md-sys-color-secondary-container: #334B50;
+      --md-sys-color-on-secondary-container: #CDE7ED;
+      --md-sys-color-tertiary: #D08A63;
+      --md-sys-color-tertiary-container: #2A1E18;
+      --md-sys-color-on-tertiary-container: #F6D9C9;
+      --md-sys-color-background: #101316;
+      --md-sys-color-on-background: #E6E8EA;
+      --md-sys-color-surface: #101316;
+      --md-sys-color-on-surface: #E6E8EA;
+      --md-sys-color-surface-variant: #3F484B;
+      --md-sys-color-on-surface-variant: #A2ACB9;
+      --md-sys-color-surface-container-lowest: #0B0E10;
+      --md-sys-color-surface-container-low: #161A1E;
+      --md-sys-color-surface-container: #1A1E22;
+      --md-sys-color-surface-container-high: #24282C;
+      --md-sys-color-surface-container-highest: #2F3337;
+      --md-sys-color-outline: #828D9B;
+      --md-sys-color-outline-variant: #3F484B;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--md-sys-color-background);
+      color: var(--md-sys-color-on-background);
+      font-family: var(--md-sys-typescale-display-font);
+      font-size: 15px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: var(--md-sys-color-primary);
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code {
+      font-family: var(--md-sys-typescale-code-font);
+      font-size: 0.85em;
+      background: var(--md-sys-color-surface-container-highest);
+      padding: 2px 6px;
+      border-radius: var(--md-sys-shape-corner-small);
+    }
+
+    .app-header {
+      background: var(--md-sys-color-surface-container);
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
+      padding: 16px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-content {
+      max-width: 1100px;
+      margin: 0 auto;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .branding {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .branding-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--md-sys-shape-corner-medium);
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .brand-title {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .theme-toggle-btn {
+      background: var(--md-sys-color-surface-container-high);
+      color: var(--md-sys-color-on-surface);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-pill);
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.15s ease;
+    }
+    .theme-toggle-btn:hover {
+      background: var(--md-sys-color-surface-variant);
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+    }
+
+    .controls-panel {
+      margin-bottom: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .search-bar {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 14px 20px 14px 44px;
+      font-size: 15px;
+      font-family: inherit;
+      color: var(--md-sys-color-on-surface);
+      background: var(--md-sys-color-surface-container-high);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-pill);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .search-input:focus {
+      border-color: var(--md-sys-color-primary);
+      box-shadow: 0 0 0 2px var(--md-sys-color-primary-container);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 16px;
+      width: 18px;
+      height: 18px;
+      color: var(--md-sys-color-outline);
+      pointer-events: none;
+    }
+
+    .search-status {
+      font-size: 13px;
+      color: var(--md-sys-color-on-surface-variant);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 4px;
+    }
+
+    /* Repository Cards */
+    .repo-card {
+      background: var(--md-sys-color-surface-container-lowest);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-large);
+      margin-bottom: 24px;
+      overflow: hidden;
+      box-shadow: var(--md-sys-elevation-1);
+    }
+
+    .repo-header {
+      background: var(--md-sys-color-surface-container-low);
+      border-bottom: 1px solid var(--md-sys-color-outline-variant);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .repo-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .repo-slug-title {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface);
+    }
+
+    .repo-badge {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: var(--md-sys-shape-corner-pill);
+      background: var(--md-sys-color-surface-container-high);
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    /* Grouped lenses */
+    .lens-group {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--md-sys-color-surface-container-high);
+    }
+    .lens-group:last-child {
+      border-bottom: none;
+    }
+
+    .lens-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .lens-chip {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 3px 10px;
+      border-radius: var(--md-sys-shape-corner-pill);
+      background: var(--md-sys-color-primary-container);
+      color: var(--md-sys-color-on-primary-container);
+    }
+
+    .lens-chip.lens-topic {
+      background: var(--md-sys-color-secondary-container);
+      color: var(--md-sys-color-on-secondary-container);
+    }
+
+    .lens-chip.lens-pr {
+      background: var(--md-sys-color-tertiary-container);
+      color: var(--md-sys-color-on-tertiary-container);
+    }
+
+    .lens-target {
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    /* Run item */
+    .run-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .run-row {
+      background: var(--md-sys-color-surface-container-low);
+      border: 1px solid var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-medium);
+      padding: 12px 16px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .run-row:hover {
+      background: var(--md-sys-color-surface-container);
+      border-color: var(--md-sys-color-outline);
+    }
+
+    .run-main-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .run-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px;
+      font-size: 12px;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    .commit-pill {
+      font-family: var(--md-sys-typescale-code-font);
+      background: var(--md-sys-color-surface-container-high);
+      color: var(--md-sys-color-on-surface);
+      padding: 2px 7px;
+      border-radius: var(--md-sys-shape-corner-small);
+      font-size: 11px;
+    }
+
+    .run-summary {
+      margin: 0;
+      font-size: 14px;
+      color: var(--md-sys-color-on-surface);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .run-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .open-report-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--md-sys-color-primary);
+      color: var(--md-sys-color-on-primary) !important;
+      padding: 7px 14px;
+      border-radius: var(--md-sys-shape-corner-pill);
+      font-size: 13px;
+      font-weight: 500;
+      text-decoration: none !important;
+      transition: opacity 0.15s ease;
+    }
+    .open-report-btn:hover {
+      opacity: 0.9;
+    }
+
+    /* Empty states */
+    .empty-state {
+      background: var(--md-sys-color-surface-container-lowest);
+      border: 1px dashed var(--md-sys-color-outline-variant);
+      border-radius: var(--md-sys-shape-corner-large);
+      padding: 48px 24px;
+      text-align: center;
+      margin: 32px 0;
+    }
+
+    .empty-state h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--md-sys-color-on-surface);
+    }
+
+    .empty-state p {
+      margin: 0 auto;
+      max-width: 480px;
+      font-size: 14px;
+      color: var(--md-sys-color-on-surface-variant);
+    }
+
+    @media (max-width: 640px) {
+      .run-row {
+        grid-template-columns: 1fr;
+      }
+      .run-actions {
+        justify-content: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="app-header">
+    <div class="header-content">
+      <div class="branding">
+        <div class="branding-icon">/u</div>
+        <h1 class="brand-title">Understand Reports Catalog</h1>
+      </div>
+      <div class="header-actions">
+        <button id="theme-toggle" class="theme-toggle-btn" title="Toggle theme">
+          <span>Theme:</span> <span id="theme-label">Auto</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <div class="controls-panel">
+      <div class="search-bar">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input
+          type="search"
+          id="catalog-search"
+          class="search-input"
+          placeholder="Filter by repository, lens, target, or commit... (Press '/' to search)"
+          autocomplete="off"
+        />
+      </div>
+      <div class="search-status">
+        <span id="runs-counter">Loading catalog...</span>
+        <span id="esc-hint" style="display: none;">Press Esc to clear</span>
+      </div>
+    </div>
+
+    <div id="catalog-container"></div>
+  </main>
+
+  <script>
+    (function () {
+      let catalogData = [];
+      let themeMode = localStorage.getItem('understand-catalog-theme') || 'auto';
+
+      function applyTheme(mode) {
+        themeMode = mode;
+        const root = document.documentElement;
+        if (mode === 'auto') {
+          root.removeAttribute('data-theme');
+          localStorage.removeItem('understand-catalog-theme');
+          document.getElementById('theme-label').textContent = 'Auto';
+        } else {
+          root.setAttribute('data-theme', mode);
+          localStorage.setItem('understand-catalog-theme', mode);
+          document.getElementById('theme-label').textContent = mode.charAt(0).toUpperCase() + mode.slice(1);
+        }
+      }
+
+      applyTheme(themeMode);
+
+      document.getElementById('theme-toggle').addEventListener('click', function () {
+        if (themeMode === 'auto') applyTheme('light');
+        else if (themeMode === 'light') applyTheme('dark');
+        else applyTheme('auto');
+      });
+
+      function formatDate(ts) {
+        if (!ts) return 'Unknown date';
+        try {
+          const d = new Date(ts);
+          if (isNaN(d.getTime())) return ts;
+          return d.toISOString().replace('T', ' ').substring(0, 19) + ' UTC';
+        } catch {
+          return ts;
+        }
+      }
+
+      function el(tag, className, text) {
+        const node = document.createElement(tag);
+        if (className) node.className = className;
+        if (text !== undefined && text !== null) node.textContent = text;
+        return node;
+      }
+
+      function showEmpty(reason, query) {
+        const container = document.getElementById('catalog-container');
+        const counter = document.getElementById('runs-counter');
+        const escHint = document.getElementById('esc-hint');
+        escHint.style.display = query ? 'inline' : 'none';
+
+        const box = el('div', 'empty-state');
+
+        if (reason === 'filter-empty') {
+          counter.textContent = '0 runs match search';
+          box.appendChild(el('h3', '', 'No matching reports'));
+          const p = el('p', '', 'No reports match "');
+          const strong = el('strong', '', query || '');
+          p.appendChild(strong);
+          p.appendChild(document.createTextNode('". Try another keyword or clear the search.'));
+          box.appendChild(p);
+        } else if (reason === 'no-runs') {
+          counter.textContent = '0 runs found';
+          box.appendChild(el('h3', '', 'No reports recorded yet'));
+          const p = el('p', '', 'The report catalog is empty. Run ');
+          p.appendChild(el('code', '', '/understand'));
+          p.appendChild(document.createTextNode(' in your repository to create your first report.'));
+          box.appendChild(p);
+        } else {
+          counter.textContent = 'Catalog not found';
+          box.appendChild(el('h3', '', 'Catalog is empty or unavailable'));
+          const p = el('p', '', 'No ');
+          p.appendChild(el('code', '', 'catalog.json'));
+          p.appendChild(document.createTextNode(' found. Generate a report with '));
+          p.appendChild(el('code', '', '/understand'));
+          p.appendChild(document.createTextNode(' to initialize the catalog.'));
+          box.appendChild(p);
+        }
+
+        container.replaceChildren(box);
+      }
+
+      function renderCatalog() {
+        const container = document.getElementById('catalog-container');
+        const query = (document.getElementById('catalog-search').value || '').trim().toLowerCase();
+        const escHint = document.getElementById('esc-hint');
+        escHint.style.display = query ? 'inline' : 'none';
+
+        if (!catalogData || catalogData.length === 0) {
+          showEmpty('no-runs');
+          return;
+        }
+
+        const filtered = catalogData.filter(function (item) {
+          if (!query) return true;
+          const slug = (item.repo_slug || '').toLowerCase();
+          const lens = (item.lens || '').toLowerCase();
+          const target = (item.target || '').toLowerCase();
+          const commit = (item.commit || '').toLowerCase();
+          const summary = (item.summary || '').toLowerCase();
+          const runId = (item.run_id || '').toLowerCase();
+          return (
+            slug.includes(query) ||
+            lens.includes(query) ||
+            target.includes(query) ||
+            commit.includes(query) ||
+            summary.includes(query) ||
+            runId.includes(query)
+          );
+        });
+
+        if (filtered.length === 0) {
+          showEmpty('filter-empty', query);
+          return;
+        }
+
+        // Group runs by repo_slug
+        const repos = {};
+        filtered.forEach(function (run) {
+          const repo = run.repo_slug || 'unknown';
+          if (!repos[repo]) repos[repo] = [];
+          repos[repo].push(run);
+        });
+
+        const repoKeys = Object.keys(repos).sort();
+        const totalRuns = filtered.length;
+        const totalRepos = repoKeys.length;
+
+        document.getElementById('runs-counter').textContent =
+          `Showing ${totalRuns} run${totalRuns === 1 ? '' : 's'} across ${totalRepos} repositor${totalRepos === 1 ? 'y' : 'ies'}`;
+
+        const repoNodes = [];
+
+        repoKeys.forEach(function (repo) {
+          const runs = repos[repo];
+          runs.sort(function (a, b) {
+            return (b.timestamp || b.run_id || '').localeCompare(a.timestamp || a.run_id || '');
+          });
+
+          const repoCard = el('div', 'repo-card');
+
+          // Repo header
+          const repoHeader = el('div', 'repo-header');
+          const titleWrap = el('div', 'repo-title-wrap');
+          titleWrap.appendChild(el('h2', 'repo-slug-title', repo));
+          repoHeader.appendChild(titleWrap);
+          repoHeader.appendChild(el('span', 'repo-badge', `${runs.length} run${runs.length === 1 ? '' : 's'}`));
+          repoCard.appendChild(repoHeader);
+
+          // Group by lens
+          const lenses = {};
+          runs.forEach(function (r) {
+            const lensKey = r.lens || 'full';
+            if (!lenses[lensKey]) lenses[lensKey] = [];
+            lenses[lensKey].push(r);
+          });
+
+          Object.keys(lenses).sort().forEach(function (lensName) {
+            const lensRuns = lenses[lensName];
+            const sampleTarget = lensRuns[0].target;
+
+            const lensGroup = el('div', 'lens-group');
+            const lensHeader = el('div', 'lens-header');
+
+            let chipClass = 'lens-chip';
+            if (lensName === 'topic') chipClass += ' lens-topic';
+            else if (lensName === 'pr') chipClass += ' lens-pr';
+
+            lensHeader.appendChild(el('span', chipClass, lensName));
+            if (sampleTarget) {
+              lensHeader.appendChild(el('span', 'lens-target', `: ${sampleTarget}`));
+            }
+            lensGroup.appendChild(lensHeader);
+
+            const runList = el('div', 'run-list');
+
+            lensRuns.forEach(function (run) {
+              const runRow = el('div', 'run-row');
+              const mainInfo = el('div', 'run-main-info');
+
+              const meta = el('div', 'run-meta');
+              const idSpan = el('span', '');
+              idSpan.appendChild(el('strong', '', run.run_id || formatDate(run.timestamp)));
+              meta.appendChild(idSpan);
+              meta.appendChild(el('span', '', '•'));
+              meta.appendChild(el('span', '', formatDate(run.timestamp)));
+
+              if (run.commit) {
+                meta.appendChild(el('span', 'commit-pill', `commit: ${run.commit.substring(0, 7)}`));
+              }
+              mainInfo.appendChild(meta);
+
+              const summaryP = el('p', 'run-summary', run.summary || 'Report generated.');
+              if (run.summary) summaryP.title = run.summary;
+              mainInfo.appendChild(summaryP);
+
+              runRow.appendChild(mainInfo);
+
+              const actions = el('div', 'run-actions');
+              const reportUrl = run.report_rel_url || (run.urls && run.urls.parallels) || '#';
+              const btn = el('a', 'open-report-btn', 'Open Report \u2192');
+              btn.href = reportUrl;
+              actions.appendChild(btn);
+
+              runRow.appendChild(actions);
+              runList.appendChild(runRow);
+            });
+
+            lensGroup.appendChild(runList);
+            repoCard.appendChild(lensGroup);
+          });
+
+          repoNodes.push(repoCard);
+        });
+
+        container.replaceChildren(...repoNodes);
+      }
+
+      async function loadCatalog() {
+        try {
+          const res = await fetch('./catalog.json');
+          if (!res.ok) {
+            showEmpty('catalog-missing');
+            return;
+          }
+          const raw = await res.json();
+          catalogData = Array.isArray(raw) ? raw : (raw && Array.isArray(raw.runs) ? raw.runs : []);
+          if (catalogData.length === 0) {
+            showEmpty('no-runs');
+          } else {
+            renderCatalog();
+          }
+        } catch {
+          showEmpty('catalog-missing');
+        }
+      }
+
+      // Live search input
+      const searchInput = document.getElementById('catalog-search');
+      searchInput.addEventListener('input', renderCatalog);
+
+      // Keyboard shortcuts: '/' to focus, 'Escape' to clear
+      window.addEventListener('keydown', function (e) {
+        if (e.key === '/' && document.activeElement !== searchInput) {
+          e.preventDefault();
+          searchInput.focus();
+        } else if (e.key === 'Escape' && document.activeElement === searchInput) {
+          searchInput.value = '';
+          renderCatalog();
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', loadCatalog);
+      // In case DOMContentLoaded already fired
+      if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        loadCatalog();
+      }
+    })();
+  </script>
+</body>
+</html>
