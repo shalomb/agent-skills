@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -24,6 +25,7 @@ def _git(cwd: Path, *args: str) -> None:
 class SharedStoreTest(unittest.TestCase):
     def setUp(self) -> None:
         tmp = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         self.cache = tmp / "cache"
         self.main = tmp / "main"
         self.linked = tmp / "linked"

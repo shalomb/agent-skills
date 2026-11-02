@@ -6,6 +6,8 @@ Applies Specification by Example / BDD patterns to verify end-to-end capabilitie
 from __future__ import annotations
 
 import io
+import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
@@ -20,6 +22,11 @@ class TestTodoBDDScenarios(unittest.TestCase):
     """BDD Scenarios testing end-to-end CLI operations."""
 
     def setUp(self) -> None:
+        cache = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, cache, ignore_errors=True)
+        env_patcher = patch.dict(os.environ, {"XDG_CACHE_HOME": cache})
+        env_patcher.start()
+        self.addCleanup(env_patcher.stop)
         self.temp_dir = tempfile.TemporaryDirectory()
         self.repo_root = Path(self.temp_dir.name)
         self.todo_file = self.repo_root / "TODO.md"

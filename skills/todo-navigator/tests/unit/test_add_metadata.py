@@ -7,6 +7,7 @@ import io
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -25,6 +26,7 @@ class CliHarness(unittest.TestCase):
 
     def setUp(self) -> None:
         tmp = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         self.repo = tmp / "repo"
         self.cache = tmp / "cache"
         self.repo.mkdir()

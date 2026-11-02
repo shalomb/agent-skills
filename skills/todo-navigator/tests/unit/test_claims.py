@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import tempfile
 import threading
 import unittest
@@ -28,6 +29,7 @@ TODO = (
 class ClaimsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.dir = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.dir, ignore_errors=True)
         self.todo = self.dir / "TODO.md"
         self.todo.write_text(TODO, encoding="utf-8")
         self.locks = self.dir / "locks"
