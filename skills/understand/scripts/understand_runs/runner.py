@@ -15,16 +15,19 @@ from typing import Any
 import understand_lenses.diff as diff_lens
 import understand_lenses.pr as pr_lens
 import understand_lenses.topic as topic_lens
+from understand_deps.extractor import DependencyGraph, extract_dependencies
 from understand_glossary import extract_glossary
 from understand_lenses.models import LensFocus
 from understand_plan.docs import generate_docs_bundle
 from understand_plan.models import Lens
 from understand_plan.planner import plan_discovery
 from understand_plan.scanner import scan_directory
+from understand_render.bundle import load_bundle
 from understand_render.run import render_run
 from understand_runs.slug import get_repo_root, get_repo_slug, is_git_repo
 from understand_runs.storage import create_run_dir, normalize_lens
 from understand_runs.urls import format_end_message, get_report_urls
+from understand_synth.sections import synthesize_sections
 
 IGNORE_DIRS = {".git", ".venv", "venv", "__pycache__", "node_modules", ".cache"}
 
@@ -43,6 +46,7 @@ class ReportResult:
     focus_set: set[str] = field(default_factory=set)
     seed_nodes: set[str] = field(default_factory=set)
     glossary: Any = None
+    dep_graph: Any = None
 
 
 def parse_command(command_or_args: str) -> Lens:
@@ -110,18 +114,59 @@ def _create_bundle(
     lens: Lens,
     folders: list[str],
     files: list[str],
+    dep_graph: DependencyGraph | None = None,
     focus_set: set[str] | None = None,
     seed_nodes: set[str] | None = None,
-    edges: list[tuple[str, str]] | None = None,
+    edges: list[Any] | None = None,
+    repo_name: str | None = None,
 ) -> str:
-    """Writes a minimal schema-compliant bundle for the repository and lens."""
+    """Writes a schema-compliant bundle utilizing synthesize_sections and dep_graph."""
+    if isinstance(dep_graph, (set, frozenset)):
+        actual_focus_set: set[str] | None = set(dep_graph)
+        actual_seed_nodes: set[str] | None = (
+            set(focus_set) if isinstance(focus_set, (set, frozenset)) else seed_nodes
+        )
+        actual_edges: list[Any] | None = edges
+        actual_dep_graph: DependencyGraph | None = None
+    else:
+        actual_dep_graph = dep_graph
+        actual_focus_set = focus_set
+        actual_seed_nodes = seed_nodes
+        actual_edges = edges
+
+    if actual_dep_graph is None:
+        actual_dep_graph = extract_dependencies(repo_path, files)
+
     bundle_dir.mkdir(parents=True, exist_ok=True)
     sections_dir = bundle_dir / "sections"
     sections_dir.mkdir(parents=True, exist_ok=True)
 
+    clean_repo_name = repo_name or repo_path.name or "repository"
+
+    # Multi-section markdown generation via synthesize_sections
+    sections = synthesize_sections(
+        repo_path,
+        clean_repo_name,
+        folders,
+        files,
+        dep_graph=actual_dep_graph,
+        lens=lens,
+        focus_set=actual_focus_set,
+        seed_nodes=actual_seed_nodes,
+    )
+    for filename, content in sections.items():
+        (sections_dir / filename).write_text(content, encoding="utf-8")
+
+    # Build graph.json nodes with hub: True/False
+    hub_files = (
+        set(actual_dep_graph.hubs)
+        if actual_dep_graph and hasattr(actual_dep_graph, "hubs")
+        else set()
+    )
     nodes = []
     for f in files:
-        dimmed = (focus_set is not None and f not in focus_set)
+        dimmed = (actual_focus_set is not None and f not in actual_focus_set)
+        is_hub = f in hub_files
         nodes.append({
             "anchor_id": f,
             "label": Path(f).name,
@@ -129,26 +174,45 @@ def _create_bundle(
             "kind": "file",
             "summary": f"File {f}",
             "dimmed": dimmed,
+            "hub": is_hub,
         })
     if not nodes:
         nodes.append({
             "anchor_id": "root",
-            "label": repo_path.name or "root",
-            "path": "",
+            "label": clean_repo_name or "root",
+            "path": ".",
             "kind": "folder",
             "summary": "Root folder",
             "dimmed": False,
+            "hub": False,
         })
 
+    valid_anchors = {n["anchor_id"] for n in nodes}
+
+    # Build graph.json edges from dep_graph.edges with kinds (imports, calls, depends_on)
+    raw_edges: list[tuple[str, str, str]] = []
+    if actual_dep_graph and hasattr(actual_dep_graph, "edges") and actual_dep_graph.edges:
+        raw_edges.extend(actual_dep_graph.edges)
+    elif actual_edges:
+        for item in actual_edges:
+            if len(item) >= 3:
+                raw_edges.append((item[0], item[1], item[2]))
+            elif len(item) == 2:
+                raw_edges.append((item[0], item[1], "imports"))
+
+    valid_kinds = {"imports", "calls", "depends_on"}
     graph_edges = []
-    if edges:
-        valid_files = set(files)
-        for s, t in edges:
-            if s in valid_files and t in valid_files:
+    seen_edges = set()
+    for s, t, k in raw_edges:
+        if s in valid_anchors and t in valid_anchors and s != t:
+            kind = k if k in valid_kinds else "imports"
+            edge_key = (s, t, kind)
+            if edge_key not in seen_edges:
+                seen_edges.add(edge_key)
                 graph_edges.append({
                     "source": s,
                     "target": t,
-                    "kind": "uses",
+                    "kind": kind,
                 })
 
     graph = {
@@ -159,53 +223,18 @@ def _create_bundle(
     }
     (bundle_dir / "graph.json").write_text(json.dumps(graph, indent=2) + "\n", encoding="utf-8")
 
+    # Validate schema version 1
+    load_bundle(bundle_dir)
+
     if lens.type == "topic":
-        title = f"Topic: {lens.target}"
-        seeds_md = "\n".join(f"- `{s}`" for s in sorted(seed_nodes or [])) if seed_nodes else "- (none)"
-        focus_md = "\n".join(f"- `{f}`" for f in sorted(focus_set or [])) if focus_set else "- (none)"
-        content = (
-            f"# {title}\n\n"
-            f"This topic report focuses on **{lens.target}**.\n\n"
-            f"### Seed Nodes\n{seeds_md}\n\n"
-            f"### Focus Set (Seeds + 1-hop neighbours)\n{focus_md}\n\n"
-            f"### Files examined\n"
-            + "\n".join(f"- `{f}`" for f in files[:30])
-        )
-        summary = f"Topic report on {lens.target} focusing on {len(focus_set or [])} of {len(files)} files."
+        summary = f"Topic report on {lens.target} focusing on {len(actual_focus_set or [])} of {len(files)} files."
     elif lens.type == "diff":
-        title = f"Diff: {lens.target}"
-        focus_md = "\n".join(f"- `{f}`" for f in sorted(focus_set or [])) if focus_set else "- (clean)"
-        content = (
-            f"# {title}\n\n"
-            f"This diff report focuses on changes against **{lens.target}**.\n\n"
-            f"### Changed Files in Focus Set\n{focus_md}\n\n"
-            f"### All Files\n"
-            + "\n".join(f"- `{f}`" for f in files[:30])
-        )
-        summary = f"Diff report against {lens.target} focusing on {len(focus_set or [])} changed files."
+        summary = f"Diff report against {lens.target} focusing on {len(actual_focus_set or [])} changed files."
     elif lens.type == "pr":
-        title = f"Pull Request: {lens.target}"
-        focus_md = "\n".join(f"- `{f}`" for f in sorted(focus_set or [])) if focus_set else "- (none)"
-        content = (
-            f"# {title}\n\n"
-            f"This pull request report focuses on PR **#{lens.target}**.\n\n"
-            f"### Changed Files in Focus Set\n{focus_md}\n\n"
-            f"### All Files at Head\n"
-            + "\n".join(f"- `{f}`" for f in files[:30])
-        )
-        summary = f"Pull request report for PR #{lens.target} focusing on {len(focus_set or [])} changed files."
+        summary = f"Pull request report for PR #{lens.target} focusing on {len(actual_focus_set or [])} changed files."
     else:
-        title = "Repository Structure"
-        folders_list = "\n".join(f"- `{f}/`" for f in folders[:15]) if folders else "- (root only)"
-        files_list = "\n".join(f"- `{f}`" for f in files[:30]) if files else "- (empty)"
-        content = (
-            f"# {title}\n\n"
-            f"### Folders\n{folders_list}\n\n"
-            f"### Files\n{files_list}\n"
-        )
         summary = f"Full overview of {len(files)} files and {len(folders)} folders."
 
-    (sections_dir / "01-overview.md").write_text(content + "\n", encoding="utf-8")
     return summary
 
 
@@ -229,17 +258,24 @@ def _execute_phases(
     if on_phase:
         on_phase("discover")
     folders, files = _scan_files_and_folders(source_root)
+    dep_graph = extract_dependencies(source_root, files)
 
-    # Compute or complete lens focus
+    # Compute or complete lens focus (topic, pr, diff, or full)
     focus_set: set[str] = set()
     seed_nodes: set[str] = set()
-    edges: list[tuple[str, str]] = []
+    edges: list[tuple[str, str]] = [(s, t) for s, t, _ in dep_graph.edges]
 
     if parsed_lens.type == "topic":
-        computed = topic_lens.compute_topic_focus(source_root, parsed_lens.target or "", files=files)
+        computed = topic_lens.compute_topic_focus(
+            source_root,
+            parsed_lens.target or "",
+            files=files,
+            edges=edges if edges else None,
+        )
         focus_set = computed.focus_set
         seed_nodes = computed.seed_nodes
-        edges = computed.metadata.get("edges", [])
+        if not edges:
+            edges = computed.metadata.get("edges", [])
     elif parsed_lens.type == "diff":
         if lens_focus is not None:
             focus_set = lens_focus.focus_set
@@ -261,18 +297,23 @@ def _execute_phases(
         on_phase("converge")
     temp_bundle_dir = Path(tempfile.mkdtemp(prefix="understand-bundle-"))
     try:
+        repo_root = get_repo_root(repo_path)
+        repo_name = repo_root.name or source_root.name or "repository"
+
         if plan.profile == "docs":
             summary = generate_docs_bundle(temp_bundle_dir, source_root, parsed_lens, files)
         else:
             summary = _create_bundle(
-                temp_bundle_dir,
-                source_root,
-                parsed_lens,
-                folders,
-                files,
+                bundle_dir=temp_bundle_dir,
+                repo_path=source_root,
+                lens=parsed_lens,
+                folders=folders,
+                files=files,
+                dep_graph=dep_graph,
                 focus_set=focus_set if parsed_lens.type != "full" else None,
                 seed_nodes=seed_nodes if parsed_lens.type != "full" else None,
                 edges=edges,
+                repo_name=repo_name,
             )
 
         # Glossary extraction (Step 6)
@@ -290,7 +331,6 @@ def _execute_phases(
         if on_phase:
             on_phase("render")
 
-        repo_root = get_repo_root(repo_path)
         repo_slug = get_repo_slug(repo_root)
         lens_id = normalize_lens(parsed_lens.type, parsed_lens.target)
         run_dir = create_run_dir(
@@ -331,6 +371,7 @@ def _execute_phases(
             focus_set=focus_set,
             seed_nodes=seed_nodes,
             glossary=glossary_result,
+            dep_graph=dep_graph,
         )
     finally:
         shutil.rmtree(temp_bundle_dir, ignore_errors=True)

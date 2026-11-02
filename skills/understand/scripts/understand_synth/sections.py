@@ -7,7 +7,6 @@ adhering to the Uninformed Reader Test (3-minute onboarding prose).
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import re
 from typing import Any
@@ -401,7 +400,6 @@ def _format_hub_narrative(hubs: list[str], metrics: dict[str, dict[str, int]]) -
         m = metrics.get(hub, {})
         in_deg = m.get("in_degree", m.get("in", 0))
         out_deg = m.get("out_degree", m.get("out", 0))
-        p = Path(hub)
         role = "Shared utility / core abstraction"
         if "model" in hub.lower():
             role = "Data contracts & domain entities"
@@ -431,6 +429,8 @@ def _synthesize_lens_section(
     files: list[str],
     dep_graph: Any,
     lens: Any,
+    focus_set: set[str] | None = None,
+    seed_nodes: set[str] | None = None,
 ) -> tuple[str, str] | None:
     """Generates tailored focus section (04-topic-focus.md, 04-diff-focus.md, 04-pr-focus.md)."""
     if lens is None:
@@ -439,14 +439,16 @@ def _synthesize_lens_section(
     # Extract lens type and target
     lens_type: str = "full"
     lens_target: str = ""
-    seed_nodes: set[str] = set()
-    focus_set: set[str] = set()
+    cur_seed_nodes: set[str] = set(seed_nodes) if seed_nodes is not None else set()
+    cur_focus_set: set[str] = set(focus_set) if focus_set is not None else set()
     metadata: dict[str, Any] = {}
 
     if hasattr(lens, "lens_type"):
         lens_type = str(lens.lens_type).lower()
-        seed_nodes = set(getattr(lens, "seed_nodes", set()))
-        focus_set = set(getattr(lens, "focus_set", set()))
+        if not cur_seed_nodes:
+            cur_seed_nodes = set(getattr(lens, "seed_nodes", set()))
+        if not cur_focus_set:
+            cur_focus_set = set(getattr(lens, "focus_set", set()))
         metadata = dict(getattr(lens, "metadata", {}))
         lens_target = str(metadata.get("target") or metadata.get("base_ref") or metadata.get("pr_number") or "")
     elif hasattr(lens, "type"):
@@ -457,21 +459,23 @@ def _synthesize_lens_section(
     elif isinstance(lens, dict):
         lens_type = str(lens.get("lens_type") or lens.get("type") or "full").lower()
         lens_target = str(lens.get("target") or "")
-        seed_nodes = set(lens.get("seed_nodes", set()))
-        focus_set = set(lens.get("focus_set", set()))
+        if not cur_seed_nodes:
+            cur_seed_nodes = set(lens.get("seed_nodes", set()))
+        if not cur_focus_set:
+            cur_focus_set = set(lens.get("focus_set", set()))
         metadata = dict(lens.get("metadata", {}))
 
     if lens_type in ("full", "", "none"):
         return None
 
     # Infer seed nodes if empty
-    if not seed_nodes and lens_target:
+    if not cur_seed_nodes and lens_target:
         clean_target = lens_target.lower()
         for f in files:
             if clean_target in f.lower():
-                seed_nodes.add(f)
-        if not seed_nodes and files:
-            seed_nodes.add(files[0])
+                cur_seed_nodes.add(f)
+        if not cur_seed_nodes and files:
+            cur_seed_nodes.add(files[0])
 
     # Infer 1-hop neighbours from graph edges
     edges: list[tuple[str, str, str]] = []
@@ -486,19 +490,24 @@ def _synthesize_lens_section(
                 edges.append((e[0], e[1], e[2] if len(e) > 2 else "imports"))
 
     one_hop_neighbours: set[str] = set()
-    for s, t, _ in edges:
-        if s in seed_nodes and t not in seed_nodes:
-            one_hop_neighbours.add(t)
-        if t in seed_nodes and s not in seed_nodes:
-            one_hop_neighbours.add(s)
+    if cur_focus_set and cur_seed_nodes and cur_focus_set != cur_seed_nodes:
+        one_hop_neighbours = cur_focus_set - cur_seed_nodes
+    else:
+        for s, t, _ in edges:
+            if s in cur_seed_nodes and t not in cur_seed_nodes:
+                one_hop_neighbours.add(t)
+            if t in cur_seed_nodes and s not in cur_seed_nodes:
+                one_hop_neighbours.add(s)
 
-    combined_focus = seed_nodes | one_hop_neighbours
+    combined_focus = cur_seed_nodes | one_hop_neighbours
+    if not cur_focus_set:
+        cur_focus_set = combined_focus
 
     filename = f"04-{lens_type}-focus.md"
 
     if lens_type == "topic":
         title = f"Topic Focus: {lens_target or 'Target Subsystem'}"
-        seeds_list = "\n".join(f"- `{s}`" for s in sorted(seed_nodes)) if seed_nodes else "- (none discovered)"
+        seeds_list = "\n".join(f"- `{s}`" for s in sorted(cur_seed_nodes)) if cur_seed_nodes else "- (none discovered)"
         neighbours_list = "\n".join(f"- `{n}`" for n in sorted(one_hop_neighbours)) if one_hop_neighbours else "- (no external 1-hop neighbours)"
 
         content = (
@@ -520,7 +529,7 @@ def _synthesize_lens_section(
         )
     elif lens_type == "diff":
         title = f"Diff Focus: Changes against {lens_target or 'Base'}"
-        changed_list = "\n".join(f"- `{s}`" for s in sorted(seed_nodes)) if seed_nodes else "- (working tree clean)"
+        changed_list = "\n".join(f"- `{s}`" for s in sorted(cur_seed_nodes)) if cur_seed_nodes else "- (working tree clean)"
         impact_list = "\n".join(f"- `{n}`" for n in sorted(one_hop_neighbours)) if one_hop_neighbours else "- (no direct downstream dependents)"
 
         content = (
@@ -534,7 +543,7 @@ def _synthesize_lens_section(
             f"Directly connected modules potentially impacted by these changes:\n\n"
             f"{impact_list}\n\n"
             f"## Impact & Risk Assessment\n"
-            f"A total of **{len(seed_nodes)}** files have been modified. Reviewers should verify that "
+            f"A total of **{len(cur_seed_nodes)}** files have been modified. Reviewers should verify that "
             f"the 1-hop dependents maintain compatibility with updated interfaces.\n\n"
             f"> **Verification Checklist**: Run targeted unit tests covering both the changed files "
             f"and their immediate 1-hop dependents before merging.\n"
@@ -543,7 +552,7 @@ def _synthesize_lens_section(
         pr_id = metadata.get("pr_number") or lens_target or "Active"
         pr_title = metadata.get("title", f"Pull Request #{pr_id}")
         title = f"Pull Request Focus: #{pr_id} - {pr_title}"
-        changed_list = "\n".join(f"- `{s}`" for s in sorted(seed_nodes)) if seed_nodes else "- (none)"
+        changed_list = "\n".join(f"- `{s}`" for s in sorted(cur_seed_nodes)) if cur_seed_nodes else "- (none)"
         impact_list = "\n".join(f"- `{n}`" for n in sorted(one_hop_neighbours)) if one_hop_neighbours else "- (no direct downstream callers)"
 
         content = (
@@ -565,7 +574,7 @@ def _synthesize_lens_section(
             f"# {title}\n\n"
             f"Tailored analysis for lens `{lens_type}`.\n\n"
             f"### Focus Set Files\n"
-            + "\n".join(f"- `{f}`" for f in sorted(seed_nodes or files[:15]))
+            + "\n".join(f"- `{f}`" for f in sorted(cur_seed_nodes or files[:15]))
             + "\n"
         )
 
@@ -579,6 +588,8 @@ def synthesize_sections(
     files: list[str],
     dep_graph: Any = None,
     lens: Any = None,
+    focus_set: set[str] | None = None,
+    seed_nodes: set[str] | None = None,
 ) -> dict[str, str]:
     """Synthesizes structured Markdown report sections and C4 Mermaid diagrams.
 
@@ -591,6 +602,8 @@ def synthesize_sections(
         files: List of repository-relative file paths.
         dep_graph: Optional DependencyGraph or dict with edges, hubs, and metrics.
         lens: Optional Lens specification (Lens, LensFocus, or dict).
+        focus_set: Optional precomputed set of file paths in lens focus.
+        seed_nodes: Optional precomputed set of seed file paths.
 
     Returns:
         Mapping of section filename (e.g. "01-system-context.md") to Markdown content.
@@ -728,7 +741,9 @@ def synthesize_sections(
     # -------------------------------------------------------------
     # Lens Focus Section (if topic, diff, or pr lens)
     # -------------------------------------------------------------
-    lens_result = _synthesize_lens_section(repo_name, files, dep_graph, lens)
+    lens_result = _synthesize_lens_section(
+        repo_name, files, dep_graph, lens, focus_set=focus_set, seed_nodes=seed_nodes
+    )
     if lens_result:
         filename, content = lens_result
         sections[filename] = content
