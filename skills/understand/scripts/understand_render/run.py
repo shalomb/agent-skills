@@ -11,7 +11,7 @@ from .sourceview import render_source_view
 LINE_FRAGMENT = re.compile(r"^L(\d+)$")
 
 
-def render_run(bundle_dir, source_root, out_dir, mmdc_path, chromium_path, log):
+def render_run(bundle_dir, source_root, out_dir, mmdc_path, chromium_path, log, remote_info=None):
     """Render `bundle_dir` into `out_dir`. Raises BundleError before anything is written."""
     bundle = load_bundle(bundle_dir)
     out_dir = Path(out_dir)
@@ -27,14 +27,22 @@ def render_run(bundle_dir, source_root, out_dir, mmdc_path, chromium_path, log):
 
     def rewrite_link(target):
         path, _, fragment = target.partition("#")
-        if not (path in viewed or _is_source_file(source_root, path)):
+        clean_path = path
+        if clean_path.startswith("src/") and clean_path.endswith(".html"):
+            clean_path = clean_path[4:-5]
+        if not (clean_path in viewed or _is_source_file(source_root, clean_path)):
             return target
-        viewed.add(path)
+        viewed.add(clean_path)
         line = LINE_FRAGMENT.match(fragment)
-        return view_href(path, int(line.group(1)) if line else None)
+        return view_href(clean_path, int(line.group(1)) if line else None)
 
-    report = render_report(bundle, diagram=diagrams.render, rewrite_link=rewrite_link,
-                           uses_in_page_mermaid=diagrams.uses_in_page_mermaid)
+    report = render_report(
+        bundle,
+        diagram=diagrams.render,
+        rewrite_link=rewrite_link,
+        uses_in_page_mermaid=diagrams.uses_in_page_mermaid,
+        remote_info=remote_info,
+    )
     diagrams.log_summary()
 
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -44,7 +52,12 @@ def render_run(bundle_dir, source_root, out_dir, mmdc_path, chromium_path, log):
         target.parent.mkdir(parents=True, exist_ok=True)
         depth = path.count("/") + 1
         target.write_text(
-            render_source_view(path, _read_source(source_root, path), report_href="../" * depth + "report.html"),
+            render_source_view(
+                path,
+                _read_source(source_root, path),
+                report_href="../" * depth + "report.html",
+                remote_info=remote_info,
+            ),
             encoding="utf-8")
     (out_dir / "anchors.json").write_text(
         json.dumps(_anchor_index(bundle), indent=2, sort_keys=True) + "\n", encoding="utf-8")

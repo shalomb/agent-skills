@@ -26,6 +26,7 @@ from understand_plan.scanner import scan_directory
 from understand_render.bundle import load_bundle
 from understand_render.run import render_run
 from understand_runs.catalog import deploy_catalog_spa, update_catalog
+from understand_runs.remote import RemoteInfo, resolve_remote_web_url
 from understand_runs.slug import get_repo_root, get_repo_slug, is_git_repo
 from understand_runs.storage import create_run_dir, get_shadow_root, normalize_lens
 from understand_runs.urls import format_end_message, get_report_urls
@@ -49,6 +50,7 @@ class ReportResult:
     seed_nodes: set[str] = field(default_factory=set)
     glossary: Any = None
     dep_graph: Any = None
+    remote_info: Any = None
 
 
 def parse_command(command_or_args: str) -> Lens:
@@ -121,6 +123,7 @@ def _create_bundle(
     seed_nodes: set[str] | None = None,
     edges: list[Any] | None = None,
     repo_name: str | None = None,
+    remote_info: RemoteInfo | None = None,
 ) -> str:
     """Writes a schema-compliant bundle utilizing synthesize_sections and dep_graph."""
     if isinstance(dep_graph, (set, frozenset)):
@@ -155,6 +158,7 @@ def _create_bundle(
         lens=lens,
         focus_set=actual_focus_set,
         seed_nodes=actual_seed_nodes,
+        remote_info=remote_info,
     )
     for filename, content in sections.items():
         (sections_dir / filename).write_text(content, encoding="utf-8")
@@ -301,6 +305,7 @@ def _execute_phases(
     try:
         repo_root = get_repo_root(repo_path)
         repo_name = repo_root.name or source_root.name or "repository"
+        remote_info = resolve_remote_web_url(repo_root, commit=commit)
 
         if plan.profile == "docs":
             summary = generate_docs_bundle(temp_bundle_dir, source_root, parsed_lens, files)
@@ -316,6 +321,7 @@ def _execute_phases(
                 seed_nodes=seed_nodes if parsed_lens.type != "full" else None,
                 edges=edges,
                 repo_name=repo_name,
+                remote_info=remote_info,
             )
 
         # Glossary extraction (Step 6)
@@ -350,6 +356,7 @@ def _execute_phases(
             mmdc_path="mmdc",
             chromium_path="/usr/bin/chromium-headless-shell",
             log=lambda m: None,
+            remote_info=remote_info,
         )
 
         # Copy glossary bundle files to shadow storage run_dir
@@ -405,6 +412,7 @@ def _execute_phases(
             seed_nodes=seed_nodes,
             glossary=glossary_result,
             dep_graph=dep_graph,
+            remote_info=remote_info,
         )
     finally:
         shutil.rmtree(temp_bundle_dir, ignore_errors=True)

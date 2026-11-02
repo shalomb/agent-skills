@@ -15,6 +15,7 @@ if str(SCRIPTS) not in sys.path:
 from understand_deps.extractor import DependencyGraph  # noqa: E402
 from understand_lenses.models import LensFocus  # noqa: E402
 from understand_plan.models import Lens  # noqa: E402
+from understand_runs.remote import RemoteInfo  # noqa: E402
 from understand_synth.sections import synthesize_sections  # noqa: E402
 
 
@@ -251,3 +252,40 @@ class TestSynthesizeSections:
             rendered = render_markdown(md)
             assert "<h1" in rendered
             assert len(rendered) > 100
+
+    def test_sections_dual_navigation_with_remote_info(self, sample_repo: Path):
+        folders = ["src", "tests", "scripts"]
+        files = ["README.md", "src/app.py", "src/core.py", "scripts/run.py"]
+        dep_graph = DependencyGraph(
+            edges=[("scripts/run.py", "src/app.py", "imports"), ("src/app.py", "src/core.py", "imports")],
+            hubs=["src/app.py"],
+            metrics={"src/app.py": {"in_degree": 1, "out_degree": 1}},
+        )
+        remote = RemoteInfo(web_base="https://github.com/example-org/my-repo", commit="a1b2c3d", host="github")
+        sections = synthesize_sections(sample_repo, "sample_project", folders, files, dep_graph=dep_graph, remote_info=remote)
+
+        sec1 = sections["01-system-context.md"]
+        assert "src/src/app.py.html" in sec1 or "src/app.py.html" in sec1
+        assert "[view online ↗](https://github.com/example-org/my-repo/blob/a1b2c3d/src/app.py)" in sec1
+
+        sec3 = sections["03-key-flows-and-dependencies.md"]
+        assert "[view online ↗](https://github.com/example-org/my-repo/blob/a1b2c3d/src/app.py)" in sec3
+
+    def test_sections_graceful_degradation_without_remote_info(self, sample_repo: Path):
+        folders = ["src", "tests", "scripts"]
+        files = ["README.md", "src/app.py", "src/core.py"]
+        sections = synthesize_sections(sample_repo, "sample_project", folders, files, remote_info=None)
+
+        sec1 = sections["01-system-context.md"]
+        assert "src/src/app.py.html" in sec1 or "src/app.py.html" in sec1
+        assert "view online ↗" not in sec1
+        assert "https://github.com" not in sec1
+
+    def test_sections_dual_navigation_gitlab(self, sample_repo: Path):
+        folders = ["src"]
+        files = ["src/app.py"]
+        remote = RemoteInfo(web_base="https://gitlab.com/example-org/my-repo", commit="commit-sha", host="gitlab")
+        sections = synthesize_sections(sample_repo, "sample_project", folders, files, remote_info=remote)
+
+        sec1 = sections["01-system-context.md"]
+        assert "[view online ↗](https://gitlab.com/example-org/my-repo/-/blob/commit-sha/src/app.py)" in sec1

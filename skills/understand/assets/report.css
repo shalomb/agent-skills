@@ -97,5 +97,8 @@ table.source tr:target{background:var(--md-sys-color-tertiary-container); color:
 /* index */
 ul.entries{list-style:none; padding:0; font-family:var(--md-sys-typescale-body-font)}
 ul.entries li{padding:8px 0; border-bottom:1px solid var(--md-sys-color-outline-variant)}
+/* remote links badge */
+.remote-badge{display:inline-block; font-size:0.75rem; padding:1px 6px; margin-left:6px; border-radius:4px; background:var(--md-sys-color-surface-variant, #e0e2ec); color:var(--md-sys-color-primary, #005ac1); text-decoration:none; vertical-align:middle}
+.remote-badge:hover{background:var(--md-sys-color-primary-container, #d8e2ff); text-decoration:underline}
 @media print{nav.side,.graph-tools,#graph-canvas{display:none} a{color:inherit}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important; scroll-behavior:auto!important}}

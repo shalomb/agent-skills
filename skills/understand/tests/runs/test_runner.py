@@ -188,3 +188,41 @@ def test_make_report_extracts_dependencies_in_phase_2(temp_cache, git_repo):
     assert isinstance(result.dep_graph, DependencyGraph)
     assert (result.run_dir / "report.html").exists()
 
+
+def test_create_bundle_with_remote_info_attaches_dual_links(tmp_path):
+    """_create_bundle passes remote_info to synthesize_sections to emit dual navigation badges."""
+    from understand_runs.remote import RemoteInfo
+
+    bundle_dir = tmp_path / "bundle_remote"
+    repo_path = tmp_path / "project_remote"
+    repo_path.mkdir()
+    (repo_path / "README.md").write_text("# Remote App\n", encoding="utf-8")
+    src = repo_path / "src"
+    src.mkdir()
+    (src / "app.py").write_text("import sys\n", encoding="utf-8")
+
+    remote = RemoteInfo(web_base="https://github.com/example-org/my-repo", commit="c0mm1t", host="github")
+
+    _create_bundle(
+        bundle_dir=bundle_dir,
+        repo_path=repo_path,
+        lens=Lens("full"),
+        folders=["src"],
+        files=["README.md", "src/app.py"],
+        remote_info=remote,
+    )
+
+    sec1 = (bundle_dir / "sections" / "01-system-context.md").read_text(encoding="utf-8")
+    assert "[view online ↗](https://github.com/example-org/my-repo/blob/c0mm1t/src/app.py)" in sec1
+
+
+def test_make_report_resolves_remote_info_in_report_result(temp_cache, git_repo):
+    """make_report resolves remote_info and passes it through ReportResult."""
+    import subprocess
+    subprocess.run(["git", "remote", "add", "origin", "git@github.com:example-org/my-repo.git"], cwd=git_repo, check=True)
+    result = make_report(git_repo, Lens("full"))
+    assert result.remote_info is not None
+    assert result.remote_info.web_base == "https://github.com/example-org/my-repo"
+    assert result.remote_info.host == "github"
+
+

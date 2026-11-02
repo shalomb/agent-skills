@@ -38,13 +38,13 @@ def graph_elements(bundle):
     return nodes + edges
 
 
-def render_report(bundle, diagram, rewrite_link, uses_in_page_mermaid):
+def render_report(bundle, diagram, rewrite_link, uses_in_page_mermaid, remote_info=None):
     """The whole report page as one HTML string.
 
     `diagram` turns Mermaid source into HTML; `rewrite_link` maps a Markdown link
     target to an address; `uses_in_page_mermaid` is asked last, after all diagrams are made.
     """
-    sections = [(GRAPH_ID, "Graph", _graph_section(bundle))]
+    sections = [(GRAPH_ID, "Graph", _graph_section(bundle, remote_info=remote_info))]
     for s in bundle.sections:
         sections.append((s.anchor_id, s.title, _markdown_section(s, rewrite_link, diagram)))
     sections.append((GLOSSARY_ID, "Glossary", _glossary_section(bundle)))
@@ -75,15 +75,28 @@ def _without_first_heading(text):
     return text
 
 
-def _graph_section(bundle):
+def _graph_section(bundle, remote_info=None):
     kinds = sorted({n.kind for n in bundle.nodes})
     options = '<option value="">All kinds</option>' + "".join(
         f'<option value="{html.escape(k)}">{html.escape(k)}</option>' for k in kinds)
-    items = "".join(_node_item(n) for n in bundle.nodes)
-    cited = "".join(
-        f'<li id="{html.escape(i)}"><a href="{html.escape(view_href(c.path, c.line))}">'
-        f'{html.escape(c.path)}:{c.line}</a> <span class="summary">{html.escape(i)}</span></li>'
-        for i, c in bundle.extra_anchors.items())
+    items = "".join(_node_item(n, remote_info=remote_info) for n in bundle.nodes)
+
+    def _cited_item(i, c):
+        remote_badge = ""
+        if remote_info and c.path:
+            r_url = None
+            if hasattr(remote_info, "file_link"):
+                r_url = remote_info.file_link(c.path, c.line)
+            elif callable(remote_info):
+                r_url = remote_info(c.path, c.line)
+            if isinstance(r_url, str):
+                remote_badge = f' <a class="remote-badge" href="{html.escape(r_url)}" target="_blank" rel="noopener noreferrer">view online ↗</a>'
+        return (
+            f'<li id="{html.escape(i)}"><a href="{html.escape(view_href(c.path, c.line))}">'
+            f'{html.escape(c.path)}:{c.line}</a>{remote_badge} <span class="summary">{html.escape(i)}</span></li>'
+        )
+
+    cited = "".join(_cited_item(i, c) for i, c in bundle.extra_anchors.items())
     cited_block = f'<h3>Cited places</h3><ul class="entries">{cited}</ul>' if cited else ""
     return (
         '<div class="graph-tools">'
@@ -93,12 +106,21 @@ def _graph_section(bundle):
         f'<ul class="nodes">{items}</ul>{cited_block}')
 
 
-def _node_item(node):
+def _node_item(node, remote_info=None):
     summary = f'<span class="summary">{html.escape(node.summary)}</span>' if node.summary else ""
     dim_class = ' class="dim"' if node.dimmed else ""
+    remote_badge = ""
+    if remote_info and node.path and node.kind != "folder":
+        r_url = None
+        if hasattr(remote_info, "file_link"):
+            r_url = remote_info.file_link(node.path, node.line)
+        elif callable(remote_info):
+            r_url = remote_info(node.path, node.line)
+        if isinstance(r_url, str):
+            remote_badge = f' <a class="remote-badge" href="{html.escape(r_url)}" target="_blank" rel="noopener noreferrer">view online ↗</a>'
     return (
         f'<li id="{html.escape(node.anchor_id)}"{dim_class}><span class="kind">{html.escape(node.kind)}</span>'
-        f'<a href="{html.escape(view_href(node.path, node.line))}">{html.escape(node.label)}</a>{summary}</li>')
+        f'<a href="{html.escape(view_href(node.path, node.line))}">{html.escape(node.label)}</a>{remote_badge}{summary}</li>')
 
 
 def _slug(text):

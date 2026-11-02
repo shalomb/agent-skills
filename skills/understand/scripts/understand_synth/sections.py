@@ -9,12 +9,39 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from understand_runs.remote import RemoteInfo
 
 from .c4 import generate_c4_container, generate_c4_context
 
 # Standard ignore patterns when inspecting files
 IGNORED_DIRS = {".git", ".venv", "venv", "__pycache__", "node_modules", ".cache", "dist", "build"}
+
+
+def format_file_citation(
+    file_path: str,
+    line: int | None = None,
+    remote_info: Any = None,
+    label: str | None = None,
+) -> str:
+    """Formats Markdown source citation with primary offline link and secondary remote badge."""
+    clean_path = file_path.strip().lstrip("/.")
+    display_label = label or f"`{clean_path}`"
+    offline_href = f"src/{clean_path}.html#L{line}" if line is not None else f"src/{clean_path}.html"
+    primary = f"[{display_label}]({offline_href})"
+
+    if remote_info is not None:
+        remote_url = None
+        if hasattr(remote_info, "file_link"):
+            remote_url = remote_info.file_link(clean_path, line)
+        elif callable(remote_info):
+            remote_url = remote_info(clean_path, line)
+        if isinstance(remote_url, str):
+            return f"{primary} [view online ↗]({remote_url})"
+
+    return primary
 
 
 def _extract_readme_intent(root: Path, repo_name: str) -> tuple[str, str]:
@@ -382,7 +409,11 @@ def _detect_subsystems_and_containers(
     return subsystems, containers
 
 
-def _format_hub_narrative(hubs: list[str], metrics: dict[str, dict[str, int]]) -> str:
+def _format_hub_narrative(
+    hubs: list[str],
+    metrics: dict[str, dict[str, int]],
+    remote_info: RemoteInfo | None = None,
+) -> str:
     """Produces clear, professional onboarding prose analyzing central hub files."""
     if not hubs:
         return (
@@ -408,8 +439,9 @@ def _format_hub_narrative(hubs: list[str], metrics: dict[str, dict[str, int]]) -
         elif "app" in hub.lower() or "core" in hub.lower():
             role = "Central orchestration hub"
 
+        hub_link = format_file_citation(hub, remote_info=remote_info)
         rows.append(
-            f"| `{hub}` | **{in_deg}** dependents | {out_deg} dependencies | {role} |"
+            f"| {hub_link} | **{in_deg}** dependents | {out_deg} dependencies | {role} |"
         )
 
     table_md = "\n".join(rows)
@@ -431,6 +463,7 @@ def _synthesize_lens_section(
     lens: Any,
     focus_set: set[str] | None = None,
     seed_nodes: set[str] | None = None,
+    remote_info: RemoteInfo | None = None,
 ) -> tuple[str, str] | None:
     """Generates tailored focus section (04-topic-focus.md, 04-diff-focus.md, 04-pr-focus.md)."""
     if lens is None:
@@ -507,8 +540,8 @@ def _synthesize_lens_section(
 
     if lens_type == "topic":
         title = f"Topic Focus: {lens_target or 'Target Subsystem'}"
-        seeds_list = "\n".join(f"- `{s}`" for s in sorted(cur_seed_nodes)) if cur_seed_nodes else "- (none discovered)"
-        neighbours_list = "\n".join(f"- `{n}`" for n in sorted(one_hop_neighbours)) if one_hop_neighbours else "- (no external 1-hop neighbours)"
+        seeds_list = "\n".join(f"- {format_file_citation(s, remote_info=remote_info)}" for s in sorted(cur_seed_nodes)) if cur_seed_nodes else "- (none discovered)"
+        neighbours_list = "\n".join(f"- {format_file_citation(n, remote_info=remote_info)}" for n in sorted(one_hop_neighbours)) if one_hop_neighbours else "- (no external 1-hop neighbours)"
 
         content = (
             f"# {title}\n\n"
@@ -529,8 +562,8 @@ def _synthesize_lens_section(
         )
     elif lens_type == "diff":
         title = f"Diff Focus: Changes against {lens_target or 'Base'}"
-        changed_list = "\n".join(f"- `{s}`" for s in sorted(cur_seed_nodes)) if cur_seed_nodes else "- (working tree clean)"
-        impact_list = "\n".join(f"- `{n}`" for n in sorted(one_hop_neighbours)) if one_hop_neighbours else "- (no direct downstream dependents)"
+        changed_list = "\n".join(f"- {format_file_citation(s, remote_info=remote_info)}" for s in sorted(cur_seed_nodes)) if cur_seed_nodes else "- (working tree clean)"
+        impact_list = "\n".join(f"- {format_file_citation(n, remote_info=remote_info)}" for n in sorted(one_hop_neighbours)) if one_hop_neighbours else "- (no direct downstream dependents)"
 
         content = (
             f"# {title}\n\n"
@@ -552,8 +585,8 @@ def _synthesize_lens_section(
         pr_id = metadata.get("pr_number") or lens_target or "Active"
         pr_title = metadata.get("title", f"Pull Request #{pr_id}")
         title = f"Pull Request Focus: #{pr_id} - {pr_title}"
-        changed_list = "\n".join(f"- `{s}`" for s in sorted(cur_seed_nodes)) if cur_seed_nodes else "- (none)"
-        impact_list = "\n".join(f"- `{n}`" for n in sorted(one_hop_neighbours)) if one_hop_neighbours else "- (no direct downstream callers)"
+        changed_list = "\n".join(f"- {format_file_citation(s, remote_info=remote_info)}" for s in sorted(cur_seed_nodes)) if cur_seed_nodes else "- (none)"
+        impact_list = "\n".join(f"- {format_file_citation(n, remote_info=remote_info)}" for n in sorted(one_hop_neighbours)) if one_hop_neighbours else "- (no direct downstream callers)"
 
         content = (
             f"# {title}\n\n"
@@ -574,7 +607,7 @@ def _synthesize_lens_section(
             f"# {title}\n\n"
             f"Tailored analysis for lens `{lens_type}`.\n\n"
             f"### Focus Set Files\n"
-            + "\n".join(f"- `{f}`" for f in sorted(cur_seed_nodes or files[:15]))
+            + "\n".join(f"- {format_file_citation(f, remote_info=remote_info)}" for f in sorted(cur_seed_nodes or files[:15]))
             + "\n"
         )
 
@@ -590,6 +623,7 @@ def synthesize_sections(
     lens: Any = None,
     focus_set: set[str] | None = None,
     seed_nodes: set[str] | None = None,
+    remote_info: RemoteInfo | None = None,
 ) -> dict[str, str]:
     """Synthesizes structured Markdown report sections and C4 Mermaid diagrams.
 
@@ -604,6 +638,7 @@ def synthesize_sections(
         lens: Optional Lens specification (Lens, LensFocus, or dict).
         focus_set: Optional precomputed set of file paths in lens focus.
         seed_nodes: Optional precomputed set of seed file paths.
+        remote_info: Optional RemoteInfo for commit-pinned dual navigation links.
 
     Returns:
         Mapping of section filename (e.g. "01-system-context.md") to Markdown content.
@@ -631,7 +666,7 @@ def synthesize_sections(
     tech_table_md = "\n".join(tech_table)
 
     entry_points_md = "\n".join(
-        f"- `{ep['path']}` (**{ep['kind']}**): {ep['description']}"
+        f"- {format_file_citation(ep['path'], remote_info=remote_info)} (**{ep['kind']}**): {ep['description']}"
         for ep in entry_points
     ) if entry_points else "- *(No dedicated CLI or server entry points identified; modular library structure)*"
 
@@ -719,7 +754,7 @@ def synthesize_sections(
     elif isinstance(dep_graph, dict):
         edges_count = len(dep_graph.get("edges", []))
 
-    hub_analysis_prose = _format_hub_narrative(hubs, metrics)
+    hub_analysis_prose = _format_hub_narrative(hubs, metrics, remote_info=remote_info)
 
     sec3_content = (
         f"# Key Flows & Dependencies\n\n"
@@ -742,10 +777,16 @@ def synthesize_sections(
     # Lens Focus Section (if topic, diff, or pr lens)
     # -------------------------------------------------------------
     lens_result = _synthesize_lens_section(
-        repo_name, files, dep_graph, lens, focus_set=focus_set, seed_nodes=seed_nodes
+        repo_name, files, dep_graph, lens, focus_set=focus_set, seed_nodes=seed_nodes, remote_info=remote_info
     )
     if lens_result:
         filename, content = lens_result
         sections[filename] = content
 
     return sections
+
+
+__all__ = [
+    "format_file_citation",
+    "synthesize_sections",
+]
