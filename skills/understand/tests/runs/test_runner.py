@@ -226,3 +226,51 @@ def test_make_report_resolves_remote_info_in_report_result(temp_cache, git_repo)
     assert result.remote_info.host == "github"
 
 
+def test_make_report_integrates_token_budget_tracker_in_phase_2(temp_cache, git_repo):
+    """make_report initializes TokenBudgetTracker and executes hub discovery within token limits."""
+    # Create hub and client files
+    (git_repo / "src" / "hub_service.ts").write_text("// Core Hub Service\nexport class HubService {}\n", encoding="utf-8")
+    (git_repo / "src" / "client_a.ts").write_text("import './hub_service';\n", encoding="utf-8")
+    (git_repo / "src" / "client_b.ts").write_text("import './hub_service';\n", encoding="utf-8")
+    (git_repo / "src" / "client_c.ts").write_text("import './hub_service';\n", encoding="utf-8")
+
+    result = make_report(git_repo, Lens("full"))
+    assert result.token_tracker is not None
+    assert result.token_tracker.total_tokens_used <= 8000
+    assert (result.run_dir / "report.html").exists()
+
+
+def test_make_report_gracefully_salvages_timed_out_delegate(temp_cache, git_repo):
+    """On delegate timeout, make_report falls back to deterministic static analysis without failing."""
+    import threading
+
+    def timeout_delegate(hub, root, tracker):
+        threading.Event().wait(0.2)
+        return "unreachable"
+
+    result = make_report(git_repo, Lens("full"), delegate_fn=timeout_delegate, delegate_timeout=0.02)
+    assert result.token_tracker is not None
+    assert (result.run_dir / "report.html").exists()
+
+
+def test_make_report_gracefully_handles_exhausted_budget(temp_cache, git_repo):
+    """When token budget is exhausted, delegate execution is skipped and report run succeeds."""
+    call_count = [0]
+
+    def token_heavy_delegate(hub, root, tracker):
+        call_count[0] += 1
+        tracker.record_usage(8000)
+        return {"summary": "heavy insight"}
+
+    (git_repo / "src" / "hub1.ts").write_text("export const a = 1;\n", encoding="utf-8")
+    (git_repo / "src" / "hub2.ts").write_text("export const b = 2;\n", encoding="utf-8")
+    (git_repo / "src" / "client1.ts").write_text("import './hub1';\nimport './hub2';\n", encoding="utf-8")
+    (git_repo / "src" / "client2.ts").write_text("import './hub1';\nimport './hub2';\n", encoding="utf-8")
+    (git_repo / "src" / "client3.ts").write_text("import './hub1';\nimport './hub2';\n", encoding="utf-8")
+
+    result = make_report(git_repo, Lens("full"), delegate_fn=token_heavy_delegate)
+    assert result.token_tracker.is_exhausted()
+    assert (result.run_dir / "report.html").exists()
+
+
+

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import shutil
 import tempfile
@@ -25,6 +26,13 @@ from understand_plan.planner import plan_discovery
 from understand_plan.scanner import scan_directory
 from understand_render.bundle import load_bundle
 from understand_render.run import render_run
+from understand_runs.budget import (
+    DELEGATE_TIMEOUT_SECONDS,
+    MAX_DELEGATES,
+    MAX_TOKEN_BUDGET,
+    TokenBudgetTracker,
+    run_delegate_with_budget,
+)
 from understand_runs.catalog import deploy_catalog_spa, update_catalog
 from understand_runs.remote import RemoteInfo, resolve_remote_web_url
 from understand_runs.slug import get_repo_root, get_repo_slug, is_git_repo
@@ -33,6 +41,7 @@ from understand_runs.urls import format_end_message, get_report_urls
 from understand_synth.sections import synthesize_sections
 
 IGNORE_DIRS = {".git", ".venv", "venv", "__pycache__", "node_modules", ".cache"}
+logger = logging.getLogger(__name__)
 
 
 class GitRequiredError(Exception):
@@ -51,6 +60,8 @@ class ReportResult:
     glossary: Any = None
     dep_graph: Any = None
     remote_info: Any = None
+    token_tracker: Any = None
+    hub_insights: dict[str, Any] = field(default_factory=dict)
 
 
 def parse_command(command_or_args: str) -> Lens:
@@ -124,6 +135,7 @@ def _create_bundle(
     edges: list[Any] | None = None,
     repo_name: str | None = None,
     remote_info: RemoteInfo | None = None,
+    hub_insights: dict[str, Any] | None = None,
 ) -> str:
     """Writes a schema-compliant bundle utilizing synthesize_sections and dep_graph."""
     if isinstance(dep_graph, (set, frozenset)):
@@ -173,12 +185,19 @@ def _create_bundle(
     for f in files:
         dimmed = (actual_focus_set is not None and f not in actual_focus_set)
         is_hub = f in hub_files
+        summary = f"File {f}"
+        if hub_insights and f in hub_insights:
+            insight_val = hub_insights[f]
+            if isinstance(insight_val, dict) and "summary" in insight_val:
+                summary = insight_val["summary"]
+            elif isinstance(insight_val, str):
+                summary = insight_val
         nodes.append({
             "anchor_id": f,
             "label": Path(f).name,
             "path": f,
             "kind": "file",
-            "summary": f"File {f}",
+            "summary": summary,
             "dimmed": dimmed,
             "hub": is_hub,
         })
@@ -244,6 +263,40 @@ def _create_bundle(
     return summary
 
 
+def _default_hub_delegate(
+    hub: str,
+    source_root: Path,
+    tracker: TokenBudgetTracker,
+) -> dict[str, Any]:
+    """Default targeted discovery delegate extracting semantic insights for a central hub."""
+    hub_path = source_root / hub
+    summary = f"Central topology hub: {hub}"
+    lines_count = 0
+    if hub_path.is_file():
+        try:
+            content = hub_path.read_text(encoding="utf-8", errors="replace")
+            lines = content.splitlines()
+            lines_count = len(lines)
+            for line in lines[:20]:
+                stripped = line.strip()
+                if stripped.startswith(("#", "//", "/*", "*", '"""', "'''")):
+                    summary = f"Hub {hub}: {stripped[:100]}"
+                    break
+        except OSError as exc:
+            logger.debug("Failed reading hub file %s: %s", hub, exc)
+
+    # Record bounded simulated token usage
+    tokens = min(max(50, lines_count * 2), 400)
+    tokens = min(tokens, tracker.tokens_remaining())
+    tracker.record_usage(tokens)
+    return {
+        "hub": hub,
+        "summary": summary,
+        "lines": lines_count,
+        "tokens": tokens,
+    }
+
+
 def _execute_phases(
     repo_path: Path,
     source_root: Path,
@@ -252,6 +305,8 @@ def _execute_phases(
     commit: str | None = None,
     base_dir: Path | None = None,
     lens_focus: LensFocus | None = None,
+    delegate_fn: Callable[..., Any] | None = None,
+    delegate_timeout: float = DELEGATE_TIMEOUT_SECONDS,
 ) -> ReportResult:
     """Executes the 4 phases: plan, discover, converge, render."""
     # Phase 1: plan
@@ -265,6 +320,27 @@ def _execute_phases(
         on_phase("discover")
     folders, files = _scan_files_and_folders(source_root)
     dep_graph = extract_dependencies(source_root, files)
+
+    # Hybrid Discovery: Token Budget Tracker & Targeted Hub Discovery (ADR-0005)
+    token_tracker = TokenBudgetTracker(
+        max_tokens=MAX_TOKEN_BUDGET,
+        max_delegates=MAX_DELEGATES,
+    )
+    hub_insights: dict[str, Any] = {}
+    hubs = dep_graph.hubs if dep_graph and hasattr(dep_graph, "hubs") else []
+    hubs_to_analyze = hubs[:MAX_DELEGATES]
+
+    for hub in hubs_to_analyze:
+        if token_tracker.is_exhausted() or not token_tracker.can_invoke:
+            break
+        insight = run_delegate_with_budget(
+            delegate_fn=delegate_fn or _default_hub_delegate,
+            args=(hub, source_root, token_tracker),
+            budget_tracker=token_tracker,
+            timeout=delegate_timeout,
+        )
+        if insight is not None:
+            hub_insights[hub] = insight
 
     # Compute or complete lens focus (topic, pr, diff, or full)
     focus_set: set[str] = set()
@@ -322,6 +398,7 @@ def _execute_phases(
                 edges=edges,
                 repo_name=repo_name,
                 remote_info=remote_info,
+                hub_insights=hub_insights,
             )
 
         # Glossary extraction (Step 6)
@@ -413,6 +490,8 @@ def _execute_phases(
             glossary=glossary_result,
             dep_graph=dep_graph,
             remote_info=remote_info,
+            token_tracker=token_tracker,
+            hub_insights=hub_insights,
         )
     finally:
         shutil.rmtree(temp_bundle_dir, ignore_errors=True)
@@ -425,6 +504,8 @@ def run_report(
     on_phase: Callable[[str], None] | None = None,
     commit: str | None = None,
     base_dir: Path | None = None,
+    delegate_fn: Callable[..., Any] | None = None,
+    delegate_timeout: float = DELEGATE_TIMEOUT_SECONDS,
     **kwargs: Any,
 ) -> ReportResult:
     """Executes a report run through the 4 phases: plan, discover, converge, render.
@@ -432,6 +513,8 @@ def run_report(
     Integrates topic, PR, and diff lenses.
     """
     path = Path(repo_path)
+    actual_delegate_fn = delegate_fn or kwargs.get("delegate_fn")
+    actual_delegate_timeout = kwargs.get("delegate_timeout", delegate_timeout)
 
     if lens is None:
         parsed_lens = Lens("full")
@@ -465,6 +548,8 @@ def run_report(
                 commit=commit,
                 base_dir=base_dir,
                 lens_focus=lens_focus,
+                delegate_fn=actual_delegate_fn,
+                delegate_timeout=actual_delegate_timeout,
             )
 
     # Diff Lens: computes diff focus against merge-base
@@ -479,6 +564,8 @@ def run_report(
             commit=commit,
             base_dir=base_dir,
             lens_focus=lens_focus,
+            delegate_fn=actual_delegate_fn,
+            delegate_timeout=actual_delegate_timeout,
         )
 
     # Full and Topic lenses
@@ -489,6 +576,8 @@ def run_report(
         on_phase=on_phase,
         commit=commit,
         base_dir=base_dir,
+        delegate_fn=actual_delegate_fn,
+        delegate_timeout=actual_delegate_timeout,
     )
 
 
