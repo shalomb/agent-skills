@@ -72,7 +72,7 @@ def _path(path: Path) -> str:
     return text
 
 
-def _serve_root_location(prefix: str, root: Path) -> str:
+def _serve_root_location(prefix: str, root: Path, index: str = "index.html") -> str:
     # `disable_symlinks on` from the (already resolved) root: any symlink below
     # the root is refused. `if_not_owner` is not enough because the link and its
     # target are both owned by the user. A literal `from=` is used instead of
@@ -82,7 +82,7 @@ def _serve_root_location(prefix: str, root: Path) -> str:
     location {prefix} {{
       alias "{path}";
       disable_symlinks on from="{path}";
-      index index.html;
+      index {index};
       autoindex on;
     }}"""
 
@@ -142,7 +142,7 @@ http {{
       return 404;
     }}
 
-{_serve_root_location("/r/", params.shadow_root)}
+{_serve_root_location("/r/", params.shadow_root, index="report.html index.html")}
 
 {_serve_root_location("/src/", params.src_root)}
 

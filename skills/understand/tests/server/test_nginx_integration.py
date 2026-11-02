@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import INDEX_BODY
+from conftest import INDEX_BODY  # type: ignore
 
 pytestmark = pytest.mark.integration
 
@@ -88,6 +88,20 @@ class TestListings:
     def test_a_directory_without_an_index_lists_its_entries(self, nginx):
         reply = nginx.get("/src/demo/", source=PERMITTED)
         assert reply.status == 200 and b"notes.txt" in reply.body
+
+    def test_a_run_directory_serves_report_html_by_default(self, nginx):
+        reply = nginx.get("/r/understand/repo-1/full/abc1234-20260101T000000Z/", source=PERMITTED)
+        assert (reply.status, reply.body) == (200, b"<h1>run</h1>")
+
+    def test_a_run_directory_without_trailing_slash_redirects(self, nginx):
+        reply = nginx.get("/r/understand/repo-1/full/abc1234-20260101T000000Z", source=PERMITTED)
+        assert reply.status == 301
+
+    def test_report_html_takes_precedence_over_index_html(self, nginx, fake_home: Path):
+        run = fake_home / ".cache" / "agent-skills" / "understand" / "repo-1" / "full" / "abc1234-20260101T000000Z"
+        (run / "index.html").write_text("<h1>index</h1>")
+        reply = nginx.get("/r/understand/repo-1/full/abc1234-20260101T000000Z/", source=PERMITTED)
+        assert (reply.status, reply.body) == (200, b"<h1>run</h1>")
 
 
 class TestOtherPaths:

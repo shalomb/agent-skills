@@ -171,7 +171,8 @@ class TestServeRoots:
     def test_directories_list_unless_they_hold_an_index_html(self):
         conf = render()
         assert directives(conf, "autoindex") == ["on", "on"]
-        assert directives(conf, "index") == ["index.html", "index.html"]
+        assert directives(conf, "index") == ["report.html index.html", "index.html"]
+        assert re.search(r"location /r/ \{[^}]*index report\.html index\.html;", conf)
 
     def test_runs_as_the_invoking_user(self):
         assert directives(render(), "user") == []
