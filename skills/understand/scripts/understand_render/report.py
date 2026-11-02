@@ -1,4 +1,4 @@
-"""The report page: graph, sections in file order, glossary last."""
+"""The report page: narrative sections first, graph, key flows/remaining, glossary last."""
 import html
 import json
 import re
@@ -19,7 +19,7 @@ def view_href(path, line=None):
     return quote(href, safe="/#:,@+$&=;")
 
 
-def graph_elements(bundle):
+def graph_elements(bundle, remote_info=None):
     """Cytoscape elements. Ids are anchor ids, so edges link by anchor, not by position."""
     nodes = []
     for n in bundle.nodes:
@@ -29,7 +29,23 @@ def graph_elements(bundle):
             "kind": n.kind,
             "path": n.path,
             "href": view_href(n.path, n.line),
+            "summary": n.summary,
+            "hub": getattr(n, "hub", False),
         }
+        if remote_info and n.path and n.kind != "folder":
+            r_url = None
+            file_link_fn = getattr(remote_info, "file_link", None)
+            if callable(file_link_fn):
+                r_url = file_link_fn(n.path, n.line)
+            elif callable(remote_info):
+                r_url = remote_info(n.path, n.line)
+            if isinstance(r_url, str):
+                data["remote_href"] = r_url
+                host = getattr(remote_info, "host", "github")
+                if isinstance(remote_info, dict):
+                    host = remote_info.get("host", "github")
+                host_name = "GitLab" if str(host).lower() == "gitlab" else "GitHub"
+                data["remote_label"] = f"View on {host_name} ↗"
         elem = {"data": data, "classes": "dim"} if n.dimmed else {"data": data}
         nodes.append(elem)
     edges = [
@@ -38,15 +54,57 @@ def graph_elements(bundle):
     return nodes + edges
 
 
+def _split_sections(sections):
+    """Split sections into narrative sections first, and key flows/remaining narrative sections."""
+    if not sections:
+        return [], []
+    # 1. Look for a section explicitly matching key flows / flow
+    flow_idx = None
+    for idx, s in enumerate(sections):
+        s_id = s.anchor_id.lower()
+        s_title = s.title.lower()
+        if "flow" in s_id or "flow" in s_title:
+            flow_idx = idx
+            break
+    if flow_idx is not None and flow_idx > 0:
+        return sections[:flow_idx], sections[flow_idx:]
+
+    # 2. Check for known introductory / narrative-first patterns
+    intro_keywords = ("context", "architecture", "overview", "reading-order")
+    intro_indices = [
+        idx for idx, s in enumerate(sections)
+        if any(kw in s.anchor_id.lower() or kw in s.title.lower() for kw in intro_keywords)
+    ]
+    if intro_indices:
+        split_idx = 0
+        while split_idx < len(sections) and split_idx in intro_indices:
+            split_idx += 1
+        if 0 < split_idx < len(sections):
+            return sections[:split_idx], sections[split_idx:]
+
+    # 3. Fallback: if len > 1, put first section before graph, remainder after
+    if len(sections) > 1:
+        return sections[:1], sections[1:]
+    return sections, []
+
+
 def render_report(bundle, diagram, rewrite_link, uses_in_page_mermaid, remote_info=None):
     """The whole report page as one HTML string.
 
     `diagram` turns Mermaid source into HTML; `rewrite_link` maps a Markdown link
     target to an address; `uses_in_page_mermaid` is asked last, after all diagrams are made.
     """
-    sections = [(GRAPH_ID, "Graph", _graph_section(bundle, remote_info=remote_info))]
-    for s in bundle.sections:
+    first_secs, remaining_secs = _split_sections(bundle.sections)
+
+    sections = []
+    for s in first_secs:
         sections.append((s.anchor_id, s.title, _markdown_section(s, rewrite_link, diagram)))
+
+    sections.append((GRAPH_ID, "Graph", _graph_section(bundle, remote_info=remote_info)))
+
+    for s in remaining_secs:
+        sections.append((s.anchor_id, s.title, _markdown_section(s, rewrite_link, diagram)))
+
     sections.append((GLOSSARY_ID, "Glossary", _glossary_section(bundle)))
 
     nav = "".join(f'<li><a href="#{html.escape(i)}">{html.escape(t)}</a></li>' for i, t, _ in sections)
@@ -54,12 +112,28 @@ def render_report(bundle, diagram, rewrite_link, uses_in_page_mermaid, remote_in
         f'<section class="report-section" id="{html.escape(i)}"><h2>{html.escape(t)}</h2>{content}</section>'
         for i, t, content in sections)
     title = html.escape(bundle.title)
+
+    quick_links = ['<a href="/r/understand/">← All Reports</a>']
+    if remote_info:
+        web_base = getattr(remote_info, "web_base", None)
+        if isinstance(remote_info, dict):
+            web_base = remote_info.get("web_base")
+        if web_base:
+            host = getattr(remote_info, "host", "github")
+            if isinstance(remote_info, dict):
+                host = remote_info.get("host", "github")
+            host_label = "GitLab" if str(host).lower() == "gitlab" else "GitHub"
+            quick_links.append(
+                f'<a href="{html.escape(web_base)}" target="_blank" rel="noopener noreferrer">{host_label} ↗</a>'
+            )
+    quick_html = f'<div class="side-quick-links">{"".join(quick_links)}</div>'
+
     document = (
         f'<div class="wrap"><header class="masthead"><p class="eyebrow">{icon("account_tree")} Understand</p>'
         f'<h1>{title}</h1><p>{len(bundle.nodes)} nodes, {len(bundle.edges)} edges</p></header>'
-        f'<nav class="side" aria-label="Sections"><h2>Contents</h2><ol>{nav}</ol></nav>'
+        f'<nav class="side" aria-label="Sections">{quick_html}<h2>Contents</h2><ol>{nav}</ol></nav>'
         f'<article>{body}</article></div>')
-    return page(bundle.title, document, _scripts(bundle, uses_in_page_mermaid()))
+    return page(bundle.title, document, _scripts(bundle, uses_in_page_mermaid(), remote_info=remote_info))
 
 
 def _markdown_section(section, rewrite_link, diagram):
@@ -98,12 +172,16 @@ def _graph_section(bundle, remote_info=None):
 
     cited = "".join(_cited_item(i, c) for i, c in bundle.extra_anchors.items())
     cited_block = f'<h3>Cited places</h3><ul class="entries">{cited}</ul>' if cited else ""
+    node_count = len(bundle.nodes)
     return (
         '<div class="graph-tools">'
         '<input id="graph-search" type="search" placeholder="Search nodes" aria-label="Search nodes">'
         f'<select id="graph-kind" aria-label="Filter by kind">{options}</select></div>'
+        '<div class="graph-viewport">'
         '<div id="graph-canvas"></div>'
-        f'<ul class="nodes">{items}</ul>{cited_block}')
+        '<div id="graph-inspector" class="graph-inspector" hidden></div></div>'
+        f'<details class="node-drawer"><summary>Browse all nodes as text list ({node_count} items)</summary>'
+        f'<ul class="nodes">{items}</ul></details>{cited_block}')
 
 
 def _node_item(node, remote_info=None):
@@ -227,8 +305,8 @@ def _glossary_section(bundle):
     return "".join(out)
 
 
-def _scripts(bundle, with_mermaid):
-    data = json.dumps(graph_elements(bundle)).replace("<", "\\u003c")
+def _scripts(bundle, with_mermaid, remote_info=None):
+    data = json.dumps(graph_elements(bundle, remote_info=remote_info)).replace("<", "\\u003c")
     parts = [
         f'<script type="application/json" id="graph-data">{data}</script>',
         f"<script>{inline_script((ASSETS / 'vendor' / 'cytoscape.min.js').read_text(encoding='utf-8'))}</script>",

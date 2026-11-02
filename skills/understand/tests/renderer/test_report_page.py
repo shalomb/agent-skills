@@ -26,7 +26,7 @@ def report(bundle, **kw):
 
 
 def test_sections_come_in_file_order_and_the_glossary_comes_last(bundle):
-    assert Page(report(bundle)).section_ids == ["graph", "overview", "configuration", "glossary"]
+    assert Page(report(bundle)).section_ids == ["overview", "graph", "configuration", "glossary"]
 
 
 def test_glossary_is_last_even_when_the_bundle_has_no_terms(bundle):
@@ -105,7 +105,7 @@ def test_glossary_groups_terms_by_context(bundle):
 def test_nav_lists_each_section_once(bundle):
     html = report(bundle)
     nav = html.split('<nav', 1)[1].split("</nav>", 1)[0]
-    assert re.findall(r'href="#([^"]+)"', nav) == ["graph", "overview", "configuration", "glossary"]
+    assert re.findall(r'href="#([^"]+)"', nav) == ["overview", "graph", "configuration", "glossary"]
 
 
 def test_page_inlines_the_material_3_tokens_and_the_theme_switch(bundle):
@@ -121,4 +121,57 @@ def test_cited_places_from_anchors_json_get_an_id_and_a_link_to_their_line(bundl
 
 def test_empty_graph_still_renders_a_graph_section(bundle):
     bundle.nodes, bundle.edges, bundle.extra_anchors = [], [], {}
-    assert Page(report(bundle)).section_ids[0] == "graph"
+    assert "graph" in Page(report(bundle)).section_ids
+
+
+def test_nav_sidebar_quick_links_without_remote(bundle):
+    html = report(bundle)
+    assert '<div class="side-quick-links">' in html
+    side_nav = html.split('<nav class="side"', 1)[1].split('</nav>', 1)[0]
+    assert '<a href="/r/understand/">← All Reports</a>' in side_nav
+    assert 'GitHub ↗' not in side_nav
+    assert 'GitLab ↗' not in side_nav
+
+
+def test_nav_sidebar_quick_links_with_remote_github(bundle):
+    class FakeRemote:
+        web_base = "https://github.com/example-org/my-project"
+        host = "github"
+    html = report(bundle, remote_info=FakeRemote())
+    assert '<a href="/r/understand/">← All Reports</a>' in html
+    assert '<a href="https://github.com/example-org/my-project" target="_blank" rel="noopener noreferrer">GitHub ↗</a>' in html
+
+
+def test_nav_sidebar_quick_links_with_remote_gitlab(bundle):
+    class FakeRemote:
+        web_base = "https://gitlab.com/example-org/my-project"
+        host = "gitlab"
+    html = report(bundle, remote_info=FakeRemote())
+    assert '<a href="https://gitlab.com/example-org/my-project" target="_blank" rel="noopener noreferrer">GitLab ↗</a>' in html
+
+
+def test_graph_section_has_node_drawer_and_inspector(bundle):
+    html = report(bundle)
+    assert '<div id="graph-inspector" class="graph-inspector" hidden></div>' in html
+    assert '<details class="node-drawer">' in html
+    assert f'<summary>Browse all nodes as text list ({len(bundle.nodes)} items)</summary>' in html
+    assert '<ul class="nodes">' in html
+
+
+def test_c4_synthesized_sections_reading_order():
+    from understand_render.bundle import Bundle, Section
+    sections = [
+        Section("system-context", "01-system-context.md", "System Context: Demo", "content"),
+        Section("architecture-and-containers", "02-architecture-and-containers.md", "Architecture & Containers: Demo", "content"),
+        Section("key-flows-and-dependencies", "03-key-flows-and-dependencies.md", "Key Flows & Dependencies", "content"),
+    ]
+    b = Bundle("Demo", nodes=[], edges=[], sections=sections, glossary_contexts=[], extra_anchors={})
+    html = render_report(b, diagram=lambda s: s, rewrite_link=lambda t: t, uses_in_page_mermaid=lambda: False)
+    page = Page(html)
+    assert page.section_ids == [
+        "system-context",
+        "architecture-and-containers",
+        "graph",
+        "key-flows-and-dependencies",
+        "glossary",
+    ]

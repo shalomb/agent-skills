@@ -38,6 +38,19 @@ nav.side h2{
   font-family:var(--md-sys-typescale-body-font); font-size:10.5px; font-weight:700; letter-spacing:.15em;
   text-transform:uppercase; color:var(--md-sys-color-outline); margin:0 0 12px; padding:0; border:0;
 }
+.side-quick-links{
+  display:flex; flex-direction:column; gap:4px; margin-bottom:18px; padding-bottom:14px;
+  border-bottom:1px solid var(--md-sys-color-outline-variant);
+}
+.side-quick-links a{
+  display:inline-flex; align-items:center; gap:6px;
+  font-family:var(--md-sys-typescale-body-font); font-size:13px; font-weight:600;
+  color:var(--md-sys-color-primary); padding:6px 8px; text-decoration:none;
+  border-radius:var(--md-sys-shape-corner-small);
+}
+.side-quick-links a:hover{
+  background:var(--md-sys-color-primary-container); color:var(--md-sys-color-on-primary-container);
+}
 nav.side ol{list-style:none; margin:0; padding:0}
 nav.side a{
   display:block; font-family:var(--md-sys-typescale-body-font); font-size:13px; padding:5px 8px;
@@ -71,9 +84,91 @@ figure.diagram svg{max-width:100%; height:auto}
   font:inherit; font-size:14px; padding:8px 12px; color:var(--md-sys-color-on-surface);
   background:var(--md-sys-color-surface-container-lowest); border:1px solid var(--md-sys-color-outline); border-radius:var(--md-sys-shape-corner-small);
 }
+.graph-viewport{position:relative}
 #graph-canvas{height:480px; border:1px solid var(--md-sys-color-outline-variant); border-radius:var(--md-sys-shape-corner-medium); background:var(--md-sys-color-surface-container-lowest)}
+.graph-inspector{
+  position:absolute; bottom:16px; right:16px; max-width:min(380px, calc(100% - 32px));
+  background:var(--md-sys-color-surface-container-high, #fff);
+  color:var(--md-sys-color-on-surface);
+  border:1px solid var(--md-sys-color-outline-variant);
+  border-radius:var(--md-sys-shape-corner-medium);
+  box-shadow:0 4px 16px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.08);
+  padding:16px; z-index:10; font-family:var(--md-sys-typescale-body-font);
+  animation:inspector-fade-in 0.18s ease-out;
+}
+@keyframes inspector-fade-in {
+  from { opacity:0; transform:translateY(6px); }
+  to { opacity:1; transform:translateY(0); }
+}
+.inspector-header{display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:8px}
+.inspector-title-wrap{flex:1; min-width:0}
+.inspector-title{margin:0; font-size:15px; font-weight:650; word-break:break-word; color:var(--md-sys-color-on-surface)}
+.inspector-badges{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:4px}
+.inspector-badge{
+  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em;
+  padding:2px 6px; border-radius:4px;
+}
+.inspector-badge.kind{
+  background:var(--md-sys-color-secondary-container);
+  color:var(--md-sys-color-on-secondary-container);
+}
+.inspector-badge.hub{
+  background:var(--md-sys-color-tertiary-container);
+  color:var(--md-sys-color-on-tertiary-container);
+}
+.inspector-close{
+  background:none; border:none; font-size:18px; line-height:1; cursor:pointer;
+  color:var(--md-sys-color-outline); padding:2px 6px; border-radius:4px;
+}
+.inspector-close:hover{
+  background:var(--md-sys-color-surface-variant);
+  color:var(--md-sys-color-on-surface);
+}
+.inspector-summary{
+  font-size:12.5px; line-height:1.5; color:var(--md-sys-color-on-surface-variant);
+  margin:8px 0 14px; word-break:break-word;
+}
+.inspector-summary.empty{font-style:italic; color:var(--md-sys-color-outline)}
+.inspector-actions{display:flex; gap:8px; flex-wrap:wrap; align-items:center}
+.inspector-btn{
+  display:inline-flex; align-items:center; font-size:12px; font-weight:600;
+  padding:6px 12px; border-radius:var(--md-sys-shape-corner-small); text-decoration:none;
+}
+.inspector-btn.primary{
+  background:var(--md-sys-color-primary); color:var(--md-sys-color-on-primary);
+}
+.inspector-btn.primary:hover{opacity:0.92}
+.inspector-btn.secondary{
+  background:var(--md-sys-color-surface-container);
+  color:var(--md-sys-color-primary);
+  border:1px solid var(--md-sys-color-outline-variant);
+}
+.inspector-btn.secondary:hover{background:var(--md-sys-color-surface-container-high)}
+
+details.node-drawer{
+  margin-top:16px; border:1px solid var(--md-sys-color-outline-variant);
+  border-radius:var(--md-sys-shape-corner-medium);
+  background:var(--md-sys-color-surface-container-lowest);
+  overflow:hidden;
+}
+details.node-drawer summary{
+  padding:12px 16px; font-family:var(--md-sys-typescale-body-font);
+  font-size:13.5px; font-weight:600; color:var(--md-sys-color-on-surface);
+  cursor:pointer; user-select:none; background:var(--md-sys-color-surface-container-low);
+  transition:background 0.15s ease;
+}
+details.node-drawer summary:hover{
+  background:var(--md-sys-color-surface-container);
+}
+details.node-drawer[open] summary{
+  border-bottom:1px solid var(--md-sys-color-outline-variant);
+}
+details.node-drawer ul.nodes{
+  margin:0; padding:0; max-height:360px; overflow-y:auto;
+}
 ul.nodes{list-style:none; padding:0; font-family:var(--md-sys-typescale-body-font); font-size:14px}
 ul.nodes li{padding:8px 12px; border-bottom:1px solid var(--md-sys-color-outline-variant); scroll-margin-top:20px}
+ul.nodes li:last-child{border-bottom:0}
 ul.nodes li:target{background:var(--md-sys-color-tertiary-container); color:var(--md-sys-color-on-tertiary-container)}
 ul.nodes .kind{font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--md-sys-color-outline); margin-right:8px}
 ul.nodes .summary{display:block; color:var(--md-sys-color-on-surface-variant); margin-top:2px}
@@ -100,5 +195,5 @@ ul.entries li{padding:8px 0; border-bottom:1px solid var(--md-sys-color-outline-
 /* remote links badge */
 .remote-badge{display:inline-block; font-size:0.75rem; padding:1px 6px; margin-left:6px; border-radius:4px; background:var(--md-sys-color-surface-variant, #e0e2ec); color:var(--md-sys-color-primary, #005ac1); text-decoration:none; vertical-align:middle}
 .remote-badge:hover{background:var(--md-sys-color-primary-container, #d8e2ff); text-decoration:underline}
-@media print{nav.side,.graph-tools,#graph-canvas{display:none} a{color:inherit}}
+@media print{nav.side,.graph-tools,.graph-viewport,#graph-canvas,.node-drawer,.graph-inspector{display:none} a{color:inherit}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important; scroll-behavior:auto!important}}
