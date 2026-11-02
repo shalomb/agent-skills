@@ -72,7 +72,11 @@ def handle_express_edit(
             line_end = len(content) if line_end == -1 else line_end
             line = re.sub(pattern, r"\g<1>x\g<2>", content[line_start:line_end], count=1)
             done_tag = f"[done: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%MZ')}]"
-            line = re.sub(r"\s*-->\s*$", f" {done_tag} -->", _strip_tags(line, "done"), count=1)
+            line = _strip_tags(line, "done")
+            if re.search(r"-->\s*$", line):
+                line = re.sub(r"\s*-->\s*$", f" {done_tag} -->", line, count=1)
+            else:
+                line = f"{line.rstrip()} <!-- {done_tag} -->"
             new_content = content[:line_start] + line + content[line_end:]
             todo_file.write_text(new_content, encoding="utf-8")
             print(f"✅ Marked task [{target}] as completed in [{todo_file.name}](file://{todo_file}).")

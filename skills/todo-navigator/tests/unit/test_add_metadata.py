@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
 import json
 import os
 import re
@@ -12,6 +14,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+from todo_navigator.editor import handle_express_edit
 from todo_navigator.parser import get_shadow_dir, parse_todo_line
 
 SRC = Path(__file__).resolve().parents[2] / "src"
@@ -175,6 +178,17 @@ class ExpressDoneStampsDoneAtTest(CliHarness):
         self.todo("edit", "a", "done")
         self.assertNotIn("2026-01-01T00:00Z", self.todo_text())
         self.assertEqual(self.todo_text().count("[done:"), 1)
+
+    def test_edit_done_appends_a_comment_when_the_line_has_no_metadata_comment(self) -> None:
+        # The parser gives such a line an auto id, so the CLI cannot reach it by [id: a]; call the editor directly.
+        todo = self.repo / "TODO.md"
+        todo.write_text("# Backlog\n\n- [ ] A [id: a]\n- [ ] B <!-- [id: b] -->\n", encoding="utf-8")
+        with contextlib.redirect_stdout(io.StringIO()):
+            ret = handle_express_edit(self.repo, todo, self.repo, "a", self.repo / "a.md", ["done"])
+        self.assertEqual(ret, 0)
+        line = next(ln for ln in todo.read_text(encoding="utf-8").splitlines() if "[id: a]" in ln)
+        self.assertTrue(line.startswith("- [x]"), line)
+        self.assertRegex(line, r"^- \[x\] A \[id: a\] <!-- \[done: \d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z\] -->$")
 
 
 class ReopenClearsCompletionTest(CliHarness):
