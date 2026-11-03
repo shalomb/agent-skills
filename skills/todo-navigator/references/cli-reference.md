@@ -38,7 +38,7 @@ todo list [query] [--id]
 Creates a new task in `TODO.md` and automatically scaffolds a BDD task card in `tasks/<id>.md`.
 
 ```bash
-todo add "<title>" [--id <id>] [--prio P0-P3] [--section <heading>] [--after <id>] [--depends <id1,id2>] [--wsjf <cost>/<size>]
+todo add "<title>" [--id <id>] [--prio P0-P3] [--section <heading>] [--after <id>] [--depends <id1,id2>] [--wsjf <cost>/<size>] [--goal <goal-id>|none]
 ```
 
 - **`title`**: Task title / description (required).
@@ -48,6 +48,7 @@ todo add "<title>" [--id <id>] [--prio P0-P3] [--section <heading>] [--after <id
 - **`--after`**: Places the task immediately after the specified task and adds a dependency on it.
 - **`--depends`**: Comma-separated list of prerequisite task IDs.
 - **`--wsjf`**: Cost of Delay / Job Size ratio (e.g. `4.0/2.0`).
+- **`--goal`**: Goal id written as `[goal: <id>]` on the task line. Without it, the task is linked to the current branch's goal when that goal's `status` is `active`; a draft, closed or dropped goal, no goal file, or a detached HEAD links nothing. Pass `--goal none` to skip the link even when a goal is active.
 
 ---
 
@@ -141,3 +142,21 @@ Topologically sorts the backlog by WSJF execution waves and rewrites `TODO.md`.
 ```bash
 todo replan
 ```
+
+---
+
+### 11. `brief`
+Prints a one-line backlog summary for injecting context into an agent session. Silent (exit 0, no output) when there is no backlog.
+
+```bash
+todo brief [--json] [--as <owner>]
+```
+
+- **`--json`**: Emits one JSON object instead of the text line. Keys:
+  - `todo`: path of the active `TODO.md`.
+  - `open`: number of open tasks.
+  - `claimed`: open tasks held by other owners, as `{id, owner, since}`.
+  - `mine`: open tasks claimed by you, as `{id, title}`.
+  - `next`: the top ready unclaimed task as `{id, title, priority}`, or `null`.
+  - `goal`: the current branch's goal as `{id, status}` (`status` is the goal file's value, e.g. `active` or `draft`), or `null` when the branch has no goal file, no `id`, or HEAD is detached. The text line does not show the goal.
+- **`--as`**: Owner to treat as "you" (default: `$TODO_OWNER`, else `user@host:ppid`).

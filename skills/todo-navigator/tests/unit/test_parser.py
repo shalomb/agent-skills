@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from todo_navigator.parser import (
     add_task_to_todo,
@@ -18,6 +21,13 @@ from todo_navigator.parser import (
 
 
 class TestParser(unittest.TestCase):
+    def setUp(self) -> None:
+        cache = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, cache, ignore_errors=True)
+        patcher = mock.patch.dict(os.environ, {"XDG_CACHE_HOME": cache})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_generate_task_id(self) -> None:
         self.assertEqual(generate_task_id("Create an Automated Test Harness"), "create-an-automated-test-harness")
         self.assertEqual(generate_task_id("Fix bug #123 in API!"), "fix-bug-123-in-api")

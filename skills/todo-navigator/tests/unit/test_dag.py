@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from todo_navigator.dag import (
     add_dependency,
@@ -32,6 +35,13 @@ SECTIONED_TODO = (
 
 
 class TestDAG(unittest.TestCase):
+    def setUp(self) -> None:
+        cache = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, cache, ignore_errors=True)
+        patcher = mock.patch.dict(os.environ, {"XDG_CACHE_HOME": cache})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_detect_cycle_none(self) -> None:
         tasks = [
             Task(id="a", title="A"),

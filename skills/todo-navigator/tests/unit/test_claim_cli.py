@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -21,9 +22,15 @@ TODO = (
 class ClaimCliTest(unittest.TestCase):
     def setUp(self) -> None:
         self.repo = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.repo, ignore_errors=True)
         subprocess.run(["git", "init", "-q", str(self.repo)], check=True)
         (self.repo / "TODO.md").write_text(TODO, encoding="utf-8")
-        self.env = {**os.environ, "PYTHONPATH": str(SRC), "XDG_RUNTIME_DIR": str(self.repo / ".run")}
+        self.env = {
+            **os.environ,
+            "PYTHONPATH": str(SRC),
+            "XDG_RUNTIME_DIR": str(self.repo / ".run"),
+            "XDG_CACHE_HOME": str(self.repo / ".cache"),
+        }
 
     def todo(self, *args: str, owner: str = "pi:A") -> subprocess.CompletedProcess:
         env = {**self.env, "TODO_OWNER": owner}
