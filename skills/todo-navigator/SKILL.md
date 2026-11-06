@@ -53,6 +53,13 @@ todo claim [id]        # Claim id, or the next ready task nobody holds; prints t
 todo done <id> --commit HEAD   # Tick it, record time + commit, clear the claim
 todo release <id>      # Give a claim back (--force for someone else's)
 todo brief [--json]    # One-line summary: open, claimed by others, yours, next ready
+
+# Wave scheduling for parallel builders (deterministic, no LLM)
+todo add "Title" --scope src/x.py,tests/test_x.py   # declare every path the task touches, tests included
+todo batch [--max 3] [--json] [--claim] [--no-resources]
+#   Picks <=3 ready tasks (WSJF order) with pairwise-disjoint scopes; explains each skip.
+#   Dirs end in "/", globs allowed. A task with no scope runs alone. In-flight claims hold their scope and a slot.
+#   Cap = min(--max, 1 per 2 GB free RAM, nproc/2); 1 when load1 >= 70% of nproc. --claim claims as <owner>/<id>.
 ```
 
 ## Agent protocol (any agent, any harness)

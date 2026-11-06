@@ -26,6 +26,7 @@ class Task:
     commit: str = ""
     created: str = ""
     goal: str = ""
+    scope: str = ""
 
     @property
     def wsjf_score(self) -> float:
@@ -44,6 +45,8 @@ class Task:
             tags.append(f"created: {self.created}")
         if self.goal:
             tags.append(f"goal: {self.goal}")
+        if self.scope:
+            tags.append(f"scope: {self.scope}")
         if self.wip:
             tags.append(f"wip: {self.wip}")
             if self.wip_since:

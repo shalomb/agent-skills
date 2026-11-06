@@ -149,7 +149,7 @@ def parse_todo_line(line: str, current_section: str = "") -> Optional[Task]:
                         wsjf_size = float(parts[1])
                     except ValueError:
                         pass
-            elif k in ("wip", "since", "done", "commit", "created", "goal"):
+            elif k in ("wip", "since", "done", "commit", "created", "goal", "scope"):
                 extra[k] = v
 
     if not task_id:
@@ -171,6 +171,7 @@ def parse_todo_line(line: str, current_section: str = "") -> Optional[Task]:
         commit=extra.get("commit", ""),
         created=extra.get("created", ""),
         goal=extra.get("goal", ""),
+        scope=extra.get("scope", ""),
     )
 
 
@@ -246,6 +247,7 @@ def add_task_to_todo(
     section: Optional[str] = None,
     force_shadow: bool = False,
     goal: str = "",
+    scope: str = "",
     now: Optional[datetime] = None,
 ) -> Tuple[Task, Path]:
     """Adds a task to the active TODO.md and creates its shadow task card."""
@@ -275,6 +277,7 @@ def add_task_to_todo(
         depends_on=deps,
         created=created,
         goal=goal,
+        scope=scope,
     ).to_markdown_line()
 
     inserted = False
@@ -338,6 +341,7 @@ def add_task_to_todo(
         section=target_section,
         created=created,
         goal=goal,
+        scope=scope,
     )
 
     card_path = shadow_dir / "tasks" / f"{final_id}.md"

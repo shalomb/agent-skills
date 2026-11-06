@@ -7,6 +7,7 @@ import subprocess
 import sys
 from typing import List, Optional
 
+from todo_navigator.batch import DEFAULT_MAX, read_resources, resource_cap, select_wave
 from todo_navigator.claims import brief, claim, claim_next, complete, release
 from todo_navigator.dag import (
     add_dependency,
@@ -119,6 +120,7 @@ def cmd_add(args: argparse.Namespace) -> int:
         section=section,
         force_shadow=force_shadow,
         goal=goal,
+        scope=(getattr(args, "scope", None) or "").replace(" ", ""),
     )
 
     todo_file = get_active_todo_path(repo_root, force_shadow=force_shadow)
@@ -461,6 +463,40 @@ def cmd_release(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def cmd_batch(args: argparse.Namespace) -> int:
+    """Pick the next wave: ready tasks with disjoint scopes, capped by --max and machine resources."""
+    import json
+
+    _, todo_file = _todo_or_fail(args)
+    if not todo_file:
+        return 1
+    cap = args.max
+    resources = None
+    if not args.no_resources:
+        nproc, avail_gb, load1 = read_resources()
+        resources = {"nproc": nproc, "avail_gb": round(avail_gb, 1), "load1": round(load1, 2)}
+        cap = min(cap, resource_cap(nproc=nproc, avail_gb=avail_gb, load1=load1))
+    _, tasks, _ = parse_todo_file(todo_file)
+    chosen, skipped = select_wave(tasks, max_n=cap)
+    owner = args.owner or current_owner()
+    if args.claim:
+        chosen = [t for t in chosen if claim(todo_file, t.id, f"{owner}/{t.id}")[0]]
+    if args.json:
+        out = {
+            "cap": cap,
+            "chosen": [{"id": t.id, "title": t.title, "scope": t.scope} for t in chosen],
+            "skipped": [{"id": s.id, "reason": s.reason} for s in skipped],
+        }
+        if resources:
+            out["resources"] = resources
+        print(json.dumps(out))
+        return 0
+    print(f"Wave (cap {cap}): " + (", ".join(t.id for t in chosen) or "nothing ready"))
+    for s in skipped:
+        print(f"  skipped {s.id}: {s.reason}")
+    return 0
+
+
 def cmd_brief(args: argparse.Namespace) -> int:
     """Backlog summary for agent context injection. Silent (exit 0, no output) when no backlog."""
     import json
@@ -510,6 +546,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_add.add_argument("--wsjf", help="WSJF cost/size ratio (e.g. 2.0/1.0)")
     p_add.add_argument("--section", help="Insert task under this markdown section heading")
     p_add.add_argument("--goal", help="Link task to this goal id (default: active goal of the branch; 'none' to skip)")
+    p_add.add_argument("--scope", help="Comma-separated paths/globs touched, tests included (for `batch`)")
     p_add.set_defaults(func=cmd_add)
 
     # dep
@@ -573,6 +610,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_brief.add_argument("--json", action="store_true")
     p_brief.add_argument("--as", dest="owner")
     p_brief.set_defaults(func=cmd_brief)
+
+    p_batch = subparsers.add_parser("batch", help="Pick the next wave: ready tasks with disjoint scopes")
+    p_batch.add_argument("--max", type=int, default=DEFAULT_MAX, help=f"Wave size cap (default {DEFAULT_MAX})")
+    p_batch.add_argument("--no-resources", action="store_true", help="Ignore RAM/CPU/load limits")
+    p_batch.add_argument("--claim", action="store_true", help="Claim each chosen task as <owner>/<id>")
+    p_batch.add_argument("--json", action="store_true")
+    p_batch.add_argument("--as", dest="owner")
+    p_batch.set_defaults(func=cmd_batch)
 
     return parser
 
