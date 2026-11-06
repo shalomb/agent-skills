@@ -8,16 +8,17 @@ description: Execute a locked /goal as the Main Copilot orchestrating Builder an
 You are the flow plane (schedule, integrate, verify). Builders are the execution plane. Never read raw logs or diffs; read receipts. Spec: `~/.pi/docs/specs/agentic-coding` (ADR-003 waves, ADR-004 critic, ADR-005 context hygiene).
 
 ## Setup (once)
-1. `subagents_enable`. Load `test-driven-development`, `git-commit-formatter`, `git-safety-guardrails`, `using-git-worktrees` (+ the GitHub skill if relevant). Tell every Builder to load the same.
-2. Read the locked goal (done_check, anti_goals, scope_anchors) and `todo brief`. Never edit goal files.
+1. `subagents_enable`. Load `test-driven-development`, `git-commit-formatter`, `git-safety-guardrails`, `using-git-worktrees` (+ `github-cli` if GitHub is involved). Tell every Builder to load the same.
+2. Find the goal: `todo brief --json` gives `goal.id` and `goal.status`. The contract is `<shadow-dir>/goals/<branch, "/" as "-">.md` (shadow dir = `~/.cache/agent-skills/todos/<repo-slug>/`); read its done_check, anti_goals, scope_anchors. If status is not `active` (locked), STOP and ask the user to run `/goal lock`; never lock or edit goal files yourself. Obey anti_goals in every brief.
+   Read the repo's AGENTS.md and put its commit format, test, and deploy rules into every Builder brief (they override defaults here).
 3. Choose a topology and state it with a one-line reason: Solo (a command verifies it), Pipeline (builder then critic), Fan-out (disjoint scope anchors), Adversarial pair (high risk).
 4. Tasks need `--scope` (every path touched, tests included). Add missing scopes with `todo edit`/`todo add --scope` before batching; unscoped tasks run alone.
 
 ## Wave loop
-1. `todo batch --json --claim`. It applies disjoint scopes, `--max 3`, and the RAM/CPU/load cap. Use `cap` and `resources` as given; if cap is 1 run sequentially. Run it again before every wave, never reuse an old answer.
+1. `todo batch --goal <goal.id> --json --claim`. If no tasks are linked to the goal, draft them first from the goal (`todo add --goal <id> --scope ...`) and show the user. It applies disjoint scopes, `--max 3`, and the RAM/CPU/load cap. Use `cap` and `resources` as given; if cap is 1 run sequentially. Run it again before every wave, never reuse an old answer.
 2. One task = one Builder = one worktree = one ACP commit. Models: haiku for search and mechanical edits, sonnet for implementation and tests. Do trivial edits yourself.
 3. Brief (goal, task id, files in scope, acceptance check). Builder restates the task in one line first, says so if an instruction looks wrong, and phrases doubts as what to do. Return format: a receipt of at most 25 lines of pointers (`git:<sha>`, `todo:<id>`, `file:line`), no prose or diffs.
-4. Gate each task: rebase onto the feature worktree, run deterministic checks, fast-forward on pass, then `todo done <id> --commit <sha>`. Run an independent critic (`bart-adversarial-reviewer`) only for hub files, public API or security paths, or retries.
+4. Gate each task: in the Builder's worktree `git rebase <feature-branch>`, run the repo's test target, then in the feature worktree `git merge --ff-only <builder-branch>`; on pass `todo done <id> --commit <sha>`. Run an independent critic (`bart-adversarial-reviewer`) only for hub files, public API or security paths, or retries.
 5. Escalate after two failed attempts at one problem, a reverted or self-contradicting change, or stated uncertainty. Stop that Builder, get a diagnosis (no code) from a stronger model, retry with fresh context. Do not keep pushing (sunk cost). When stuck, validate assumptions one at a time.
 
 ## Context discipline
