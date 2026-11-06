@@ -91,6 +91,13 @@ class BatchCliTest(unittest.TestCase):
         self.todo("edit", "--no-popup", "eps", "scope", "src/e.py")
         self.assertIn("[id: eps] [prio: P2] [scope: src/e.py] -->", (self.repo / "TODO.md").read_text())
 
+    def test_goal_filter_only_considers_tasks_linked_to_that_goal(self) -> None:
+        text = (self.repo / "TODO.md").read_text().replace("[id: gamma]", "[id: gamma] [goal: g-x]")
+        (self.repo / "TODO.md").write_text(text, encoding="utf-8")
+        out = json.loads(self.todo("batch", "--json", "--no-resources", "--goal", "g-x").stdout)
+        self.assertEqual([t["id"] for t in out["chosen"]], ["gamma"])
+        self.assertEqual(out["skipped"], [])
+
 
 if __name__ == "__main__":
     unittest.main()

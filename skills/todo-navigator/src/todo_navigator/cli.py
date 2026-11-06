@@ -477,6 +477,8 @@ def cmd_batch(args: argparse.Namespace) -> int:
         resources = {"nproc": nproc, "avail_gb": round(avail_gb, 1), "load1": round(load1, 2)}
         cap = min(cap, resource_cap(nproc=nproc, avail_gb=avail_gb, load1=load1))
     _, tasks, _ = parse_todo_file(todo_file)
+    if args.goal:  # candidates linked to the goal; done tasks (deps) and in-flight claims (scope) still count
+        tasks = [t for t in tasks if t.goal == args.goal or t.completed or t.wip]
     chosen, skipped = select_wave(tasks, max_n=cap)
     owner = args.owner or current_owner()
     if args.claim:
@@ -614,6 +616,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_batch = subparsers.add_parser("batch", help="Pick the next wave: ready tasks with disjoint scopes")
     p_batch.add_argument("--max", type=int, default=DEFAULT_MAX, help=f"Wave size cap (default {DEFAULT_MAX})")
     p_batch.add_argument("--no-resources", action="store_true", help="Ignore RAM/CPU/load limits")
+    p_batch.add_argument("--goal", help="Only consider tasks linked to this goal id (see `todo brief --json`)")
     p_batch.add_argument("--claim", action="store_true", help="Claim each chosen task as <owner>/<id>")
     p_batch.add_argument("--json", action="store_true")
     p_batch.add_argument("--as", dest="owner")

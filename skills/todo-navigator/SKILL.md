@@ -57,7 +57,7 @@ todo brief [--json]    # One-line summary: open, claimed by others, yours, next 
 # Wave scheduling for parallel builders (deterministic, no LLM)
 todo add "Title" --scope src/x.py,tests/test_x.py   # declare every path the task touches, tests included
 todo edit <id> scope src/x.py,tests/test_x.py   # set/replace the scope of an existing task
-todo batch [--max 3] [--json] [--claim] [--no-resources]
+todo batch [--max 3] [--json] [--claim] [--no-resources] [--goal ID]
 #   Picks <=3 ready tasks (WSJF order) with pairwise-disjoint scopes; explains each skip.
 #   Dirs end in "/", globs allowed. A task with no scope runs alone. In-flight claims hold their scope and a slot.
 #   Cap = min(--max, 1 per 2 GB free RAM, nproc/2); 1 when load1 >= 70% of nproc. --claim claims as <owner>/<id>.
