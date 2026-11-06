@@ -78,6 +78,19 @@ class BatchCliTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("[scope: src/d.py,tests/test_d.py]", (self.repo / "TODO.md").read_text())
 
+    def test_edit_scope_sets_then_replaces_the_tag_on_an_existing_task(self) -> None:
+        r = self.todo("edit", "--no-popup", "gamma", "scope", "src/z.py,", "tests/test_z.py")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        text = (self.repo / "TODO.md").read_text()
+        self.assertIn("[scope: src/z.py,tests/test_z.py]", text)
+        self.assertNotIn("[scope: src/c.py]", text)
+        self.assertEqual(text.count("[scope:"), 3)
+
+    def test_edit_scope_adds_a_tag_to_a_task_without_one(self) -> None:
+        (self.repo / "TODO.md").write_text(TODO + "- [ ] Eps <!-- [id: eps] [prio: P2] -->\n", encoding="utf-8")
+        self.todo("edit", "--no-popup", "eps", "scope", "src/e.py")
+        self.assertIn("[id: eps] [prio: P2] [scope: src/e.py] -->", (self.repo / "TODO.md").read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

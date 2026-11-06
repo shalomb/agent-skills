@@ -128,6 +128,23 @@ def handle_express_edit(
         print(f"✅ Updated priority for [{target}] to {new_prio} in [{todo_file.name}](file://{todo_file}).")
         return 0
 
+    # 3b. Set the scope tag (paths the task touches, tests included) used by `todo batch`
+    if first_op == "scope":
+        scope = "".join(ops[1:]).strip()
+        if not scope or not todo_file.exists():
+            print("❌ Error: 'scope' requires paths, e.g., todo edit <id> scope src/a.py,tests/test_a.py")
+            return 1
+        content = todo_file.read_text(encoding="utf-8")
+        match = re.search(rf"^.*\[id:\s*{re.escape(target)}\].*$", content, flags=re.MULTILINE)
+        if not match:
+            print(f"⚠️ Could not find task with [id: {target}] in [{todo_file.name}](file://{todo_file}).")
+            return 1
+        line = _strip_tags(match.group(0), "scope")
+        line = re.sub(r"\s*-->\s*$", f" [scope: {scope}] -->", line, count=1)
+        todo_file.write_text(content[: match.start()] + line + content[match.end() :], encoding="utf-8")
+        print(f"✅ Set scope for [{target}]: {scope}")
+        return 0
+
     # 4. Add acceptance criterion to task card
     if first_op == "add":
         criterion_text = " ".join(ops[1:]).strip()
@@ -165,7 +182,7 @@ def handle_express_edit(
         return 0
 
     print(f"⚠️ Unrecognized express edit operation: '{first_op}'")
-    print("   Supported express ops: done, undone, P0, P1, P2, P3, add <criterion>")
+    print("   Supported express ops: done, undone, P0, P1, P2, P3, scope <paths>, add <criterion>")
     return 1
 
 
