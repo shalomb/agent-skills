@@ -1,0 +1,202 @@
+#!/usr/bin/env -S uv run --script
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
+"""calibre-lookup: find books in a Calibre library by any metadata (read-only).
+
+Reads metadata.db directly (no calibre install needed) and never writes to it.
+
+  calibre-lookup linux command          free text: title/author/tag/series/
+                                        publisher/isbn/topic(comments), ANDed
+  calibre-lookup author:plato tag:philosophy
+  calibre-lookup isbn:978-1-59327-389-7
+  calibre-lookup topic:justice --json | jq '.[].files'
+  calibre-lookup cisco --paths | fzf     one file path per line
+
+Fields: title author tag series publisher isbn id topic (alias: comments)
+Library: --library, else $CALIBRE_LIBRARY, else ~/Calibre Library
+"""
+
+import argparse
+import json
+import os
+import re
+import sqlite3
+import sys
+from pathlib import Path
+
+DEFAULT_LIBRARY = "~/Calibre Library"  # Calibre's own default location
+PLACEHOLDER_DATE = "0101-01-01"
+
+# field -> SQL predicate over one bound pattern (?) for a book row `b`
+FIELDS = {
+    "title": "b.title like ? escape '\\'",
+    "author": (
+        "exists(select 1 from books_authors_link l join authors a on a.id=l.author "
+        "where l.book=b.id and a.name like ? escape '\\')"
+    ),
+    "tag": (
+        "exists(select 1 from books_tags_link l join tags t on t.id=l.tag "
+        "where l.book=b.id and t.name like ? escape '\\')"
+    ),
+    "series": (
+        "exists(select 1 from books_series_link l join series s on s.id=l.series "
+        "where l.book=b.id and s.name like ? escape '\\')"
+    ),
+    "publisher": (
+        "exists(select 1 from books_publishers_link l join publishers p on p.id=l.publisher "
+        "where l.book=b.id and p.name like ? escape '\\')"
+    ),
+    "isbn": (
+        "exists(select 1 from identifiers i where i.book=b.id "
+        "and replace(i.val,'-','') like ? escape '\\')"
+    ),
+    "topic": (
+        "exists(select 1 from comments c where c.book=b.id and c.text like ? escape '\\')"
+    ),
+}
+ALIASES = {"comments": "topic", "authors": "author", "tags": "tag", "isbns": "isbn"}
+ANY = ("title", "author", "tag", "series", "publisher", "isbn", "topic")
+
+
+def like(term: str) -> str:
+    esc = term.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{esc}%"
+
+
+def parse_term(term: str) -> tuple[str | None, str]:
+    m = re.match(r"^([a-z]+):(.+)$", term, re.IGNORECASE)
+    if not m:
+        return None, term
+    field = m.group(1).lower()
+    field = ALIASES.get(field, field)
+    if field == "id":
+        return "id", m.group(2)
+    if field not in FIELDS:
+        raise ValueError(
+            f"unknown field {m.group(1)!r}; use one of: id, {', '.join(FIELDS)}"
+        )
+    return field, m.group(2)
+
+
+def build_query(terms: list[str]) -> tuple[str, list]:
+    clauses: list[str] = []
+    params: list = []
+    for term in terms:
+        field, value = parse_term(term)
+        if field == "id":
+            clauses.append("b.id = ?")
+            params.append(int(value))
+        elif field:
+            clauses.append(FIELDS[field])
+            params.append(like(value.replace("-", "") if field == "isbn" else value))
+        else:
+            clauses.append("(" + " or ".join(FIELDS[f] for f in ANY) + ")")
+            params.extend(
+                like(value.replace("-", "")) if f == "isbn" else like(value)
+                for f in ANY
+            )
+    where = " and ".join(clauses) or "1"
+    return (
+        f"select b.id, b.title, b.path, b.pubdate from books b where {where} order by b.sort",
+        params,
+    )
+
+
+def hydrate(db: sqlite3.Connection, library: Path, row: tuple) -> dict:
+    book_id, title, path, pubdate = row
+
+    def col(sql: str) -> list[str]:
+        return [r[0] for r in db.execute(sql, (book_id,))]
+
+    files = sorted(
+        (fmt, str(library / path / f"{name}.{fmt.lower()}"))
+        for fmt, name in db.execute(
+            "select format, name from data where book=?", (book_id,)
+        )
+    )
+    isbn = db.execute(
+        "select val from identifiers where book=? and type='isbn'", (book_id,)
+    ).fetchone()
+    return {
+        "id": book_id,
+        "title": title,
+        "authors": col(
+            "select a.name from authors a join books_authors_link l on l.author=a.id "
+            "where l.book=? order by l.id"
+        ),
+        "tags": col(
+            "select t.name from tags t join books_tags_link l on l.tag=t.id "
+            "where l.book=? order by t.name"
+        ),
+        "series": col(
+            "select s.name from series s join books_series_link l on l.series=s.id where l.book=?"
+        ),
+        "publisher": col(
+            "select p.name from publishers p join books_publishers_link l on l.publisher=p.id "
+            "where l.book=?"
+        ),
+        "isbn": isbn[0] if isbn else None,
+        "pubdate": None
+        if not pubdate or pubdate.startswith(PLACEHOLDER_DATE)
+        else pubdate[:10],
+        "formats": [f for f, _ in files],
+        "files": [p for _, p in files],
+    }
+
+
+def lookup(library: Path, terms: list[str], limit: int | None = None) -> list[dict]:
+    db_path = library / "metadata.db"
+    if not db_path.is_file():
+        raise FileNotFoundError(f"no metadata.db in {library}")
+    # immutable=1: read-only without taking locks, safe while Calibre is open.
+    db = sqlite3.connect(f"file:{db_path}?mode=ro&immutable=1", uri=True)
+    try:
+        sql, params = build_query(terms)
+        if limit:
+            sql += f" limit {int(limit)}"
+        return [hydrate(db, library, r) for r in db.execute(sql, params)]
+    finally:
+        db.close()
+
+
+def main(argv: list[str] | None = None) -> int:
+    ap = argparse.ArgumentParser(
+        description="Find Calibre books by any metadata (read-only)."
+    )
+    ap.add_argument("terms", nargs="*", help="free text or field:value (ANDed)")
+    ap.add_argument(
+        "--library", help=f"library dir (default $CALIBRE_LIBRARY or {DEFAULT_LIBRARY})"
+    )
+    ap.add_argument("--json", action="store_true", help="full JSON output")
+    ap.add_argument("--paths", action="store_true", help="print one file path per line")
+    ap.add_argument("-n", "--limit", type=int, help="max results")
+    args = ap.parse_args(argv)
+
+    library = Path(
+        args.library or os.environ.get("CALIBRE_LIBRARY") or DEFAULT_LIBRARY
+    ).expanduser()
+    try:
+        books = lookup(library, args.terms, args.limit)
+    except (ValueError, FileNotFoundError) as e:
+        print(f"calibre-lookup: {e}", file=sys.stderr)
+        return 2
+
+    if args.json:
+        json.dump(books, sys.stdout, indent=2)
+        print()
+    elif args.paths:
+        for b in books:
+            print(*b["files"], sep="\n") if b["files"] else None
+    else:
+        for b in books:
+            print(
+                f"{b['id']}\t{b['title']}\t{', '.join(b['authors'])}"
+                f"\t{','.join(b['formats'])}\t{', '.join(b['tags'])}"
+            )
+    return 0 if books or not args.terms else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
