@@ -129,6 +129,14 @@ For skill acquisition, difficulty is the tool. Effortful retrieval is what build
 
 Each of these should be based on a **feedback loop**, where the user receives feedback on their performance. This feedback loop should be as tight as possible, giving feedback immediately - and ideally automatically.
 
+### Ground it in the learner's own system
+
+When the topic touches tools the learner actually runs, teach against their real setup, not a generic one:
+
+- Verify claims by running them against the learner's real tools, config and versions (read-only unless they agree), and say what you ran. A behaviour that holds in the docs may not hold in their build; an assumed setting may be silently ignored.
+- Use their real errors, logs and config as examples and quiz material.
+- When an experiment contradicts a source or your expectation, say so, fix the lesson, and record it in a learning record.
+
 For quizzes, each answer should be exactly the same number of words (and characters, if possible). Vary which position holds the correct answer across questions. Don't give the user any clues about the answer through formatting or order.
 
 ## Acquiring Wisdom
