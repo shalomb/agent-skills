@@ -82,6 +82,8 @@ Every lesson should be tied into the mission - the reason that the user is inter
 
 If the user is unclear about the mission, or the `mission.md` is not populated, your first job should be to question the user on why they want to learn this.
 
+How to establish it: draft `mission.md` yourself from what you already know of the user's situation (their repo, tools, recent errors), show the draft, and confirm or correct it with a structured question (for example `ask_user_question`) rather than writing it blind or interrogating from scratch. Save only after the user approves. Keep the questions few and concrete.
+
 Failing to understand the mission will mean knowledge acquisition is not grounded in real-world goals. Lessons will feel too abstract. You will have no way of judging what the user should do next.
 
 Missions may change as the user develops more skills and knowledge. This is normal - make sure to update the `mission.md` and add a learning record to capture the change. Confirm with the user before changing the mission.
