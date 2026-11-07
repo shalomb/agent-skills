@@ -99,8 +99,23 @@ class ResourceCapTest(unittest.TestCase):
     def test_high_load_drops_to_one(self):
         self.assertEqual(resource_cap(nproc=8, avail_gb=32, load1=6.0), 1)
 
-    def test_never_below_one(self):
-        self.assertEqual(resource_cap(nproc=1, avail_gb=0.5, load1=9.0), 1)
+    def test_just_enough_headroom_still_allows_one(self):
+        self.assertEqual(resource_cap(nproc=1, avail_gb=1.2, load1=0.1), 1)
+
+    def test_under_one_gb_free_means_none(self):
+        self.assertEqual(resource_cap(nproc=16, avail_gb=0.5, load1=0.1), 0)
+
+    def test_severe_overload_means_none(self):
+        self.assertEqual(resource_cap(nproc=4, avail_gb=32, load1=8.0), 0)
+
+    def test_memory_pressure_means_none(self):
+        self.assertEqual(resource_cap(nproc=16, avail_gb=32, load1=0.1, mem_pressure=12.0), 0)
+
+    def test_heavy_swap_use_means_none(self):
+        self.assertEqual(resource_cap(nproc=16, avail_gb=32, load1=0.1, swap_used_frac=0.85), 0)
+
+    def test_moderate_swap_use_alone_does_not_block(self):
+        self.assertEqual(resource_cap(nproc=16, avail_gb=32, load1=0.1, swap_used_frac=0.4), 3)
 
 
 if __name__ == "__main__":

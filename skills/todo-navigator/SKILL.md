@@ -61,6 +61,8 @@ todo batch [--max 3] [--json] [--claim] [--no-resources] [--goal ID]
 #   Picks <=3 ready tasks (WSJF order) with pairwise-disjoint scopes; explains each skip.
 #   Dirs end in "/", globs allowed. A task with no scope runs alone. In-flight claims hold their scope and a slot.
 #   Cap = min(--max, 1 per 2 GB free RAM, nproc/2); 1 when load1 >= 70% of nproc. --claim claims as <owner>/<id>.
+#   Cap 0 (no tasks, no claims, JSON "reason") when: <1 GB free, load1 >= 2x cores, memory stall (PSI avg10) >= 10%,
+#   or swap >= 80% used. Wait or free memory. --no-resources overrides. TODO_RESOURCES="nproc,freeGB,load1[,stall,swap]" forces values.
 ```
 
 ## Agent protocol (any agent, any harness)

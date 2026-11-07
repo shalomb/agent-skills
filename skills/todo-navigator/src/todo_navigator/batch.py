@@ -11,7 +11,7 @@ import fnmatch
 import math
 import os
 from dataclasses import dataclass
-from typing import List, Optional, Sequence, Tuple
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from .claims import _ready
 from .models import Task
@@ -19,6 +19,10 @@ from .models import Task
 DEFAULT_MAX = 3
 RAM_PER_AGENT_GB = 2.0
 LOAD_CEILING = 0.7
+MIN_FREE_GB = 1.0  # a pi process alone is ~0.5 GB
+OVERLOAD = 2.0  # load1 / nproc at which nothing more should start
+MEM_PRESSURE_MAX = 10.0  # /proc/pressure/memory some avg10 (%): stalls mean thrash
+SWAP_USED_MAX = 0.8
 
 
 @dataclass
@@ -55,24 +59,69 @@ def _first_overlap(scope_a: List[str], scope_b: List[str]) -> Optional[str]:
     return None
 
 
-def resource_cap(*, nproc: int, avail_gb: float, load1: float) -> int:
-    """Max concurrent agents the machine can carry: min(3, 1 per 2 GB, half the cores); 1 if loaded."""
+def resource_cap(
+    *, nproc: int, avail_gb: float, load1: float, mem_pressure: float = 0.0, swap_used_frac: float = 0.0
+) -> int:
+    """Max concurrent agents the machine can carry, 0 when it cannot carry even one.
+
+    0 on: under MIN_FREE_GB free, load1 >= OVERLOAD x cores, memory stall pressure, or swap nearly full.
+    Otherwise min(3, 1 per 2 GB, half the cores), and 1 when load1 >= 70% of cores.
+    """
+    if avail_gb < MIN_FREE_GB or load1 >= OVERLOAD * nproc:
+        return 0
+    if mem_pressure >= MEM_PRESSURE_MAX or swap_used_frac >= SWAP_USED_MAX:
+        return 0
     cap = min(DEFAULT_MAX, math.floor(avail_gb / RAM_PER_AGENT_GB), nproc // 2)
     if load1 >= LOAD_CEILING * nproc:
         cap = 1
     return max(1, cap)
 
 
-def read_resources() -> Tuple[int, float, float]:
-    """(nproc, available GB, 1-minute load average) from the running machine."""
-    nproc = os.cpu_count() or 1
-    avail_kb = 0
+def explain_none(*, nproc: int, avail_gb: float, load1: float, mem_pressure: float, swap_used_frac: float) -> str:
+    """Why resource_cap gave 0, for humans and orchestrators."""
+    why = []
+    if avail_gb < MIN_FREE_GB:
+        why.append(f"{avail_gb:.1f} GB free (< {MIN_FREE_GB:g})")
+    if load1 >= OVERLOAD * nproc:
+        why.append(f"load {load1:.1f} on {nproc} cores")
+    if mem_pressure >= MEM_PRESSURE_MAX:
+        why.append(f"memory stall {mem_pressure:.0f}%")
+    if swap_used_frac >= SWAP_USED_MAX:
+        why.append(f"swap {swap_used_frac:.0%} used")
+    return "insufficient resources: " + ", ".join(why)
+
+
+def read_resources() -> Dict[str, float]:
+    """Machine state: nproc, avail_gb, load1, mem_pressure (PSI some avg10, %), swap_used_frac.
+
+    TODO_RESOURCES="nproc,avail_gb,load1[,mem_pressure,swap_used_frac]" overrides it, for tests and for
+    containers whose cgroup limits are tighter than /proc shows.
+    """
+    forced = os.environ.get("TODO_RESOURCES")
+    if forced:
+        v = [float(x) for x in forced.split(",")] + [0.0, 0.0]
+        return {"nproc": int(v[0]), "avail_gb": v[1], "load1": v[2], "mem_pressure": v[3], "swap_used_frac": v[4]}
+    meminfo: Dict[str, int] = {}
     with open("/proc/meminfo", encoding="utf-8") as fh:
         for line in fh:
-            if line.startswith("MemAvailable:"):
-                avail_kb = int(line.split()[1])
-                break
-    return nproc, avail_kb / 1024 / 1024, os.getloadavg()[0]
+            key, _, rest = line.partition(":")
+            meminfo[key] = int(rest.split()[0])
+    swap_total = meminfo.get("SwapTotal", 0)
+    swap_used = (swap_total - meminfo.get("SwapFree", 0)) / swap_total if swap_total else 0.0
+    pressure = 0.0
+    try:  # absent on kernels without PSI
+        with open("/proc/pressure/memory", encoding="utf-8") as fh:
+            some = fh.readline()
+        pressure = float(some.split("avg10=")[1].split()[0])
+    except (OSError, IndexError, ValueError):
+        pass
+    return {
+        "nproc": os.cpu_count() or 1,
+        "avail_gb": meminfo.get("MemAvailable", 0) / 1024 / 1024,
+        "load1": os.getloadavg()[0],
+        "mem_pressure": pressure,
+        "swap_used_frac": swap_used,
+    }
 
 
 def select_wave(tasks: Sequence[Task], max_n: int = DEFAULT_MAX) -> Tuple[List[Task], List[Skipped]]:

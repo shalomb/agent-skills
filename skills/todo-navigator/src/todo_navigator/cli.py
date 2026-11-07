@@ -7,7 +7,7 @@ import subprocess
 import sys
 from typing import List, Optional
 
-from todo_navigator.batch import DEFAULT_MAX, read_resources, resource_cap, select_wave
+from todo_navigator.batch import DEFAULT_MAX, explain_none, read_resources, resource_cap, select_wave
 from todo_navigator.claims import brief, claim, claim_next, complete, release
 from todo_navigator.dag import (
     add_dependency,
@@ -472,14 +472,17 @@ def cmd_batch(args: argparse.Namespace) -> int:
         return 1
     cap = args.max
     resources = None
+    reason = ""
     if not args.no_resources:
-        nproc, avail_gb, load1 = read_resources()
-        resources = {"nproc": nproc, "avail_gb": round(avail_gb, 1), "load1": round(load1, 2)}
-        cap = min(cap, resource_cap(nproc=nproc, avail_gb=avail_gb, load1=load1))
+        resources = read_resources()
+        machine = resource_cap(**resources)
+        cap = min(cap, machine)
+        if machine == 0:
+            reason = explain_none(**resources)
     _, tasks, _ = parse_todo_file(todo_file)
     if args.goal:  # candidates linked to the goal; done tasks (deps) and in-flight claims (scope) still count
         tasks = [t for t in tasks if t.goal == args.goal or t.completed or t.wip]
-    chosen, skipped = select_wave(tasks, max_n=cap)
+    chosen, skipped = select_wave(tasks, max_n=cap) if cap > 0 else ([], [])
     owner = args.owner or current_owner()
     if args.claim:
         chosen = [t for t in chosen if claim(todo_file, t.id, f"{owner}/{t.id}")[0]]
@@ -490,8 +493,13 @@ def cmd_batch(args: argparse.Namespace) -> int:
             "skipped": [{"id": s.id, "reason": s.reason} for s in skipped],
         }
         if resources:
-            out["resources"] = resources
+            out["resources"] = {k: round(v, 2) for k, v in resources.items()}
+        if reason:
+            out["reason"] = reason
         print(json.dumps(out))
+        return 0
+    if reason:
+        print(f"Wave (cap 0): none. {reason}")
         return 0
     print(f"Wave (cap {cap}): " + (", ".join(t.id for t in chosen) or "nothing ready"))
     for s in skipped:

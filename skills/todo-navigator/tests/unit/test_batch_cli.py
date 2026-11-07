@@ -98,6 +98,34 @@ class BatchCliTest(unittest.TestCase):
         self.assertEqual([t["id"] for t in out["chosen"]], ["gamma"])
         self.assertEqual(out["skipped"], [])
 
+    def test_exhausted_machine_returns_no_tasks_with_a_reason_and_claims_nothing(self) -> None:
+        self.env["TODO_RESOURCES"] = "4,0.2,12.9,0,0.5"  # nproc, free GB, load1, mem stall %, swap used
+        r = self.todo("batch", "--json", "--claim")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = json.loads(r.stdout)
+        self.assertEqual(out["cap"], 0)
+        self.assertEqual(out["chosen"], [])
+        self.assertIn("insufficient resources", out["reason"])
+        self.assertIn("0.2 GB free", out["reason"])
+        self.assertNotIn("wip:", (self.repo / "TODO.md").read_text())
+
+    def test_exhausted_machine_says_so_in_plain_text_too(self) -> None:
+        self.env["TODO_RESOURCES"] = "4,32,0.1,25,0.1"
+        r = self.todo("batch")
+        self.assertIn("insufficient resources", r.stdout)
+        self.assertIn("memory stall 25%", r.stdout)
+
+    def test_no_resources_flag_overrides_an_exhausted_machine(self) -> None:
+        self.env["TODO_RESOURCES"] = "4,0.2,12.9,0,0.5"
+        out = json.loads(self.todo("batch", "--json", "--no-resources").stdout)
+        self.assertEqual([t["id"] for t in out["chosen"]], ["alpha", "gamma"])
+
+    def test_healthy_machine_keeps_the_normal_cap(self) -> None:
+        self.env["TODO_RESOURCES"] = "16,32,0.5,0,0"
+        out = json.loads(self.todo("batch", "--json").stdout)
+        self.assertEqual(out["cap"], 3)
+        self.assertNotIn("reason", out)
+
 
 if __name__ == "__main__":
     unittest.main()
