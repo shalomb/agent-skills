@@ -96,6 +96,10 @@ The user may specify an exact thing they want to learn. If they don't, figure ou
 - Figuring out the right thing to teach them based on their mission
 - Teach the most relevant thing that fits in their zone of proximal development
 
+### First session: diagnose before teaching
+
+With no learning records there is nothing to base the zone on, and guessing wastes the first lesson. Before lesson 1, run a short diagnostic: 3-5 questions (a quick interview or a few retrieval questions) that probe what the user already knows about the mission's core terms. Record the result as learning record `0001`, and pitch lesson 1 just above it. Do not assume ignorance or expertise from the topic alone.
+
 ## Knowledge
 
 Lessons should be designed around a skill the user is going to learn. The knowledge in the lesson should be only what's required to acquire that skill. You teach the knowledge first, then get the user to practice the skills via an interactive feedback loop.
