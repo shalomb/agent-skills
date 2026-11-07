@@ -10,7 +10,14 @@ The user has asked you to teach them something. This is a stateful request - the
 
 ## Teaching Workspace
 
-Treat the current directory as a teaching workspace. Workspace paths (`./lessons/` and the rest) resolve from the directory `/teach` was run in; only the `*-FORMAT.md` links resolve from this skill's folder. The state of their learning is captured in this directory in several files:
+Teach from a **shadow workspace**, outside any repository, so lessons and learning records never pollute the project you happen to be in. This mirrors `todo-navigator`'s shadow directory.
+
+Resolve the workspace root (`$WS`) in this order:
+
+1. If the current directory already holds a `MISSION.md`, it is the workspace (an explicit, user-chosen workspace).
+2. Otherwise `$WS = ${XDG_CACHE_HOME:-$HOME/.cache}/agent-skills/teach/<topic-slug>/`, where `<topic-slug>` is the kebab-case topic (e.g. `aws-sso`). Create it on first use and tell the user the path.
+
+All workspace paths below (`./lessons/` and the rest) resolve from `$WS`, not from the directory `/teach` was run in. Only the `*-FORMAT.md` links resolve from this skill's folder. The shadow directory lives in the user cache, so remind the user once that it is not backed up by default.
 
 - `MISSION.md`: A document capturing the _reason_ the user is interested in the topic. This should be used to ground all teaching. Use the format in [MISSION-FORMAT.md](./MISSION-FORMAT.md).
 - `./reference/*.html`: A directory of reference materials. These are the compressed learnings from the lessons - cheat sheets, reference algorithms, syntax, yoga poses, glossaries. They are the raw units of learning. They should be beautiful documents which print out well, and are designed for quick reference.
