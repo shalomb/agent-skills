@@ -102,6 +102,20 @@ Lessons should be designed around a skill the user is going to learn. The knowle
 
 Knowledge should first be gathered from trusted resources. Use `resources.md` to keep track of them. Lessons should be littered with citations - links to external resources to back up any claim made. This increases the trustworthiness of the lesson.
 
+### Local library (Calibre)
+
+Before going to the web, check whether the user already owns a book on the topic, if `calibre-lookup` is installed (skip silently if not). It is a read-only, ANDed-terms search:
+
+```sh
+calibre-lookup --json -n 10 tag:oauth tag:authn   # precise: use tag: and title:
+calibre-lookup --paths -n 3 title:kerberos        # file paths, to read the book
+```
+
+- Fields: `id`, `title`, `author`, `tag`, `series`, `publisher`, `isbn`, `topic`. An unknown field errors and lists the valid ones.
+- Prefer `tag:` and `title:`. Free text and `topic:` are loose and return noise; quoted phrases are not supported. Try several synonyms (`oauth`, `authn`, `iam`) rather than trusting one miss.
+- Judge a hit by title, author and tags before listing it; a tag match alone is not relevance.
+- Record keepers in `resources.md` under Knowledge as `Local: calibre id <N>`. If nothing fits, say so under Gaps; never pad the list.
+
 For acquiring knowledge, difficulty is the enemy. It eats working memory you need for understanding.
 
 ## Skills
