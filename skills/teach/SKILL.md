@@ -100,7 +100,7 @@ The user may specify an exact thing they want to learn. If they don't, figure ou
 
 Lessons should be designed around a skill the user is going to learn. The knowledge in the lesson should be only what's required to acquire that skill. You teach the knowledge first, then get the user to practice the skills via an interactive feedback loop.
 
-Knowledge should first be gathered from trusted resources. Use `resources.md` to keep track of them. Lessons should be littered with citations - links to external resources to back up any claim made. This increases the trustworthiness of the lesson.
+Knowledge should first be gathered from trusted resources. Use `resources.md` to keep track of them. Lessons should be littered with citations - links to external resources to back up any claim made. Mark each entry in `resources.md` as **read** (the relevant sections were read in full) or **skimmed** (only metadata, an abstract or the start of the page). Cite only sources marked read; read the relevant section first, then update the marker. This increases the trustworthiness of the lesson.
 
 ### Local library (Calibre)
 

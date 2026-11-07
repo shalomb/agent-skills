@@ -25,6 +25,7 @@
 ## Rules
 
 - **High-trust only.** Prefer primary sources, recognised experts, peer-reviewed work, and communities with strong moderation. If a resource is marketing dressed as education, leave it out.
+- **Mark read depth.** Prefix each annotation with `[read]` or `[skimmed]`. Only `[read]` sources may be cited in a lesson; a `[skimmed]` source is a lead, not evidence. Skimming covers metadata, an abstract or the first part of a fetched page.
 - **Annotate every entry.** A bare link is useless in three months. Add one line: what it covers and when to reach for it.
 - **Group by Knowledge / Wisdom.** Mirrors the philosophy in [SKILL.md](./SKILL.md). It is fine for a resource to appear in only one group.
 - **Surface gaps explicitly.** If no good resource exists for an area the mission needs, write a `## Gaps` section listing what is missing. This drives future search.
