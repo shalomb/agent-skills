@@ -174,3 +174,7 @@ Glossaries, in particular, are an essential reference. Once one is created, it s
 ## `notes.md`
 
 The user will sometimes express preferences of how they want to be taught, or things you should keep in mind. This is the place to record those preferences, so you can refer back to them when designing lessons or working with the user.
+
+## Invocation
+
+This skill is meant to be invoked explicitly (`/teach <topic>`), not picked up by the model on its own. The `disable-model-invocation` and `argument-hint` flags are stored under `metadata:` in the frontmatter so the file passes `agentskills validate`. A harness that only honours these as top-level keys will not see them and may auto-invoke the skill; if that matters, move them back to the top level and accept the validator warning.
