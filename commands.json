@@ -285,6 +285,19 @@
         "Declare explicit blocking DAG edges (tickets that gate each slice).",
         "Handle wide refactors using expand-contract rather than forcing broken horizontal stubs."
       ]
+    },
+    {
+      "name": "teach",
+      "skill": "teach",
+      "title": "Teach",
+      "description": "Learn a topic over multiple sessions in a guided workspace (mission, resources, lessons, learning records)",
+      "default_action": "teaching the user a new skill or concept in a stateful teaching workspace",
+      "instructions": [
+        "Resolve the shadow workspace (~/.cache/agent-skills/teach/<topic-slug>/, or cwd if it holds a mission.md) and tell the user the path.",
+        "Establish the mission first: draft mission.md from context, show it, and confirm before saving. Ground every lesson in it.",
+        "Build resources.md from high-trust sources (check the local Calibre library with `calibre-lookup tag:...` first); mark each [read] or [skimmed] and cite only [read] ones.",
+        "With no learning records, run a short diagnostic before lesson 1; then produce one short, tightly scoped HTML lesson in the zone of proximal development, with retrieval practice."
+      ]
     }
   ]
 }
