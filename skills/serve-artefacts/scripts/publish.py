@@ -72,4 +72,5 @@ def main():
             print(f"{'':10s}   http://{host}:{port}/r/{PREFIX}/{name}/{b}")
 
 
-main()
+if __name__ == "__main__":
+    main()

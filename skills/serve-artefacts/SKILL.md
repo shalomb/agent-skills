@@ -18,3 +18,17 @@ python3 ~/.pi/agent/skills/serve-artefacts/scripts/publish.py --name <folder> [-
 - Access is limited by the server to the Parallels subnet and the tailnet. Content is a snapshot, not a validated record.
 - Never publish secrets, `.netrc`, tokens or `.env` files. Check what you pass in.
 - If the script says no server is running, tell the user; the `understand` skill documents how to start it. Do not start one unasked.
+
+## Serve in place (no copy)
+
+Content that already lives under `~/.cache/agent-skills/` (for example a `teach` workspace at `teach/<topic>/`) is already reachable at `/r/`. Link it, do not copy it, so the page stays live:
+
+```bash
+python3 ~/.pi/agent/skills/serve-artefacts/scripts/urls.py <path>...
+```
+
+- Prints one `Parallels:` and one `Tailnet:` URL per path. A directory gets a trailing slash and the server's autoindex.
+- Refuses a path outside the root, behind a dot segment, through a symlink at any level, or missing, with a message. Starts nothing.
+- Relative links inside the content keep working, so a lesson at `lessons/0001-x.html` finds `../assets/style.css`.
+- Use `publish.py` instead for files elsewhere (a worktree, `~/.cache/jira`): it copies them into `/r/po/<name>/`.
+
