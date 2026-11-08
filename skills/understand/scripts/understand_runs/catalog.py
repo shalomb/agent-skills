@@ -25,6 +25,10 @@ REQUIRED_ENTRY_KEYS = {
 SPA_ASSET_PATH = Path(__file__).resolve().parents[2] / "assets" / "catalog_spa.html"
 
 
+# mkstemp creates 0600; the web server (www-data, ADR 0007) must be able to read published files.
+_PUBLISHED_MODE = 0o644
+
+
 def _get_understand_dir(shadow_root: Path) -> Path:
     """Returns the understand directory under shadow_root, avoiding double understand/ nesting."""
     root = Path(shadow_root).resolve()
@@ -126,6 +130,7 @@ def update_catalog(shadow_root: Path, entry: dict[str, Any]) -> Path:
                     f.write("\n")
                     f.flush()
                     os.fsync(f.fileno())
+                os.chmod(tmp_path, _PUBLISHED_MODE)
                 os.replace(tmp_path, catalog_path)
             except BaseException:
                 if tmp_path.exists():
@@ -164,6 +169,7 @@ def deploy_catalog_spa(shadow_root: Path) -> Path:
             f.write(content)
             f.flush()
             os.fsync(f.fileno())
+        os.chmod(tmp_path, _PUBLISHED_MODE)
         os.replace(tmp_path, index_path)
     except BaseException:
         if tmp_path.exists():

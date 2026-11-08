@@ -192,3 +192,12 @@ def test_runner_records_catalog_and_deploys_spa(temp_cache: Path, git_repo: Path
     assert "report.html" in last_run["report_rel_url"]
     assert "parallels" in last_run["urls"]
     assert "tailnet" in last_run["urls"]
+
+
+def test_published_files_are_readable_by_the_web_server_user(tmp_path: Path):
+    """The system nginx runs as www-data (ADR 0007): mkstemp's 0600 would make these 404."""
+    update_catalog(tmp_path, _make_sample_entry())
+    deploy_catalog_spa(tmp_path)
+    for name in ("catalog.json", "index.html"):
+        mode = (tmp_path / "understand" / name).stat().st_mode & 0o777
+        assert mode & 0o044 == 0o044, f"{name} is {oct(mode)}; group and others cannot read it"
