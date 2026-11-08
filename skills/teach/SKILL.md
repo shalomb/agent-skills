@@ -60,7 +60,7 @@ A lesson should be **beautiful**, with clean, readable typography and layout, si
 
 The lesson should be short, and completable very quickly. Learners' working memory is very small, and we need to stay within it. But each lesson should give the user a single tangible win that they can build on. It should be directly tied to the mission, and should be in the user's zone of proximal development.
 
-After writing a lesson, give the user a link to it instead of trying to open a browser (the user's browser is usually on another machine). Follow the `serve-artefacts` skill's in-place mode: run `urls.py <lesson path>` to print the `Parallels:` and `Tailnet:` links, verify one with `http --headers GET <url>`, and show the workspace link too. The workspace sits under the served root, so this needs no copying and the page stays live. If no report server is running, say so and print the file path; do not start a server unasked.
+After writing a lesson, give the user a link to it instead of trying to open a browser (the user's browser is usually on another machine). Follow the `serve-artefacts` skill's in-place mode: run `urls.py <lesson path>` to print the link (one `http://idun/…` URL on the system nginx; per-network links otherwise), verify one with `http --headers GET <url>`, and show the workspace link too. The workspace sits under the served root, so this needs no copying and the page stays live. If no report server is running, say so and print the file path; do not start a server unasked.
 
 Each lesson should link via HTML anchors to other lessons and reference documents.
 

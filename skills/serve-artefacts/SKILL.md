@@ -15,7 +15,7 @@ python3 ~/.pi/agent/skills/serve-artefacts/scripts/publish.py --name <folder> [-
 - **Copies, not symlinks:** the server refuses symlinks. **No dot paths:** any segment starting with a dot returns 404, so never serve from `.worktrees` or `.git`; the script copies out, which avoids it.
 - Allowed types only: html, svg, png, jpg, md, txt, json, css, js, mmd. Anything else is skipped with a message.
 - A re-publish with the same `--name` replaces the folder, so stale files do not linger.
-- Access is limited by the server to the Parallels subnet and the tailnet. Content is a snapshot, not a validated record.
+- Access is limited by the server to loopback, the Parallels subnet and the tailnet. Content is a snapshot, not a validated record.
 - Never publish secrets, `.netrc`, tokens or `.env` files. Check what you pass in.
 - If the script says no server is running, tell the user; the `understand` skill documents how to start it. Do not start one unasked.
 
@@ -27,7 +27,7 @@ Content that already lives under `~/.cache/agent-skills/` (for example a `teach`
 python3 ~/.pi/agent/skills/serve-artefacts/scripts/urls.py <path>...
 ```
 
-- Prints one `Parallels:` and one `Tailnet:` URL per path. A directory gets a trailing slash and the server's autoindex.
+- Prints one URL per path, `http://<hostname>/r/…`, when the system nginx is installed (ADR 0007; the name must resolve on the client, for example `idun` in the Mac's `/etc/hosts` or by MagicDNS). Without it, it falls back to one `Parallels:` and one `Tailnet:` URL on port 8787. A directory gets a trailing slash and the server's autoindex.
 - Refuses a path outside the root, behind a dot segment, through a symlink at any level, or missing, with a message. Starts nothing.
 - Relative links inside the content keep working, so a lesson at `lessons/0001-x.html` finds `../assets/style.css`.
 - Use `publish.py` instead for files elsewhere (a worktree, `~/.cache/jira`): it copies them into `/r/po/<name>/`.

@@ -13,6 +13,7 @@ _spec = importlib.util.spec_from_file_location("publish", os.path.join(HERE, "pu
 _publish = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(_publish)
 ROOT = os.path.realpath(_publish.ROOT)
+system_endpoint = _publish.system_endpoint
 
 
 def rel_under_root(path, root=ROOT):
@@ -39,7 +40,7 @@ def build(rel, endpoints):
     out = []
     for net, host, port in endpoints:
         h = f"[{host}]" if ":" in host and not host.startswith("[") else host
-        out.append((net, f"http://{h}:{port}/r/{rel}"))
+        out.append((net, f"http://{h}{'' if port == '80' else ':' + port}/r/{rel}"))
     return out
 
 
@@ -58,7 +59,7 @@ def main(argv):
             continue
         print(a)
         for net, url in build(rel, eps):
-            print(f"  {net.capitalize()+':':10s} {url}")
+            print(f"  {url}" if net == "url" else f"  {net.capitalize()+':':10s} {url}")
     return 1 if bad == len(argv) else 0
 
 

@@ -5,14 +5,41 @@ Reuses the user-level nginx the `understand` skill runs (read from its generated
 config under $XDG_RUNTIME_DIR). Starts nothing. Copies files (the server refuses
 symlinks) and writes an index.html. Address and port are discovered, not fixed.
 """
-import argparse, glob, html, os, re, shutil, sys
+import argparse, glob, html, os, re, shutil, socket, sys
 
 ROOT = os.path.expanduser("~/.cache/agent-skills")
 PREFIX = "po"  # sub-folder under /r/ for artefacts published by this tool
 OK_EXT = {".html", ".htm", ".svg", ".png", ".jpg", ".jpeg", ".md", ".txt", ".json", ".css", ".js", ".mmd"}
 
 
+SYSTEM_CONF = "/etc/nginx/conf.d/agent-skills.conf"  # installed once by understand's install-system.sh (ADR 0007)
+
+
+def _answering(port):
+    try:
+        socket.create_connection(("127.0.0.1", int(port)), timeout=0.5).close()
+        return True
+    except OSError:
+        return False
+
+
+def system_endpoint(conf=SYSTEM_CONF, host=None, probe=_answering):
+    """One canonical endpoint when the system nginx serves /r/; [] otherwise."""
+    try:
+        t = open(conf).read()
+    except OSError:
+        return []
+    m = re.search(r"^\s*listen\s+(\d+)\s+default_server;", t, re.M)
+    if not m or "location /r/" not in t or not probe(m.group(1)):
+        return []
+    return [("url", host or socket.gethostname(), m.group(1))]
+
+
 def endpoints():
+    """The system nginx (one name, port 80) if installed, else the per-network user instances."""
+    system = system_endpoint()
+    if system:
+        return system
     run = os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}")
     out = []
     for conf in sorted(glob.glob(f"{run}/agent-skills/understand-server/*/nginx.conf")):
@@ -67,9 +94,11 @@ def main():
             "<p>Snapshot of live data. Not a validated record.</p>" + "".join(rows))
     print(f"published {len(kept)} file(s) to {dest}")
     for net, host, port in eps:
-        print(f"{net:10s} http://{host}:{port}/r/{PREFIX}/{name}/")
+        base = f"http://{host}{'' if port == '80' else ':' + port}/r/{PREFIX}/{name}/"
+        label = "" if net == "url" else net
+        print(f"{label:10s} {base}")
         for b in sorted(kept):
-            print(f"{'':10s}   http://{host}:{port}/r/{PREFIX}/{name}/{b}")
+            print(f"{'':10s}   {base}{b}")
 
 
 if __name__ == "__main__":
