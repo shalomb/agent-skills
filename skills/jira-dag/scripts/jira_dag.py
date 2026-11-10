@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """Mermaid dependency DAG from Jira Blocks links (read-only), as .mmd + .svg + interactive .html.
 
-Epic view : open epics of a project plus one hop of open linked issues.
-Story view: children of one epic plus one hop of open linked issues.
+Open epics of a project plus one hop of open linked issues.
 Orange = project-external dependency (incoming, outgoing or both). Red = critical path.
 """
 import argparse, json, os, re, subprocess, sys, tempfile
@@ -22,7 +21,7 @@ LEGEND = [("background:#d6f0df;border-color:#168a4b", "Implementing"), ("backgro
 
 
 def build(I, a):
-    """a needs .project .relates .all .epic. Returns dict with mmd, svg, panel data."""
+    """a needs .project .relates .all. Returns dict with mmd, svg, panel data."""
     E = edges_of(I)
     rel = set()
     if a.relates:
@@ -128,23 +127,22 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("--url", required=True)
     p.add_argument("--project", required=True)
-    p.add_argument("--epic")
     p.add_argument("--relates", action="store_true")
     p.add_argument("--all", action="store_true", help="also draw epics with no links")
     p.add_argument("--out", required=True, help="output .mmd path; .svg and .html are written beside it")
     a = p.parse_args()
     base = a.url.rstrip("/")
-    jql = f"parent = {a.epic}" if a.epic else f"project = {a.project} AND issuetype = Epic AND status not in (Done,Discarded)"
+    jql = f"project = {a.project} AND issuetype = Epic AND status not in (Done,Discarded)"
     I = collect(client(base), base, jql, a.project)
     if not I:
         open(a.out, "w").write('flowchart LR\n  empty["no issues match"]\n')
-        print(f"nodes=0 -> {a.out} (no issues match; epic has no children?)")
+        print(f"nodes=0 -> {a.out} (no issues match)")
         return
     r = build(I, a)
     stem = os.path.splitext(a.out)[0]
     open(a.out, "w").write(r["mmd"])
     open(stem + ".svg", "w").write(r["svg"])
-    title = f"{a.project} · stories of {a.epic}" if a.epic else f"{a.project} · epic dependencies"
+    title = f"{a.project} · epic dependencies"
     data = dict(base=base, issues={k: {x: v[x] for x in ISSUE_FIELDS} for k, v in I.items() if k in r["show"]})
     open(stem + ".html", "w").write(app_page(title, "Live from Jira · snapshot, not a validated record",
                                              [dict(id="dag", label="Dependencies", svg=r["svg"], legend=LEGEND, idmap=r["idmap"], edges=r["edges"])],

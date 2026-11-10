@@ -2,7 +2,7 @@
 """One interactive page for a Jira project: Dependencies, Timeline and Needs attention (read-only).
 
 Writes <outdir>/index.html (the page), plus epics.svg and timeline.svg (standalone, Jira links, no popups) and
-epics.mmd. Fetches the project once. Story views: pass --epic KEY (writes stories-KEY.html in the same shape).
+epics.mmd. Fetches the project once.
 """
 import argparse, html, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -89,7 +89,6 @@ def main():
     p.add_argument("--project")
     p.add_argument("--outdir", required=True)
     p.add_argument("--synthetic", action="store_true", help="use built-in fake data; no Jira access at all")
-    p.add_argument("--epic", help="story view for one epic instead of the project overview")
     p.add_argument("--topology", help="config blob (JSON/YAML) mapping PODs, interface and products to Jira projects; default ~/.config/jira-dag/topology.{yaml,json}")
     p.add_argument("--relates", action="store_true")
     p.add_argument("--all", action="store_true")
@@ -103,20 +102,6 @@ def main():
     else:
         base = a.url.rstrip("/")
         get = client(base)
-    if a.epic:
-        I = collect(get, base, f"parent = {a.epic}", a.project)
-        if not I:
-            sys.exit(f"{a.epic} has no children (not sliced yet); nothing to draw")
-        r = jira_dag.build(I, a)
-        name = f"stories-{a.epic}"
-        data = dict(base=base, issues={k: {x: v[x] for x in ISSUE_FIELDS if x in v} for k, v in I.items() if k in r["show"]})
-        open(os.path.join(a.outdir, name + ".html"), "w").write(app_page(
-            f"{a.project} · stories of {a.epic}", "Live from Jira · snapshot, not a validated record",
-            [dict(id="dag", label="Dependencies", svg=r["svg"], legend=jira_dag.LEGEND, idmap=r["idmap"], edges=r["edges"])], data, sorted({v["st"] for v in I.values()})))
-        open(os.path.join(a.outdir, name + ".svg"), "w").write(r["svg"])
-        jira_dag.report(I, r, a)
-        print(f"-> {a.outdir}/{name}.html")
-        return
     if a.synthetic:
         I = synth.build()
     else:

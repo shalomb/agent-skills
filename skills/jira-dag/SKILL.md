@@ -10,7 +10,6 @@ Read-only. One page, `index.html`, with six tabs, built from live Jira data. Cre
 ```bash
 S=~/.pi/agent/skills/jira-dag/scripts
 python3 $S/po_view.py --url "$JIRA_URL" --project <PROJECT> --outdir ~/.cache/jira/<PROJECT>/dag         # the page
-python3 $S/po_view.py --url "$JIRA_URL" --project <PROJECT> --epic <KEY> --outdir <dir>                  # story view of one epic
 # options: --relates (dashed Relates links), --all (also epics with no links)
 ```
 
