@@ -1,5 +1,9 @@
 """Runs the DOM-free view-state tests (tests/js/*.test.js, scenarios S-flt-1..9) with `node --test`. Skipped when node is missing."""
-import glob, os, shutil, subprocess, sys, unittest
+import glob
+import os
+import shutil
+import subprocess
+import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 NODE = shutil.which("node")
@@ -14,7 +18,8 @@ class ViewStateJs(unittest.TestCase):
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
 
     def test_module_can_be_embedded_in_a_script_element(self):
-        src = open(os.path.join(HERE, "..", "scripts", "viewstate.js")).read()
+        with open(os.path.join(HERE, "..", "scripts", "viewstate.js")) as f:
+            src = f.read()
         self.assertNotIn("</script", src.lower())
 
 

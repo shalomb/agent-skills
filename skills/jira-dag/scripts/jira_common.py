@@ -227,7 +227,7 @@ $$('.att li[data-k]').forEach(li=>li.addEventListener('click',e=>{e.stopPropagat
 document.addEventListener('click',e=>{if(!card.contains(e.target))hide()});
 function zoom(pn,z){pn.z=z;pn.svg.style.width=pn.nat*z+'px';pn.svg.style.height='auto'}
 function fit(pn){zoom(pn,Math.min(1,(innerWidth-48)/pn.nat))}
-function tab(id){active=id;$$('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+id));$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===id));$('.ctl').style.visibility=PN[id]?'visible':'hidden';setHash(null);hide()}
+function tab(id){active=id;$$('.panel').forEach(p=>p.classList.toggle('on',p.id==='p-'+id));$$('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===id));document.body.dataset.tab=id;$('.ctl').style.visibility=PN[id]?'visible':'hidden';setHash(null);hide()}
 $$('nav button').forEach(b=>b.onclick=()=>tab(b.dataset.t));
 const cur=()=>PN[active];$('#zi').onclick=()=>cur()&&zoom(cur(),Math.min(4,cur().z*1.25));$('#zo').onclick=()=>cur()&&zoom(cur(),Math.max(.15,cur().z/1.25));$('#zf').onclick=()=>cur()&&fit(cur());
 const F={q:'',st:new Set(),ext:false,cons:'',prov:'',label:''};
@@ -236,7 +236,7 @@ function match(k){const v=D.issues[k];if(!v)return true;if(F.st.size&&!F.st.has(
  if(F.cons||F.prov||F.label){if(!v.core)return !!((F.cons&&k.indexOf(F.cons+'-')===0)||(F.prov&&k.indexOf(F.prov+'-')===0));
   if(F.cons&&!v.blocks.some(r=>r.ext&&pk(r,F.cons)))return false;if(F.prov&&!v.blockedBy.some(r=>r.ext&&pk(r,F.prov)))return false;if(F.label&&!(v.labels||[]).includes(F.label))return false}
  if(F.q){const s=(k+' '+v.sum+' '+(v.who||'')+' '+(v.team||'')).toLowerCase();if(!F.q.split(/\s+/).every(w=>s.includes(w)))return false}return true}
-function applyF(){let n=0,t=0;Object.values(PN).forEach(pn=>Object.entries(pn.nodes).forEach(([k,g])=>{const m=match(k);g.classList.toggle('fx',!m)}));
+function applyF(){let n=0,t=0;Object.values(PN).forEach(pn=>pn.P.id!=='topology'&&Object.entries(pn.nodes).forEach(([k,g])=>{const m=match(k);g.classList.toggle('fx',!m)}));
  $$('.att li[data-k]').forEach(li=>{li.style.display=match(li.dataset.k)?'':'none'});
  document.dispatchEvent(new Event('pofilter'));$('#fcount').textContent=(F.q||F.st.size||F.ext||F.cons||F.prov||F.label)?Object.keys(D.issues).filter(k=>D.issues[k].core&&match(k)).length+' epics match':''}
 $('#q').addEventListener('input',e=>{F.q=e.target.value.trim().toLowerCase();applyF()});
