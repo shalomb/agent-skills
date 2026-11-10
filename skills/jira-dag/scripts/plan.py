@@ -72,7 +72,7 @@ def _unlink(issues, a, b):
 
 def _slice_issue(s):
     return dict(key=s["id"], sum=s["title"], st="Planned", pr="", ws=None, who="", team="", par=s["epic"], start=None, end=None,
-                url="", core=False, blocks=[], blockedBy=[], relates=[], labels=[], due=None, refine="", flagged=False,
+                url="", core=False, blocks=[], blockedBy=[], relates=[], labels=[], components=[], due=None, refine="", flagged=False,
                 slice=copy.deepcopy(s))
 
 

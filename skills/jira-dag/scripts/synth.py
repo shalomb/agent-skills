@@ -59,6 +59,7 @@ def build():
         I[b]["blockedBy"].append(ref(a))
     for v in I.values():
         v.setdefault("labels", [])
+        v.setdefault("components", [])
     return finalize(I, P)
 
 

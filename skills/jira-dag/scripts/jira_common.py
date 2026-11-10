@@ -3,7 +3,7 @@ import base64, json, netrc, re, sys, urllib.parse, urllib.request
 
 DEAD = {"Done", "Discarded", "Closed", "Cancelled", "Resolved"}
 ISSUE_FIELDS = ("key", "sum", "st", "pr", "ws", "who", "team", "par", "pardue", "start", "end", "url", "blocks", "blockedBy",
-                "relates", "ext_in", "ext_out", "ext", "warn", "core", "children", "due", "refine", "flagged", "parsum", "labels", "tl")
+                "relates", "ext_in", "ext_out", "ext", "warn", "core", "children", "due", "refine", "flagged", "parsum", "labels", "components", "tl")
 EARLY = {"Funnel", "Backlog", "New", "To Do", "Analyzing"}
 
 
@@ -59,7 +59,7 @@ def collect(get, base, jql, project):
     """Fetch issues for jql plus their open linked neighbours. Returns {key: info}."""
     fm = fieldmap(get)
     ids = {n: fm.get(n) for n in ("WSJF", "Target start", "Target end", "Team", "Refinement Status", "Flagged")}
-    fl = ["summary", "status", "priority", "parent", "issuelinks", "assignee", "duedate", "labels"] + [i for i in ids.values() if i]
+    fl = ["summary", "status", "priority", "parent", "issuelinks", "assignee", "duedate", "labels", "components"] + [i for i in ids.values() if i]
     issues = search(get, jql, ",".join(fl))
     I = {}
     for i in issues:
@@ -69,7 +69,7 @@ def collect(get, base, jql, project):
                            team=fv(f.get(ids["Team"])) if ids["Team"] else "", par=(f.get("parent") or {}).get("key", ""),
                            start=f.get(ids["Target start"]) if ids["Target start"] else None,
                            end=f.get(ids["Target end"]) if ids["Target end"] else None,
-                           labels=f.get("labels") or [], due=f.get("duedate"), refine=fv(f.get(ids["Refinement Status"])) if ids["Refinement Status"] else "",
+                           labels=f.get("labels") or [], components=[c["name"] for c in f.get("components") or [] if c.get("name")], due=f.get("duedate"), refine=fv(f.get(ids["Refinement Status"])) if ids["Refinement Status"] else "",
                            flagged=bool(f.get(ids["Flagged"])) if ids["Flagged"] else False,
                            url=f"{base}/browse/{i['key']}", core=True, blocks=[], blockedBy=[], relates=[], _links=f["issuelinks"])
     for k, v in list(I.items()):
@@ -83,7 +83,7 @@ def collect(get, base, jql, project):
             nk = o["key"]
             if nk not in I:
                 I[nk] = dict(key=nk, sum=o["fields"]["summary"], st=st, pr="", ws=None, who="", team="", par="", start=None, end=None,
-                             due=None, labels=[], refine="", flagged=False,
+                             due=None, labels=[], components=[], refine="", flagged=False,
                              url=f"{base}/browse/{nk}", core=False, blocks=[], blockedBy=[], relates=[])
             ref = dict(k=nk, st=st, s=o["fields"]["summary"], ext=nk.split("-")[0] != project)
             t = l["type"]["name"]
