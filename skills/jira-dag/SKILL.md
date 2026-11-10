@@ -40,6 +40,9 @@ Outputs in `--outdir`: `index.html` (open this), `epics.svg` and `timeline.svg` 
 - Closed issues (Done, Discarded, Closed, Cancelled, Resolved) are dropped. A blank WSJF is treated as missing.
 - Warnings are questions for the PO, not errors. An early start can be a deliberate thin first slice.
 
+## Plans
+`scripts/plan.py` holds the plan overlay model: a plan is a list of operations (add a slice, defer an epic, set dates, add or remove a blocks link) applied to a copy of a snapshot, with validation (slice cap per POD, unrepaid manual debt, value shares), time to first releasable slice, diff between two plans, and stable JSON/YAML files. It is pure Python, is not wired to the page yet, and never writes to Jira or makes a network call.
+
 ## What-if and synthetic data
 - The drawer lets you slip an epic's end, set or clear a commitment date, toggle owner and impediment, all in the browser (kept in localStorage). The forecast and counts recompute at once. A bar lists the local changes; Export gives a Markdown table and JSON of **proposed** Jira edits. The page never writes to Jira and holds no credentials.
 - `po_view.py --synthetic --outdir <dir>` builds the page from built-in fake data (generic names, dates relative to today) and makes no Jira call at all. Use it to try the page and to demo it.
