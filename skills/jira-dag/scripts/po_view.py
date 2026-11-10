@@ -6,39 +6,13 @@ epics.mmd. Fetches the project once.
 """
 import argparse, html, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import jira_dag, jira_timeline, pressure, roadmap, topology
+import jira_dag, jira_timeline, pressure, roadmap, rules, topology
 from jira_common import ISSUE_FIELDS, app_page, client, collect, edges_of, search
 
 
-def attention(I, tl):
-    epics = {k: v for k, v in I.items() if v["core"]}
-    ws = lambda v: float(v["ws"]) if v["ws"] not in (None, "") else -1
-    order = lambda ks: sorted(ks, key=lambda k: (-ws(I[k]), int(k.split("-")[-1])))
-    scored = sorted(ws(v) for v in epics.values() if ws(v) >= 0)
-    top = scored[int(len(scored) * 0.75)] if scored else 99
-    secs = []
-
-    def add(title, why, ks, note=None):
-        secs.append((title, why, order(ks), note or {}))
-    add("External blockers not ready", "Blocked by another project's issue that is still early (Funnel, Backlog, New, To Do, Analyzing).",
-        [k for k, v in epics.items() if v["warn"] and any("external blocker" in w for w in v["warn"])],
-        {k: next((w for w in v["warn"] if "external blocker" in w), "") for k, v in epics.items()})
-    from jira_common import EARLY
-    def enab(v):
-        return [r for r in v["blockedBy"] if not r["ext"] and r["k"] in I and not I[r["k"]]["core"] and r["st"] in EARLY]
-    add("Blocked by enablers not started", "A task in this project blocks the epic and is still early (Funnel, Backlog, New, To Do, Analyzing). These are the roots to chase.",
-        [k for k, v in epics.items() if enab(v)], {k: "waiting on " + ", ".join(r["k"] + " [" + r["st"] + "]" for r in enab(v))[:110] for k, v in epics.items() if enab(v)})
-    add("Starts before its blocker ends", "Planned dates overlap with a blocker. May be intended for a thin first slice; the PO decides.",
-        sorted({v for _, v in tl["conflicts"]}) if tl else [],
-        {v: next((w for w in I[v]["warn"] if w.startswith("starts")), "") for _, v in (tl["conflicts"] if tl else [])})
-    add("Priority does not match WSJF", "WSJF is in the top quarter but Priority is Low or Lowest.",
-        [k for k, v in epics.items() if ws(v) >= top and v["pr"] in ("Low", "Lowest")], {k: f"WSJF {v['ws']}, Priority {v['pr']}" for k, v in epics.items()})
-    add("No owner", "No assignee.", [k for k, v in epics.items() if not v["who"]])
-    add("Not sliced", "No child issues.", [k for k, v in epics.items() if not v.get("children")])
-    add("No WSJF score", "Business Value, Time Criticality, Risk Reduction or Job Size missing.", [k for k, v in epics.items() if ws(v) < 0])
-    add("No parent initiative", "Not under an initiative, so it is not in the plan.", [k for k, v in epics.items() if not v["par"]])
-    add("No target dates", "Target start or end missing, so the epic is not on the timeline.", [k for k, v in epics.items() if not (v["start"] and v["end"])])
-    return secs
+def attention(I, tl, tcfg=None):
+    """Needs-attention sections, built from the data-quality rule set (rules.py)."""
+    return rules.run(I, dict(conflicts=tl["conflicts"] if tl else [], topology=tcfg))
 
 
 def attention_html(secs, I):
@@ -115,7 +89,6 @@ def main():
             v["children"] = cnt.get(k) if v["core"] else None
     dag = jira_dag.build(I, a)
     tl = jira_timeline.build(I, base)
-    secs = attention(I, tl)
     fac = facets(I, a.project, get, dict(synth.NAMES) if a.synthetic else {})
     N = synth.flow() if a.synthetic else pressure.from_jira(get, base, a.project)
     names = {x["k"]: x["name"] for x in fac["cons"] + fac["prov"]}
@@ -127,6 +100,7 @@ def main():
     tcfg0 = topology.load_config(a.topology) if a.topology else (None if a.synthetic else (lambda p: topology.load_config(p) if p else None)(topology.default_config_path()))
     tcfg = topology.load_config(a.topology) if a.topology else ({"art": "Synthetic ART", "pods": [{"id": a.project, "projects": [a.project]}]} if a.synthetic
                                                               else (lambda p: topology.load_config(p) if p else None)(topology.default_config_path()))
+    secs = attention(I, tl, tcfg)
     if tcfg:
         if a.synthetic:
             TI = I

@@ -2,6 +2,7 @@
 
 Config (JSON or YAML): {art, pods:[{id,name?,projects:[..]}], interface:{name?,projects:[..]}, products:[{id,name?,projects:[..]}]}.
 Anything whose project is not in the config is external.
+Optional `policy: {<pod id>: {slice_cap_days: N}}` sets the per-POD slice cap read by rules.py (not used for drawing).
 Bands, top to bottom: On the platform (products) · interface (requests from products; spans every POD) ·
 In the platform (one lane per POD, incoming-from-another-POD on the left, dotted lane borders) · External (outgoing, under the ART).
 External incoming sits in a left gutter. Only nodes on a cross-boundary edge are drawn; same-POD edges are counted per lane.
