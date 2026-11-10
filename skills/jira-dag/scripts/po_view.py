@@ -6,7 +6,7 @@ epics.mmd. Fetches the project once. Story views: pass --epic KEY (writes storie
 """
 import argparse, html, os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import jira_dag, jira_timeline, pressure, roadmap
+import jira_dag, jira_timeline, pressure, roadmap, topology
 from jira_common import ISSUE_FIELDS, app_page, client, collect, edges_of, search
 
 
@@ -90,6 +90,7 @@ def main():
     p.add_argument("--outdir", required=True)
     p.add_argument("--synthetic", action="store_true", help="use built-in fake data; no Jira access at all")
     p.add_argument("--epic", help="story view for one epic instead of the project overview")
+    p.add_argument("--topology", help="config blob (JSON/YAML) mapping PODs, interface and products to Jira projects; default ~/.config/jira-dag/topology.{yaml,json}")
     p.add_argument("--relates", action="store_true")
     p.add_argument("--all", action="store_true")
     a = p.parse_args()
@@ -137,13 +138,31 @@ def main():
     panels = [dict(id="pressure", label="Pressure", badge=pflag or None, html=phtml), dict(id="roadmap", label="Roadmap", html=roadmap.PANEL + ""), dict(id="brief", label="Briefing", html=roadmap.BRIEF), dict(id="dag", label="Dependencies", svg=dag["svg"], legend=jira_dag.LEGEND, idmap=dag["idmap"], edges=dag["edges"])]
     if tl:
         panels.append(dict(id="timeline", label="Timeline", svg=tl["svg"], legend=jira_timeline.LEGEND, edges=tl["E"]))
+    topo_issues, tp = {}, None
+    tcfg0 = topology.load_config(a.topology) if a.topology else (None if a.synthetic else (lambda p: topology.load_config(p) if p else None)(topology.default_config_path()))
+    tcfg = topology.load_config(a.topology) if a.topology else ({"art": "Synthetic ART", "pods": [{"id": a.project, "projects": [a.project]}]} if a.synthetic
+                                                              else (lambda p: topology.load_config(p) if p else None)(topology.default_config_path()))
+    if tcfg:
+        if a.synthetic:
+            TI = I
+        else:
+            pj = lambda ps: ",".join(ps)
+            pods = [x for p in tcfg.get("pods", []) for x in p.get("projects", [])]
+            rest = [x for g in ([tcfg.get("interface")] if tcfg.get("interface") else []) + tcfg.get("products", []) for x in g.get("projects", [])]
+            jql = f"((project in ({pj(pods)}) AND issuetype = Epic)" + (f" OR project in ({pj(rest)})" if rest else "") + ") AND status not in (Done,Discarded)"
+            TI = collect(get, base, jql, a.project)
+        tp = topology.render(TI, tcfg)
+        panels.append(dict(id="topology", label="Topologies", svg=tp["svg"], legend=topology.LEGEND, edges=tp["edges"]))
+        topo_issues = {k: {x: v.get(x) for x in ISSUE_FIELDS} for k, v in TI.items() if k in tp["layout"]["nodes"]}
+    for v in list(I.values()) + list(topo_issues.values()):
+        v["tl"] = topology.card_groups(v.get("labels"), tcfg0)
     nflag = sum(len(s[2]) for s in secs[:4])
     panels.append(dict(id="attention", label="Needs attention", badge=nflag or None, html=attention_html(secs, I)))
-    data = dict(base=base, project=a.project, facets=fac, pressure=dict(md=pmd), alledges=[list(e) for e in edges_of(I)], issues={k: {x: v[x] for x in ISSUE_FIELDS} for k, v in I.items()})
+    data = dict(base=base, project=a.project, facets=fac, pressure=dict(md=pmd), alledges=[list(e) for e in edges_of(I)], issues=dict({k: {x: v[x] for x in ISSUE_FIELDS} for k, v in I.items()}, **{k: t for k, t in topo_issues.items() if t.get("core") or k not in I}))
     sub = ("SYNTHETIC DATA, not Jira · try things freely, nothing is written anywhere" if a.synthetic
            else "Live from Jira · snapshot, not a validated record · planned dates, not forecasts")
     page = app_page(f"{a.project} · portfolio" + (" (synthetic)" if a.synthetic else ""), sub, panels, data,
-                    sorted({v["st"] for v in I.values() if v["core"]}), roadmap.CSS + pressure.CSS, roadmap.JS + pressure.JS)
+                    sorted({v["st"] for v in I.values() if v["core"]}), roadmap.CSS + pressure.CSS + topology.CSS, roadmap.JS + pressure.JS + (topology.js(tp) if tp else ""))
     out = lambda n: os.path.join(a.outdir, n)
     open(out("index.html"), "w").write(page)
     open(out("epics.html"), "w").write('<!doctype html><meta charset=utf-8><meta http-equiv=refresh content="0;url=index.html#tab=dag"><a href="index.html#tab=dag">moved to index.html</a>')

@@ -3,7 +3,7 @@ import base64, json, netrc, re, sys, urllib.parse, urllib.request
 
 DEAD = {"Done", "Discarded", "Closed", "Cancelled", "Resolved"}
 ISSUE_FIELDS = ("key", "sum", "st", "pr", "ws", "who", "team", "par", "pardue", "start", "end", "url", "blocks", "blockedBy",
-                "relates", "ext_in", "ext_out", "ext", "warn", "core", "children", "due", "refine", "flagged", "parsum", "labels")
+                "relates", "ext_in", "ext_out", "ext", "warn", "core", "children", "due", "refine", "flagged", "parsum", "labels", "tl")
 EARLY = {"Funnel", "Backlog", "New", "To Do", "Analyzing"}
 
 
@@ -40,8 +40,8 @@ def esc(s):
 
 def num(v):
     try:
-        return float(v) if str(v).strip() else None
-    except ValueError:
+        return float(v) if v is not None and str(v).strip() else None
+    except (ValueError, TypeError):
         return None
 
 
@@ -179,7 +179,7 @@ a{cursor:pointer}[data-key]{cursor:pointer}
 #card h2{font-size:.95rem;margin:0 1.5rem .15rem 0}#card h2 a{color:#2563eb;text-decoration:none}
 #card .s{margin:.1rem 0 .55rem}#card .x{position:absolute;right:.6rem;top:.45rem;border:0;background:none;font-size:1.1rem;color:var(--mute);cursor:pointer}
 .chip{display:inline-block;border-radius:999px;padding:.05rem .55rem;font-size:.74rem;margin:0 .25rem .25rem 0;background:#eef2f7;color:#334155}
-.chip.ext{background:#fff1e6;color:#b4440a;font-weight:600}.chip.warn{background:#fde8ef;color:#a61e4d;font-weight:600}
+.chip.tl{background:#e8f0fe;color:#1e4fa8}.chip.ext{background:#fff1e6;color:#b4440a;font-weight:600}.chip.warn{background:#fde8ef;color:#a61e4d;font-weight:600}
 #card h3{font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:var(--mute);margin:.6rem 0 .2rem}
 #card ul{margin:0;padding:0;list-style:none}#card li{padding:.1rem 0;font-size:.82rem}#card li a{color:#2563eb;text-decoration:none}
 #card li.e{border-left:3px solid var(--ext);padding-left:.4rem}.mute{color:var(--mute)}
@@ -212,6 +212,8 @@ function setHash(k){const p=new URLSearchParams(location.hash.slice(1));if(activ
 function show(k,x,y){const v=D.issues[k];if(!v)return;card.replaceChildren();const b=el('button','x','×');b.onclick=hide;card.append(b);
  const h=el('h2'),a=el('a',null,k);a.href=v.url;a.target='_blank';a.rel='noopener';h.append(a,' ↗');card.append(h,el('div','s',v.sum));
  [v.st,v.pr&&('Priority '+v.pr),(v.ws!=null&&v.ws!=='')&&('WSJF '+v.ws),v.who&&('Assignee '+v.who),v.team,v.children!=null&&(v.children+' child issue'+(v.children===1?'':'s'))].filter(Boolean).forEach(c=>card.append(el('span','chip',c)));
+ (v.tl||[]).forEach(g=>card.append(el('span','chip tl',g[0]+': '+g[1].join(', '))));
+ if(window.topoHas&&window.topoHas(k)){const pb=el('button','pinb',window.topoIsPinned(k)?'Unpin from Topologies':'Pin on Topologies');pb.onclick=()=>{window.topoToggle(k);hide()};card.append(pb)}
  if(v.ext_in)card.append(el('span','chip ext','◀ blocked by another project'));if(v.ext_out)card.append(el('span','chip ext','blocks another project ▶'));if(v.ext)card.append(el('span','chip ext','outside this project'));
  if(v.start||v.end)card.append(el('div','s mute','Target '+(v.start||'?')+' → '+(v.end||'?')+(v.par?(' · '+v.par+(v.pardue?' due '+v.pardue:'')):'')));
  (v.warn||[]).forEach(w=>card.append(el('span','chip warn',w)));
