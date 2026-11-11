@@ -89,7 +89,7 @@ If you see this, you need `COPILOT_API_URL`.
 Agent `.md` files in `~/.config/copilot/agents/` must use copilot's format — plain pi-style files will log `custom agent markdown frontmatter is malformed` and be silently ignored. See the Agent/persona section for the correct `.agent.md` format.
 
 Other useful flags:
-- `--model <model>` — override model (default: claude-sonnet-4.5)
+- `--model <model>` — override model (default: claude-sonnet-5.5)
 - `--share /tmp/session.md` — export full session as markdown
 - `--autopilot` — enable multi-step continuation
 - `--max-autopilot-continues <n>` — cap autopilot iterations
@@ -172,7 +172,7 @@ File format (frontmatter + markdown system prompt):
 name: Bart
 description: Adversarial code reviewer
 tools: ["read_file", "run_shell_command"]
-model: ["claude-sonnet-4.6"]
+model: ["claude-sonnet-5.5"]
 ---
 
 You are Bart Simpson, adversarial reviewer. Find bugs and be snarky.
@@ -196,10 +196,12 @@ copilot --agent bart --yolo -p @/tmp/task.md
 ## Model selection
 
 ```bash
-copilot --model claude-haiku-4.5 --yolo -p @/tmp/task.md   # fast/cheap
-copilot --model claude-sonnet-4.6 --yolo -p @/tmp/task.md  # default
-copilot --model claude-opus-4.6 --yolo -p @/tmp/task.md    # most capable
+copilot --model claude-haiku-5.5 --yolo -p @/tmp/task.md   # fast/cheap
+copilot --model claude-sonnet-5.5 --yolo -p @/tmp/task.md  # default
+copilot --model claude-opus-5.5 --yolo -p @/tmp/task.md    # most capable
 ```
+
+Copilot spells versions with a dot (`5.5`), unlike pi's `5-5`. The available set changes per account: an id it does not offer fails with `Model "<id>" is not available`. Probe before relying on an id: `copilot --model <id> -p "reply: ok"`.
 
 ## Troubleshooting
 
