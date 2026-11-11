@@ -99,7 +99,7 @@ Before committing changes or new skills, ensure they are free of:
 ### 2. Use Generic Placeholders
 
 Replace organization-specific values with clear placeholders:
-- Use `{ORGANIZATION}` instead of company names (e.g., "company")
+- Use `{ORGANIZATION}` instead of company names (e.g., "{ORGANIZATION}")
 - Use `{WORKSPACE_NAME}` instead of specific TFC workspace names
 - Use `{RUN_ID}`, `{PLAN_ID}`, `{APPLY_ID}` for runtime variables
 - Use example domains: `example.com`, `your-org.aws.com`
@@ -107,7 +107,7 @@ Replace organization-specific values with clear placeholders:
 
 **Example before sanitization:**
 ```yaml
-compatibility: Requires access to company's Terraform Cloud workspace prod-us-east-1
+compatibility: Requires access to {ORGANIZATION}'s Terraform Cloud workspace prod-us-east-1
 ```
 
 **Example after sanitization:**

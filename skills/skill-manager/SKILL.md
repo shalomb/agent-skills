@@ -93,10 +93,10 @@ TARGET="$HOME/shalomb/agent-skills/skills/$SKILL"
 cp -r "$SOURCE" "$TARGET"
 
 # 2. Audit for org-specific content
-grep -rni "company\|organization\|apms\|your-org" "$TARGET/"
+grep -rni "company-name\|your-org" "$TARGET/"
 
 # 3. Replace hardcoded paths with env vars or placeholders
-#    e.g. ~/organization/repo → $REPO_ROOT or {REPO_PATH}
+#    e.g. ~/company/repo → $REPO_ROOT or {REPO_PATH}
 
 # 4. Symlink from pi skills
 ln -sf "$TARGET" "$SKILLS_DIR/$SKILL"
