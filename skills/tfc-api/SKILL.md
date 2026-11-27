@@ -5,7 +5,7 @@ description: Query Terraform Cloud (TFC) workspaces, runs, plans, logs, and team
 
 # Terraform Cloud API
 
-> **CRITICAL DIRECTIVE**: Always prefer using the `terrapyne` CLI (e.g. `uv run terrapyne` or `tfc`) for TFC operations. Only fall back to raw API calls (`curl`/`httpie`) or the bash scripts listed below if `terrapyne` is not available in the environment or lacks the required functionality.
+> **CRITICAL DIRECTIVE**: Use the `tfc` CLI (terrapyne) in this order: (1) a `tfc` subcommand; (2) `tfc api <endpoint>` only for a gap no subcommand covers; (3) raw `curl`/`httpie` or the scripts below only when `tfc` is not installed. Do not use `tfc api` as a router when a subcommand exists. Job-to-command map, gaps and traps: [references/tfc-cli-first.md](references/tfc-cli-first.md).
 > 
 > Example: Instead of `./scripts/list-runs.sh`, use `uv run terrapyne run list`. Instead of manual curl for workspace discovery, use `uv run terrapyne workspace list` or `tfc project find`.
 
@@ -119,8 +119,7 @@ tfc run discard <run-id> -m "reason"
 **Prefer terrapyne where possible:**
 ```bash
 tfc run discard <run-id> -m "Discarding to re-plan"
-# Note: run cancel (for pending/planning runs) is not yet in terrapyne (tracked as F14)
-# Use curl fallback below for cancel
+tfc run cancel <run-id>          # pending/planning runs (discard does not work on them)
 ```
 
 **Curl fallback:**
@@ -152,10 +151,9 @@ curl -s -H "Authorization: Bearer $TFC_TOKEN" \
 
 ### Switching VCS branch for speculative plans
 
-> **Note**: terrapyne does not yet have a `workspace set-branch` command (tracked as F13). Use the script fallback:
-
 ```bash
-./scripts/set-workspace-branch.sh {ORGANIZATION} <workspace-name> <branch>
+tfc workspace set-branch <workspace-name> <branch>
+# Fallback without tfc: ./scripts/set-workspace-branch.sh {ORGANIZATION} <workspace-name> <branch>
 ```
 
 Useful for testing a consolidated branch (`iac-reveng`) against workspaces
@@ -202,6 +200,8 @@ tfc run logs <run-id> --stage apply
 | `delete-registry-module.sh` | Delete a registry module |
 
 ## References
+
+- [TFC: use the CLI first](references/tfc-cli-first.md)
 
 - `references/tfc-team-project-access.md` — Team permissions CRUD, pagination gotchas, access level semantics
 - `references/tfc-api-reference.md` — Workspace/run/plan/log operations
